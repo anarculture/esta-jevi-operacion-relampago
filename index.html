@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light">
+<title>Operación Relámpago</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="styles.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+
+<header class="top">
+  <div class="top-row">
+    <p class="brand">Operación Relámpago</p>
+    <dl class="ind">
+      <div><dt>Saldo previsto</dt><dd id="ind-prev" class="prev">—</dd></div>
+      <div><dt>Caja real</dt><dd id="ind-real" class="real">—</dd></div>
+      <div class="ind-save"><dt>Estado</dt><dd id="ind-save">—</dd></div>
+    </dl>
+  </div>
+  <nav aria-label="Secciones">
+    <ul>
+      <li><a href="#resumen">Resumen</a></li>
+      <li><a href="#finanzas">Finanzas</a></li>
+      <li><a href="#plan">Plan</a></li>
+      <li><a href="#ventas">Ventas</a></li>
+      <li><a href="#operacion">Operación</a></li>
+    </ul>
+  </nav>
+</header>
+<p id="storage-alert" class="alert banner" role="alert" hidden></p>
+
+<main id="contenido">
+<noscript><p class="alert">Esta plataforma necesita JavaScript. No envía datos a ningún servidor.</p></noscript>
+
+<!-- ============================== Resumen ============================== -->
+<section id="resumen" class="view" aria-labelledby="h-resumen">
+  <div class="view-head">
+    <h1 id="h-resumen" tabindex="-1">Operación Relámpago</h1>
+    <p class="lede">Plataforma del organizador: un solo operador, datos solo en este navegador, montos en USD.</p>
+  </div>
+
+  <section class="panel band" aria-label="Saldo previsto y caja real">
+    <div class="band-half">
+      <h2>Saldo previsto <span class="tag tag-prev">Escenario</span></h2>
+      <p class="figure prev" id="sum-prev">—</p>
+      <p class="meta" id="sum-prev-desc"></p>
+      <p class="meta" id="sum-eq"></p>
+      <a class="link" href="#finanzas">Ajustar el escenario</a>
+    </div>
+    <div class="band-half">
+      <h2>Caja real <span class="tag tag-real">Registrado</span></h2>
+      <p class="figure real" id="sum-real">—</p>
+      <p class="meta" id="sum-real-desc"></p>
+      <p class="meta" id="sum-pending"></p>
+      <a class="link" href="#caja">Registrar cobros y aportes</a>
+    </div>
+    <p class="hint band-legend">Subrayado punteado: hipótesis. Subrayado continuo: registrado. La proyección no es caja disponible.</p>
+  </section>
+
+  <div class="split">
+    <section class="panel" aria-labelledby="h-next">
+      <h2 id="h-next">Próxima acción</h2>
+      <p class="next" id="next-title"></p>
+      <p class="meta" id="next-meta"></p>
+      <h3>Bloqueos</h3>
+      <ul class="plain" id="blocked"></ul>
+      <p class="meta" id="plan-progress"></p>
+      <a class="link" href="#plan">Ver el plan</a>
+    </section>
+    <section class="panel" aria-labelledby="h-fecha">
+      <h2 id="h-fecha">Fecha y hora</h2>
+      <div class="row-2">
+        <div class="field">
+          <label for="ev-date">Fecha</label>
+          <input type="date" id="ev-date" data-k="event.date" data-t="date" aria-describedby="ev-hint ev-date-err">
+          <p class="err" id="ev-date-err"></p>
+        </div>
+        <div class="field">
+          <label for="ev-time">Hora de apertura</label>
+          <input type="time" id="ev-time" data-k="event.time" data-t="time" aria-describedby="ev-hint ev-time-err">
+          <p class="err" id="ev-time-err"></p>
+        </div>
+      </div>
+      <p class="hint" id="ev-hint">Previsto un jueves; la fecha exacta y el horario no están reconfirmados.</p>
+      <p class="status-line" id="ev-out"></p>
+    </section>
+  </div>
+
+  <section class="panel" id="datos" aria-labelledby="h-datos">
+    <h2 id="h-datos">Datos y respaldo</h2>
+    <p class="prose">Todo se guarda solo en este navegador: no se comparte, no se sincroniza y no se sube al sitio. Para cambiar de equipo o protegerte de un borrado, exporta un respaldo y guárdalo en un lugar privado.</p>
+    <p class="meta" id="save-detail"></p>
+    <div class="actions">
+      <button type="button" class="btn btn-primary" data-action="export-json">Exportar respaldo JSON</button>
+      <button type="button" class="btn" data-action="import-json">Importar respaldo JSON</button>
+      <input type="file" id="import-file" accept="application/json,.json" hidden>
+      <button type="button" class="btn" data-action="restore-backup" id="btn-restore" hidden>Restaurar respaldo anterior</button>
+      <button type="button" class="btn btn-danger" data-action="reset-all">Borrar todo y volver a la plantilla</button>
+    </div>
+    <p class="hint">Importar valida el archivo completo antes de reemplazar nada y pide confirmación. Los datos que tenías quedan como respaldo anterior.</p>
+    <p class="status-line" id="data-msg" role="status"></p>
+  </section>
+</section>
+
+<!-- ============================== Finanzas ============================== -->
+<section id="finanzas" class="view" aria-labelledby="h-finanzas" hidden>
+  <div class="view-head">
+    <h1 id="h-finanzas" tabindex="-1">Finanzas</h1>
+    <p class="lede">Escenario de taquilla, presupuesto y caja real, por separado. La proyección no es dinero disponible.</p>
+  </div>
+  <p id="fin-errors" class="alert" role="alert" hidden></p>
+
+  <div class="fin">
+    <section class="panel f-sum" aria-labelledby="h-sum">
+      <h2 id="h-sum">Saldo previsto <span class="tag tag-prev">Hipótesis</span></h2>
+      <div aria-live="polite" aria-atomic="true">
+        <p class="figure prev" id="res-saldo">—</p>
+        <p class="state" id="res-state"></p>
+      </div>
+      <p class="meta" id="res-eq"></p>
+      <p class="warn" id="res-warn" hidden></p>
+      <details class="fold">
+        <summary>Desglose del saldo</summary>
+        <dl class="ledger" id="res-ledger"></dl>
+      </details>
+    </section>
+
+    <section class="panel f-esc" aria-labelledby="h-esc">
+      <h2 id="h-esc">Escenario de taquilla</h2>
+      <div class="form">
+        <div class="field">
+          <label for="sc-tickets">Entradas pagadas</label>
+          <div class="pair">
+            <input type="range" id="sc-tickets-range" min="0" max="500" step="1" data-k="scenario.tickets" data-t="int:0:500" aria-label="Entradas pagadas, deslizador" aria-describedby="sc-tickets-hint">
+            <input type="text" id="sc-tickets" inputmode="numeric" autocomplete="off" data-k="scenario.tickets" data-t="int:0:500" aria-describedby="sc-tickets-hint sc-tickets-err">
+          </div>
+          <p class="hint" id="sc-tickets-hint">Hipótesis de trabajo, no garantía ni aforo. De 0 a 500.</p>
+          <p class="err" id="sc-tickets-err"></p>
+        </div>
+        <div class="field">
+          <label for="sc-low">Proporción a tarifa anticipada (%)</label>
+          <div class="pair">
+            <input type="range" id="sc-low-range" min="0" max="100" step="1" data-k="scenario.lowPct" data-t="int:0:100" aria-label="Proporción a tarifa anticipada, deslizador" aria-describedby="sc-low-hint">
+            <input type="text" id="sc-low" inputmode="numeric" autocomplete="off" data-k="scenario.lowPct" data-t="int:0:100" aria-describedby="sc-low-hint sc-low-err">
+          </div>
+          <p class="hint" id="sc-low-hint"><span id="sc-mix-out"></span>. Anticipada: antes de la fiesta; en puerta: el día de la fiesta. Esta proporción es una hipótesis, no está validada.</p>
+          <p class="err" id="sc-low-err"></p>
+        </div>
+        <div class="row-2">
+          <div class="field amount">
+            <label for="sc-plow">Tarifa anticipada, antes de la fiesta (USD)</label>
+            <input type="text" id="sc-plow" inputmode="decimal" autocomplete="off" data-k="scenario.priceLowCents" data-t="money" aria-describedby="sc-plow-err">
+            <p class="err" id="sc-plow-err"></p>
+          </div>
+          <div class="field amount">
+            <label for="sc-phigh">Tarifa en puerta, día de la fiesta (USD)</label>
+            <input type="text" id="sc-phigh" inputmode="decimal" autocomplete="off" data-k="scenario.priceHighCents" data-t="money" aria-describedby="sc-phigh-hint sc-phigh-err">
+            <p class="hint" id="sc-phigh-hint">Prevista para el día del evento.</p>
+            <p class="err" id="sc-phigh-err"></p>
+          </div>
+        </div>
+        <div class="field amount narrow">
+          <label for="sc-court">Cortesías (no pagan)</label>
+          <input type="text" id="sc-court" inputmode="numeric" autocomplete="off" data-k="scenario.courtesies" data-t="int:0:500" aria-describedby="sc-court-hint sc-court-err">
+          <p class="hint" id="sc-court-hint">Se cuentan aparte: no suman ingreso.</p>
+          <p class="err" id="sc-court-err"></p>
+        </div>
+        <p class="hint">Cambiar un precio no cambia la cantidad de entradas: este modelo no estima demanda.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" data-action="reset-scenario" aria-describedby="esc-reset-hint">Restablecer escenario</button>
+      </div>
+      <p class="hint" id="esc-reset-hint">Vuelve a 100 entradas, tarifas 10 y 15, 0% a tarifa anticipada, propuesta actual, cargos en 0 y barra sin sumar. No toca presupuesto, caja, tareas ni operación.</p>
+      <p class="status-line" id="esc-msg" role="status"></p>
+    </section>
+
+    <section class="panel f-viz" aria-labelledby="h-viz">
+      <h2 id="h-viz">Saldo según entradas pagadas</h2>
+      <div class="chart-wrap" id="chart-wrap">
+        <svg id="chart" role="img" aria-labelledby="h-viz chart-desc"></svg>
+      </div>
+      <p class="hint" id="chart-desc"></p>
+      <details class="fold">
+        <summary>Ver los valores del gráfico en una tabla</summary>
+        <div class="scroll">
+          <table>
+            <caption class="sr">Saldo previsto por cantidad de entradas pagadas, con la mezcla y los precios del escenario</caption>
+            <thead><tr><th scope="col">Entradas pagadas</th><th scope="col">Saldo previsto</th></tr></thead>
+            <tbody id="chart-table"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <h3 id="h-cmp">Comparar asistencia y tarifa</h3>
+      <p class="hint">Todas las entradas a una sola tarifa, con los costos y cargos actuales. Sin probabilidades: ninguna fila es más probable que otra.</p>
+      <div class="scroll" role="region" aria-labelledby="h-cmp" tabindex="0">
+        <table class="cmp">
+          <thead><tr><th scope="col">Entradas pagadas</th><th scope="col">Tarifa $10</th><th scope="col">Tarifa $12</th><th scope="col">Tarifa $15</th></tr></thead>
+          <tbody id="cmp-body"></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" data-action="export-csv">Exportar CSV del escenario</button>
+      </div>
+      <p class="status-line" id="csv-msg" role="status"></p>
+    </section>
+
+    <section class="panel f-pre" aria-labelledby="h-pre">
+      <h2 id="h-pre">Presupuesto</h2>
+      <p class="hint">Montos declarados: no suponen pagos hechos ni confirman que todo esté incluido. El costo previsto toma, por partida, el mayor entre estimado y pagado.</p>
+      <ul class="items" id="budget-list"></ul>
+      <div class="actions"><button type="button" class="btn" data-action="add" data-l="budget">Añadir partida</button></div>
+      <p class="status-line" id="msg-budget" role="status"></p>
+      <dl class="ledger">
+        <dt>Base declarada (suma de estimados)</dt><dd id="bt-declared"></dd>
+        <dt>Pagado</dt><dd id="bt-paid"></dd>
+        <dt>Pendiente por pagar</dt><dd id="bt-pending"></dd>
+        <dt class="total">Costo previsto en el escenario</dt><dd class="total" id="bt-forecast"></dd>
+      </dl>
+      <p class="hint" id="bt-note"></p>
+    </section>
+
+    <section class="panel f-ded" aria-labelledby="h-ded">
+      <h2 id="h-ded">Local, cargos y patrocinio <span class="tag tag-prev">Por acordar</span></h2>
+      <fieldset>
+        <legend>Propuesta de costos con el local</legend>
+        <p class="hint" id="preset-hint">Solo propuestas: ninguna está acordada. Cada una quita del costo previsto partidas concretas; lo ya pagado en ellas y los extras se siguen contando.</p>
+        <div class="choice">
+          <input type="radio" name="preset" id="pr-actual" value="actual" data-k="scenario.preset" data-t="en:preset" aria-describedby="preset-hint">
+          <label for="pr-actual"><strong>Actual</strong>: todas las partidas a cargo del organizador. <span class="meta" id="pr-actual-ref"></span></label>
+        </div>
+        <div class="choice">
+          <input type="radio" name="preset" id="pr-sonido" value="sonido" data-k="scenario.preset" data-t="en:preset" aria-describedby="preset-hint">
+          <label for="pr-sonido"><strong>El local aporta el sonido</strong>: quita la partida Sonido. <span class="meta" id="pr-sonido-ref"></span></label>
+        </div>
+        <div class="choice">
+          <input type="radio" name="preset" id="pr-tecnica_puerta" value="tecnica_puerta" data-k="scenario.preset" data-t="en:preset" aria-describedby="preset-hint">
+          <label for="pr-tecnica_puerta"><strong>El local absorbe técnica y puerta</strong>: quita Equipos, Sonido y Puerta. <span class="meta" id="pr-tecnica_puerta-ref"></span></label>
+        </div>
+      </fieldset>
+
+      <details class="fold">
+        <summary>Cargos y patrocinio en efectivo <span class="meta" id="fees-sum"></span></summary>
+        <p class="hint">En 0 por defecto: son hipótesis, no acuerdos.</p>
+        <div class="form">
+          <div class="field amount narrow">
+            <label for="sc-venue">Reparto del local (% de la taquilla)</label>
+            <input type="text" id="sc-venue" inputmode="decimal" autocomplete="off" data-k="scenario.venuePct" data-t="pct" aria-describedby="sc-venue-err">
+            <p class="err" id="sc-venue-err"></p>
+          </div>
+          <div class="field amount narrow">
+            <label for="sc-fee">Comisión de cobro o ticketing (% de la taquilla)</label>
+            <input type="text" id="sc-fee" inputmode="decimal" autocomplete="off" data-k="scenario.feePct" data-t="pct" aria-describedby="sc-fee-err">
+            <p class="err" id="sc-fee-err"></p>
+          </div>
+          <div class="field amount narrow">
+            <label for="sc-feet">Cargo fijo por entrada pagada (USD)</label>
+            <input type="text" id="sc-feet" inputmode="decimal" autocomplete="off" data-k="scenario.feePerTicketCents" data-t="money" aria-describedby="sc-feet-err">
+            <p class="err" id="sc-feet-err"></p>
+          </div>
+          <div class="field amount narrow">
+            <label for="sc-sponsor">Patrocinio en efectivo (USD)</label>
+            <input type="text" id="sc-sponsor" inputmode="decimal" autocomplete="off" data-k="scenario.sponsorCashCents" data-t="money" aria-describedby="sc-sponsor-hint sc-sponsor-err">
+            <p class="hint" id="sc-sponsor-hint">Solo dinero entregado. Las botellas no cuentan aquí: su valor solo entra por el reparto de barra.</p>
+            <p class="err" id="sc-sponsor-err"></p>
+          </div>
+        </div>
+      </details>
+
+      <div class="check">
+        <input type="checkbox" id="sc-bar" data-k="scenario.includeBar" data-t="bool" aria-describedby="sc-bar-out">
+        <label for="sc-bar">Sumar el reparto de barra al saldo previsto</label>
+        <p class="meta" id="sc-bar-out"></p>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel caja" id="caja" aria-labelledby="h-caja">
+    <h2 id="h-caja">Caja real <span class="tag tag-real">Registrado</span></h2>
+    <p class="hint">Solo dinero que ya entró o salió; todo parte en 0. Los pagos se anotan en cada partida del presupuesto (campo «Pagado»).</p>
+    <div class="caja-grid">
+      <div class="form">
+        <div class="field amount">
+          <label for="cr-tickets">Cobrado por entradas (USD)</label>
+          <input type="text" id="cr-tickets" inputmode="decimal" autocomplete="off" data-k="real.ticketsCollectedCents" data-t="money" aria-describedby="cr-tickets-hint cr-tickets-err">
+          <p class="hint" id="cr-tickets-hint">Es el mismo dato que en Ventas.</p>
+          <p class="err" id="cr-tickets-err"></p>
+        </div>
+        <div class="field amount">
+          <label for="cr-sponsor">Patrocinio en efectivo cobrado (USD)</label>
+          <input type="text" id="cr-sponsor" inputmode="decimal" autocomplete="off" data-k="real.sponsorCollectedCents" data-t="money" aria-describedby="cr-sponsor-err">
+          <p class="err" id="cr-sponsor-err"></p>
+        </div>
+        <div class="field amount">
+          <label for="cr-bar">Reparto de barra cobrado (USD)</label>
+          <input type="text" id="cr-bar" inputmode="decimal" autocomplete="off" data-k="real.barCollectedCents" data-t="money" aria-describedby="cr-bar-err">
+          <p class="err" id="cr-bar-err"></p>
+        </div>
+        <div class="field amount">
+          <label for="cr-own">Aporte propio (USD)</label>
+          <input type="text" id="cr-own" inputmode="decimal" autocomplete="off" data-k="real.ownContributionCents" data-t="money" aria-describedby="cr-own-hint cr-own-err">
+          <p class="hint" id="cr-own-hint">Dinero que pones tú. Se muestra aparte: no es ingreso.</p>
+          <p class="err" id="cr-own-err"></p>
+        </div>
+      </div>
+      <dl class="ledger">
+        <dt>Ingresos cobrados</dt><dd id="cr-income"></dd>
+        <dt>Aporte propio</dt><dd id="cr-own-out"></dd>
+        <dt>Pagado (desde el presupuesto)</dt><dd id="cr-paid"></dd>
+        <dt class="total">Caja disponible</dt><dd class="total real" id="cr-cash"></dd>
+        <dt>Resultado sin aporte propio</dt><dd id="cr-oper"></dd>
+        <dt>Adelantos por pagar antes de abrir</dt><dd id="cr-adv"></dd>
+        <dt>Caja previa a la apertura</dt><dd id="cr-pre"></dd>
+      </dl>
+    </div>
+  </section>
+</section>
+
+<!-- ============================== Plan ============================== -->
+<section id="plan" class="view" aria-labelledby="h-plan" hidden>
+  <div class="view-head">
+    <h1 id="h-plan" tabindex="-1">Plan</h1>
+    <p class="lede">Checklist de producción de este navegador. No es multiusuario ni se sincroniza.</p>
+  </div>
+  <div class="filters" role="group" aria-label="Filtrar tareas">
+    <div class="field">
+      <label for="f-status">Estado</label>
+      <select id="f-status" data-filter data-enum="task_status" data-first="Todos los estados"></select>
+    </div>
+    <div class="field">
+      <label for="f-area">Área</label>
+      <select id="f-area" data-filter data-enum="area" data-first="Todas las áreas"></select>
+    </div>
+  </div>
+  <p class="meta" id="plan-count" role="status"></p>
+  <section class="panel" aria-labelledby="h-tareas">
+    <h2 id="h-tareas" class="sr">Tareas</h2>
+    <ol class="items" id="task-list"></ol>
+    <div class="actions"><button type="button" class="btn btn-primary" data-action="add" data-l="tasks">Añadir tarea</button></div>
+    <p class="status-line" id="msg-tasks" role="status"></p>
+  </section>
+</section>
+
+<!-- ============================== Ventas y patrocinios ============================== -->
+<section id="ventas" class="view" aria-labelledby="h-ventas" hidden>
+  <div class="view-head">
+    <h1 id="h-ventas" tabindex="-1">Ventas y patrocinios</h1>
+    <p class="lede">Registro manual de lo vendido y cobrado, separado del escenario.</p>
+  </div>
+  <p class="notice">Este registro es manual: no emite entradas, no procesa pagos ni valida códigos QR. Anota aquí lo que vendiste y cobraste por otros medios.</p>
+
+  <div class="split even">
+    <section class="panel" aria-labelledby="h-entradas">
+      <h2 id="h-entradas">Entradas <span class="tag tag-real">Registrado</span></h2>
+      <div class="form">
+        <div class="row-2">
+          <div class="field amount">
+            <label for="v-sold">Entradas pagadas vendidas</label>
+            <input type="text" id="v-sold" inputmode="numeric" autocomplete="off" data-k="real.sold" data-t="int:0:10000" aria-describedby="v-sold-err">
+            <p class="err" id="v-sold-err"></p>
+          </div>
+          <div class="field amount">
+            <label for="v-court">Cortesías entregadas</label>
+            <input type="text" id="v-court" inputmode="numeric" autocomplete="off" data-k="real.courtesies" data-t="int:0:10000" aria-describedby="v-court-err">
+            <p class="err" id="v-court-err"></p>
+          </div>
+        </div>
+        <div class="field amount">
+          <label for="v-collected">Cobrado por entradas (USD)</label>
+          <input type="text" id="v-collected" inputmode="decimal" autocomplete="off" data-k="real.ticketsCollectedCents" data-t="money" aria-describedby="v-collected-hint v-collected-err">
+          <p class="hint" id="v-collected-hint">Alimenta la caja real en Finanzas.</p>
+          <p class="err" id="v-collected-err"></p>
+        </div>
+      </div>
+      <dl class="ledger">
+        <dt>Vendidas (registro)</dt><dd class="real" id="v-sold-out"></dd>
+        <dt>Escenario</dt><dd class="prev" id="v-sc-out"></dd>
+        <dt>Mínimo para cubrir costos</dt><dd id="v-eq-out"></dd>
+        <dt>Faltan para el mínimo</dt><dd id="v-missing-out"></dd>
+      </dl>
+    </section>
+
+    <section class="panel" aria-labelledby="h-spon">
+      <h2 id="h-spon">Patrocinios</h2>
+      <p class="hint">Cerveza y anís en producto (botellas). Cantidades y condiciones por definir. Las botellas no son dinero para artistas ni efectivo del evento.</p>
+      <ul class="items" id="sponsor-list"></ul>
+      <div class="actions"><button type="button" class="btn" data-action="add" data-l="sponsors">Añadir patrocinio</button></div>
+      <p class="status-line" id="msg-sponsors" role="status"></p>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="h-bar">
+    <h2 id="h-bar">Barra y reparto con el organizador <span class="tag tag-prev">Por acordar</span></h2>
+    <p class="hint">Vende el local. Base, porcentaje y gastos de servicio no están definidos: quedan vacíos hasta acordarlos. Solo se suma al saldo previsto si lo activas en Finanzas.</p>
+    <div class="row-2 terms">
+      <div class="field">
+        <label for="bar-base">Base del reparto</label>
+        <select id="bar-base" data-k="bar.base" data-t="en:bar_base" data-enum="bar_base" aria-describedby="bar-base-err"></select>
+        <p class="err" id="bar-base-err"></p>
+      </div>
+      <div class="field amount">
+        <label for="bar-pct">Parte del organizador (%)</label>
+        <input type="text" id="bar-pct" inputmode="decimal" autocomplete="off" data-k="bar.pct" data-t="pctOpt" aria-describedby="bar-pct-hint bar-pct-err">
+        <p class="hint" id="bar-pct-hint">Vacío = por definir.</p>
+        <p class="err" id="bar-pct-err"></p>
+      </div>
+    </div>
+    <h3>Registro por producto</h3>
+    <ul class="items" id="bar-list"></ul>
+    <div class="actions"><button type="button" class="btn" data-action="add" data-l="barLines">Añadir producto</button></div>
+    <p class="status-line" id="msg-barLines" role="status"></p>
+    <dl class="ledger">
+      <dt>Ventas registradas</dt><dd id="bar-sales"></dd>
+      <dt>Costos registrados</dt><dd id="bar-costs"></dd>
+      <dt class="total">Parte del organizador</dt><dd class="total" id="bar-share"></dd>
+    </dl>
+    <p class="meta" id="bar-status"></p>
+  </section>
+</section>
+
+<!-- ============================== Operación ============================== -->
+<section id="operacion" class="view" aria-labelledby="h-operacion" hidden>
+  <div class="view-head">
+    <h1 id="h-operacion" tabindex="-1">Operación</h1>
+    <p class="lede">Acuerdos, día del evento y cierre. Edita responsable, estado y notas de cada punto.</p>
+  </div>
+  <p class="notice">Seguridad y aforo no se recortan para ahorrar. Si falta presupuesto, ajusta otra partida o el escenario.</p>
+  <section class="panel" aria-labelledby="h-op-acuerdos">
+    <h2 id="h-op-acuerdos">Acuerdos</h2>
+    <ul class="items" id="ops-acuerdos"></ul>
+    <div class="actions"><button type="button" class="btn" data-action="add" data-l="ops" data-group="acuerdos">Añadir a Acuerdos</button></div>
+  </section>
+  <section class="panel" aria-labelledby="h-op-dia">
+    <h2 id="h-op-dia">Día del evento</h2>
+    <ul class="items" id="ops-dia"></ul>
+    <div class="actions"><button type="button" class="btn" data-action="add" data-l="ops" data-group="dia">Añadir al día del evento</button></div>
+  </section>
+  <section class="panel" aria-labelledby="h-op-cierre">
+    <h2 id="h-op-cierre">Cierre</h2>
+    <ul class="items" id="ops-cierre"></ul>
+    <div class="actions"><button type="button" class="btn" data-action="add" data-l="ops" data-group="cierre">Añadir al cierre</button></div>
+  </section>
+  <p class="status-line" id="msg-ops" role="status"></p>
+</section>
+</main>
+
+<footer class="foot">
+  <p>Datos solo en este navegador. Sin cuentas, servidor, sincronización ni telemetría: nada se sube al sitio.</p>
+</footer>
+</body>
+</html>
