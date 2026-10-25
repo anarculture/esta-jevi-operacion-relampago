@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tu orden · jueves 29</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="t.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" defer></script>
+<script src="comun.js" defer></script>
+</head>
+<body>
+<main id="m"><p class="muted">Cargando…</p></main>
+<script>
+addEventListener("DOMContentLoaded", async () => {
+  const m = document.getElementById("m");
+  const token = new URLSearchParams(location.search).get("t");
+  const ESTADO = { en_revision: "En revisión", aprobada: "Aprobada", rechazada: "Rechazada" };
+  const METODO = { pago_movil_bnc: "Pago móvil BNC", pago_movil_ubii: "Pago móvil Ubii", binance: "Binance Pay", zelle: "Zelle" };
+
+  async function cargar() {
+    let o;
+    try { o = await rpc("ver_orden", { p_token: token }); } catch { o = null; }
+    if (!o) { m.innerHTML = `<p class="error">No encontramos esta orden. Revisa el enlace.</p>`; return; }
+
+    const qrs = (o.entradas ?? []).map((t, i) => {
+      const q = qrcode(0, "M"); q.addData(t); q.make();
+      return `<div class="card qr"><p><strong>Entrada ${i + 1} de ${o.cantidad}</strong></p>${q.createSvgTag({ cellSize: 6, margin: 2, scalable: true })}<p class="muted">${t.slice(0, 8)}</p></div>`;
+    }).join("");
+
+    m.innerHTML = `
+      <h1>Orden #${o.numero}</h1>
+      <p><span class="estado ${o.estado}">${ESTADO[o.estado]}</span></p>
+      ${o.estado === "en_revision" ? `<p class="aviso">Estamos verificando tu pago en el banco. Guarda este enlace: aquí aparecerán tus entradas con QR cuando se apruebe. La página se actualiza sola.</p>` : ""}
+      ${o.estado === "rechazada" ? `<p class="error">No pudimos confirmar este pago. Escríbenos por WhatsApp con tu número de orden.</p>` : ""}
+      ${o.estado === "aprobada" ? `<p>Muestra cada QR en la puerta. Uno por persona.</p>` : ""}
+      ${qrs}
+      <div class="card"><dl class="datos">
+        <dt>Nombre</dt><dd>${esc(o.nombre)}</dd>
+        <dt>Cédula</dt><dd>${esc(o.cedula)}</dd>
+        <dt>Entradas</dt><dd>${o.cantidad}</dd>
+        <dt>Monto</dt><dd>${usd(o.monto_usd_cents)}${o.monto_bs ? ` · ${bs(o.monto_bs)}` : ""}</dd>
+        <dt>Pago</dt><dd>${METODO[o.metodo]} · ref. ${esc(o.referencia)}</dd>
+        <dt>Fecha</dt><dd>${new Date(o.creada_en).toLocaleString("es-VE", { timeZone: "America/Caracas" })}</dd>
+      </dl></div>
+      <p class="muted">Jueves 29 de octubre · 21:00</p>`;
+    if (o.estado === "en_revision") setTimeout(cargar, 30000);
+  }
+  cargar();
+});
+</script>
+</body>
+</html>

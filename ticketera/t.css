@@ -1,0 +1,42 @@
+/* Mismos tokens que ../styles.css; hoja aparte para no cargar la de la plataforma de PM. */
+:root {
+  --green: #1f6f4a; --green-700: #185a3c; --green-50: #e9f3ed; --on-green: #fff;
+  --ink: #18211c; --muted: #56615a; --line: #d9e0db; --bg: #f6f8f6; --surface: #fff;
+  --bad: #a8261d; --bad-50: #fbeceb; --warn: #7a4a00; --warn-50: #fdf3dd;
+  --s1: 4px; --s2: 8px; --s3: 16px; --s4: 24px; --hit: 44px; --r: 6px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 34rem; margin: 0 auto; padding: var(--s4) var(--s3) 64px; }
+h1 { font-size: 24px; line-height: 1.25; margin: 0 0 var(--s1); }
+h2 { font-size: 18px; margin: var(--s4) 0 var(--s2); }
+p { margin: 0 0 var(--s2); }
+.muted { color: var(--muted); font-size: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: var(--s3); margin-bottom: var(--s3); }
+label { display: block; font-weight: 600; font-size: 14px; margin: var(--s3) 0 var(--s1); }
+input, select, button { font: inherit; color: inherit; }
+input[type=text], input[type=tel], input[type=number], input[type=password], select {
+  width: 100%; min-height: var(--hit); padding: 0 var(--s2); border: 1px solid #7b8781; border-radius: var(--r); background: var(--surface);
+}
+input[type=file] { width: 100%; padding: var(--s2) 0; }
+.opciones { display: grid; gap: var(--s2); }
+.opciones label { display: flex; align-items: center; gap: var(--s2); margin: 0; min-height: var(--hit); padding: 0 var(--s3); border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); font-weight: 400; }
+.opciones label:has(input:checked) { border-color: var(--green); background: var(--green-50); }
+button, .btn { display: inline-flex; align-items: center; justify-content: center; min-height: var(--hit); padding: 0 var(--s3); border: 1px solid var(--green); border-radius: var(--r); background: var(--green); color: var(--on-green); font-weight: 700; cursor: pointer; text-decoration: none; }
+button.sec, .btn.sec { background: var(--surface); color: var(--green); }
+button.mal { background: var(--surface); color: var(--bad); border-color: var(--bad); }
+button:disabled { opacity: .6; cursor: wait; }
+.full { width: 100%; margin-top: var(--s4); }
+.monto { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; margin: var(--s2) 0 0; }
+dl.datos { display: grid; grid-template-columns: auto 1fr; gap: var(--s1) var(--s3); margin: var(--s2) 0 0; }
+dl.datos dt { color: var(--muted); font-size: 14px; }
+dl.datos dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.aviso { padding: var(--s2) var(--s3); border-radius: var(--r); background: var(--warn-50); color: var(--warn); }
+.error { padding: var(--s2) var(--s3); border-radius: var(--r); background: var(--bad-50); color: var(--bad); margin-top: var(--s3); }
+.estado { display: inline-block; padding: 2px var(--s2); border-radius: 999px; font-size: 14px; font-weight: 700; background: var(--warn-50); color: var(--warn); }
+.estado.aprobada, .estado.coincide { background: var(--green-50); color: var(--green-700); }
+.estado.rechazada, .estado.no_coincide { background: var(--bad-50); color: var(--bad); }
+.qr { text-align: center; }
+.qr svg { width: min(100%, 280px); height: auto; }
+.fila { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); }
+.captura { display: block; max-width: 100%; max-height: 420px; border: 1px solid var(--line); border-radius: var(--r); }

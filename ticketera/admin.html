@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Conciliar · jueves 29</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="t.css">
+<script src="comun.js" defer></script>
+</head>
+<body>
+<main>
+  <h1>Conciliar pagos</h1>
+  <form id="login" hidden>
+    <label for="clave">Clave de admin</label>
+    <input id="clave" type="password" autocomplete="current-password" required>
+    <button class="full">Entrar</button>
+  </form>
+  <div id="panel" hidden>
+    <p class="muted" id="resumen"></p>
+    <div class="fila"><button class="sec" id="recargar">Recargar</button><button class="sec" id="salir">Salir</button></div>
+    <h2>Por revisar</h2>
+    <div id="cola"></div>
+    <h2>Resueltas</h2>
+    <div id="hechas"></div>
+  </div>
+  <div class="error" id="error" role="alert" hidden></div>
+</main>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  const $ = (id) => document.getElementById(id);
+  const guardada = () => { try { return localStorage.getItem("ticketera-clave") ?? ""; } catch { return ""; } };
+  let clave = guardada();
+  let ordenes = [];
+  const METODO = { pago_movil_bnc: "PM BNC", pago_movil_ubii: "PM Ubii", binance: "Binance", zelle: "Zelle" };
+  const DICTAMEN = { coincide: "IA: coincide", dudoso: "IA: dudoso", no_coincide: "IA: no coincide" };
+
+  function fallo(msg) { $("error").textContent = msg; $("error").hidden = !msg; }
+
+  const enlace = (o) => new URL(`orden.html?t=${o.token}`, location.href).href;
+  function whatsapp(o) {
+    const tel = o.telefono.replace(/^0/, "58");
+    const txt = `Hola ${o.nombre.split(" ")[0]}, tu pago fue aprobado. Tus entradas para el jueves 29: ${enlace(o)}`;
+    return `https://wa.me/${tel}?text=${encodeURIComponent(txt)}`;
+  }
+
+  function tarjeta(o) {
+    const monto = o.monto_bs ? bs(o.monto_bs) : usd(o.monto_usd_cents);
+    return `<div class="card">
+      <p><strong>#${o.numero} · ${esc(o.nombre)}</strong> · ${esc(o.cedula)} · ${esc(o.telefono)}</p>
+      <p class="monto">${monto}</p>
+      <p>${o.cantidad} entrada(s) · ${METODO[o.metodo]} · ref. <strong>${esc(o.referencia)}</strong> · ${new Date(o.creada_en).toLocaleString("es-VE", { timeZone: "America/Caracas" })}</p>
+      <p><span class="estado ${o.dictamen ?? ""}">${o.dictamen ? DICTAMEN[o.dictamen] : "IA: pendiente"}</span> <span class="muted">${esc(o.dictamen_motivo ?? "")}</span></p>
+      ${o.captura_url ? `<a href="${esc(o.captura_url)}" target="_blank" rel="noopener"><img class="captura" src="${esc(o.captura_url)}" alt="Captura de la orden ${o.numero}"></a>` : ""}
+      ${o.estado === "en_revision"
+        ? `<div class="fila"><button data-id="${o.id}" data-aprobar="1">Aprobar</button><button class="mal" data-id="${o.id}">Rechazar</button></div>`
+        : `<p><span class="estado ${o.estado}">${o.estado}</span> ${o.estado === "aprobada" ? `<a class="btn sec" href="${whatsapp(o)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>` : ""}</p>`}
+    </div>`;
+  }
+
+  async function cargar() {
+    fallo("");
+    try {
+      ordenes = await funcion("admin", { clave, accion: "cola" });
+    } catch (e) {
+      $("panel").hidden = true; $("login").hidden = false;
+      fallo(e.message === "clave_invalida" ? "Clave incorrecta." : e.message);
+      return;
+    }
+    try { localStorage.setItem("ticketera-clave", clave); } catch {}
+    $("login").hidden = true; $("panel").hidden = false;
+    const pend = ordenes.filter((o) => o.estado === "en_revision").reverse(); // la más vieja primero
+    const hechas = ordenes.filter((o) => o.estado !== "en_revision");
+    const aprobadas = hechas.filter((o) => o.estado === "aprobada");
+    $("resumen").textContent = `${pend.length} por revisar · ${aprobadas.reduce((s, o) => s + o.cantidad, 0)} entradas aprobadas · ${usd(aprobadas.reduce((s, o) => s + o.monto_usd_cents, 0))}`;
+    $("cola").innerHTML = pend.map(tarjeta).join("") || `<p class="muted">Nada pendiente.</p>`;
+    $("hechas").innerHTML = hechas.map(tarjeta).join("") || `<p class="muted">Aún nada.</p>`;
+  }
+
+  $("panel").addEventListener("click", async (ev) => {
+    const b = ev.target.closest("button[data-id]");
+    if (!b) return;
+    const o = ordenes.find((x) => x.id === b.dataset.id);
+    const aprobar = Boolean(b.dataset.aprobar);
+    if (!confirm(`${aprobar ? "Aprobar" : "Rechazar"} la orden #${o.numero} de ${o.nombre}?${aprobar ? "\n\n¿Ya viste el pago en tu banco?" : ""}`)) return;
+    b.disabled = true;
+    try { await funcion("admin", { clave, accion: "resolver", id: o.id, aprobar }); } catch (e) { fallo(e.message); }
+    await cargar();
+  });
+  $("login").addEventListener("submit", (ev) => { ev.preventDefault(); clave = $("clave").value; cargar(); });
+  $("recargar").addEventListener("click", cargar);
+  $("salir").addEventListener("click", () => { try { localStorage.removeItem("ticketera-clave"); } catch {} location.reload(); });
+
+  if (clave) cargar(); else $("login").hidden = false;
+});
+</script>
+</body>
+</html>

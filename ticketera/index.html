@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entradas · jueves 29</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="t.css">
+<script src="comun.js" defer></script>
+</head>
+<body>
+<main>
+  <h1>Entradas para el jueves 29 de octubre</h1>
+  <p class="muted">21:00 · preventa <span id="precio">…</span> por entrada · en puerta $15</p>
+
+  <form id="f" novalidate>
+    <div class="card">
+      <h2>1. ¿Cuántas y cómo pagas?</h2>
+      <label for="cantidad">Entradas</label>
+      <input id="cantidad" name="cantidad" type="number" min="1" max="10" value="1" inputmode="numeric" required>
+      <label>Método de pago</label>
+      <div class="opciones" id="metodos"><p class="muted">Cargando…</p></div>
+    </div>
+
+    <div class="card" id="pago" hidden>
+      <h2>2. Paga este monto</h2>
+      <p class="monto" id="monto"></p>
+      <p class="muted" id="tasa"></p>
+      <dl class="datos" id="destino"></dl>
+    </div>
+
+    <div class="card" id="reporte" hidden>
+      <h2>3. Reporta tu pago</h2>
+      <label for="referencia">Número de referencia u operación</label>
+      <input id="referencia" name="referencia" type="text" autocomplete="off" required>
+      <label for="captura">Captura del comprobante</label>
+      <input id="captura" name="captura" type="file" accept="image/jpeg,image/png,image/webp" required>
+      <label for="nombre">Nombre y apellido</label>
+      <input id="nombre" name="nombre" type="text" autocomplete="name" required>
+      <label for="cedula">Cédula</label>
+      <input id="cedula" name="cedula" type="text" inputmode="numeric" placeholder="V12345678" required>
+      <label for="telefono">Teléfono (WhatsApp)</label>
+      <input id="telefono" name="telefono" type="tel" autocomplete="tel" placeholder="04141234567" required>
+      <button class="full" id="enviar">Enviar comprobante</button>
+      <div class="error" id="error" role="alert" hidden></div>
+    </div>
+  </form>
+</main>
+<script>
+addEventListener("DOMContentLoaded", async () => {
+  const $ = (id) => document.getElementById(id);
+  let venta;
+  try {
+    venta = await funcion("tasa");
+  } catch (e) {
+    $("metodos").innerHTML = `<p class="error">No se pudo cargar la venta: ${esc(e.message)}</p>`;
+    return;
+  }
+  $("precio").textContent = usd(venta.precio_usd_cents);
+  const metodos = Object.entries(venta.metodos);
+  $("metodos").innerHTML = metodos.length
+    ? metodos.map(([k, m]) => `<label><input type="radio" name="metodo" value="${esc(k)}"> ${esc(m.nombre)}</label>`).join("")
+    : `<p class="aviso">La venta aún no abre.</p>`;
+
+  const DATOS = { banco: "Banco", telefono: "Teléfono", cedula: "Cédula", id: "Binance Pay ID", correo: "Correo Zelle", titular: "Titular" };
+  function pintar() {
+    const metodo = $("f").metodo?.value;
+    if (!metodo) return;
+    const m = venta.metodos[metodo];
+    const cant = Math.min(10, Math.max(1, parseInt($("cantidad").value) || 1));
+    const cents = cant * venta.precio_usd_cents;
+    const pm = metodo.startsWith("pago_movil");
+    $("monto").textContent = pm ? bs(Math.round(cents * venta.tasa) / 100) : usd(cents);
+    $("tasa").textContent = pm ? `${usd(cents)} a tasa BCV ${bs(venta.tasa)} del ${venta.tasa_fecha}` : "";
+    $("destino").innerHTML = Object.entries(DATOS).filter(([k]) => m[k])
+      .map(([k, t]) => `<dt>${t}</dt><dd>${esc(m[k])}</dd>`).join("");
+    $("pago").hidden = $("reporte").hidden = false;
+  }
+  $("f").addEventListener("input", pintar);
+
+  $("f").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const f = ev.target;
+    $("error").hidden = true;
+    if (!f.captura.files[0]) { $("error").textContent = "Falta la captura."; $("error").hidden = false; return; }
+    $("enviar").disabled = true;
+    $("enviar").textContent = "Enviando…";
+    try {
+      const captura = await subirCaptura(f.captura.files[0]);
+      const o = await rpc("crear_orden", {
+        p_nombre: f.nombre.value, p_cedula: f.cedula.value, p_telefono: f.telefono.value,
+        // Mismo tope que el monto mostrado; el CHECK de la tabla daría un error crudo.
+        p_cantidad: Math.min(10, Math.max(1, parseInt(f.cantidad.value) || 1)), p_metodo: f.metodo.value,
+        p_referencia: f.referencia.value, p_captura: captura,
+      });
+      funcion("revisar", { token: o.token }).catch(() => {}); // el dictamen no bloquea al comprador
+      location.href = `orden.html?t=${o.token}`;
+    } catch (e) {
+      $("error").textContent = e.message;
+      $("error").hidden = false;
+      $("enviar").disabled = false;
+      $("enviar").textContent = "Enviar comprobante";
+    }
+  });
+});
+</script>
+</body>
+</html>
