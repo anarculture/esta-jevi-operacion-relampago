@@ -1,6 +1,6 @@
 /*
-  Operación Relámpago · plataforma local del organizador.
-  Script clásico: modelo puro (require en Node, window.OperacionRelampago en el navegador)
+  Sindicato Baba · plataforma local del organizador.
+  Script clásico: modelo puro (require en Node, window.SindicatoBaba en el navegador)
   más la interfaz. Sin red ni dependencias. Montos en centavos enteros de USD.
 */
 (function (root) {
@@ -8,7 +8,8 @@
 
   // ============================== Modelo (puro) ==============================
 
-  const APP_ID = 'operacion-relampago-pm';
+  const APP_ID = 'sindicato-baba-pm';
+  const LEGACY_APP_ID = 'operacion-relampago-pm'; // nombre anterior del evento: sus datos y respaldos siguen valiendo
   const SCHEMA_VERSION = 1;
   const STORAGE_KEY = APP_ID + ':v1';
   const BACKUP_KEY = STORAGE_KEY + ':respaldo';
@@ -202,7 +203,7 @@
     if (!isPlain(input)) return { ok: false, errors: ['El contenido no es un respaldo de esta plataforma.'] };
     if (badKeys(input, 0)) return { ok: false, errors: ['El respaldo contiene claves no permitidas (__proto__, constructor o prototype) o demasiado anidamiento.'] };
     const errors = [];
-    if (input.app !== APP_ID) errors.push('No es un respaldo de esta plataforma.');
+    if (input.app !== APP_ID && input.app !== LEGACY_APP_ID) errors.push('No es un respaldo de esta plataforma.');
     if (input.schemaVersion !== SCHEMA_VERSION) errors.push('Versión de esquema no compatible (se espera ' + SCHEMA_VERSION + ').');
     const okSaved = input.savedAt === null || (typeof input.savedAt === 'string' && input.savedAt.length <= 40 && !Number.isNaN(Date.parse(input.savedAt)));
     if (!okSaved) errors.push('savedAt: fecha inválida.');
@@ -472,7 +473,7 @@
     const sc = state.scenario, r = calcScenario(state), eq = breakEven(state);
     const t = budgetTotals(state.budget, sc.preset), g = compareGrid(state), cash = cashReal(state);
     const rows = [
-      ['Operación Relámpago · escenario (hipótesis, no garantía)', ''],
+      ['Sindicato Baba · escenario (hipótesis, no garantía)', ''],
       ['Concepto', 'Valor'],
       ['Entradas pagadas (escenario)', sc.tickets],
       ['Proporción a tarifa anticipada (%)', sc.lowPct],
@@ -526,7 +527,11 @@
   function loadState(storage) {
     if (!storage) return { state: defaultState(), source: 'seed', available: false };
     let raw;
-    try { raw = storage.getItem(STORAGE_KEY); } catch (e) { return { state: defaultState(), source: 'seed', available: false }; }
+    try {
+      // Copia una vez lo guardado con el nombre anterior; las claves viejas quedan intactas.
+      if (storage.getItem(STORAGE_KEY) === null) for (const s of [':v1', ':v1:respaldo']) { const v = storage.getItem(LEGACY_APP_ID + s); if (v !== null) storage.setItem(APP_ID + s, v); }
+      raw = storage.getItem(STORAGE_KEY);
+    } catch (e) { return { state: defaultState(), source: 'seed', available: false }; }
     if (raw === null || raw === undefined) return { state: defaultState(), source: 'seed', available: true };
     const r = parseBackup(raw);
     if (r.ok) return { state: r.state, source: 'stored', available: true };
@@ -556,7 +561,7 @@
 
   if (typeof module === 'object' && module.exports) module.exports = Model;
   if (typeof document === 'undefined') return;
-  root.OperacionRelampago = Model;
+  root.SindicatoBaba = Model;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => startUI(Model, document, window));
   else startUI(Model, document, window);
 
@@ -1168,7 +1173,7 @@
     // Copia los datos actuales antes de reemplazarlos: en el navegador y, si no hay espacio, como descarga.
     function keepBackup() {
       memBackup = M.serializeState(state);
-      if (!M.backupBeforeReplace(storage, state).ok) download(memBackup, 'operacion-relampago-respaldo-previo-' + stamp() + '.json', 'application/json');
+      if (!M.backupBeforeReplace(storage, state).ok) download(memBackup, 'sindicato-baba-respaldo-previo-' + stamp() + '.json', 'application/json');
     }
 
     function replaceState(s) {
@@ -1233,10 +1238,10 @@
       else if (a === 'reset-all') resetAll();
       else if (a === 'restore-backup') restoreBackup();
       else if (a === 'import-json') $('import-file').click();
-      else if (a === 'export-json') { download(M.serializeState(state), 'operacion-relampago-respaldo-' + stamp() + '.json', 'application/json'); dataMsg('Respaldo exportado. Guárdalo en un lugar privado: incluye todo lo que anotaste.'); }
+      else if (a === 'export-json') { download(M.serializeState(state), 'sindicato-baba-respaldo-' + stamp() + '.json', 'application/json'); dataMsg('Respaldo exportado. Guárdalo en un lugar privado: incluye todo lo que anotaste.'); }
       else if (a === 'export-csv') {
         if (Array.from(invalid.values()).some(v => v.fin)) { setText($('csv-msg'), 'Corrige los campos marcados antes de exportar.'); return; }
-        download(M.toCSV(state), 'operacion-relampago-escenario-' + stamp() + '.csv', 'text/csv;charset=utf-8');
+        download(M.toCSV(state), 'sindicato-baba-escenario-' + stamp() + '.csv', 'text/csv;charset=utf-8');
         setText($('csv-msg'), 'CSV exportado.');
       }
     }
@@ -1254,7 +1259,7 @@
         if (a.getAttribute('href') === '#' + view.id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
       }
       const h1 = view.querySelector('h1');
-      doc.title = (view.id === 'resumen' ? '' : h1.textContent + ' · ') + 'Operación Relámpago';
+      doc.title = (view.id === 'resumen' ? '' : h1.textContent + ' · ') + 'Sindicato Baba';
       renderDerived();
       if (!focus) return;
       if (target === view) { win.scrollTo(0, 0); h1.focus({ preventScroll: true }); }

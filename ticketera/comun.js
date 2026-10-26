@@ -1,6 +1,6 @@
 // Cliente mínimo de Supabase con fetch: RPC, Storage y Edge Functions. Sin supabase-js.
 const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
-// Producción: proyecto Supabase `relampago`. La publishable key es pública por diseño.
+// Producción: proyecto Supabase ref `ptbzdepejxxlavqfyepw`. La publishable key es pública por diseño.
 const API = LOCAL ? "http://127.0.0.1:54321" : "https://ptbzdepejxxlavqfyepw.supabase.co";
 const KEY = LOCAL ? "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH" : "sb_publishable_iN1zfxf9SYEg42123alZHQ_4c3UYh_D";
 

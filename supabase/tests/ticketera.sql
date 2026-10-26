@@ -1,5 +1,5 @@
 -- Check de la etapa 2. Corre en una transacción y deshace todo:
---   docker exec -i supabase_db_esta-jevi-ticketera psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql
+--   docker exec -i supabase_db_sindicato-baba-ticketera psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql
 begin;
 
 update config set tasa = 200, tasa_consultada_en = now(),
