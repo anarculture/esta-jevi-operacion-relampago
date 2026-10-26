@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Conciliar · jueves 29</title>
+<title>Conciliar · Sindicato Baba</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="t.css">
 <script src="comun.js" defer></script>
@@ -18,8 +18,10 @@
     <button class="full">Entrar</button>
   </form>
   <div id="panel" hidden>
-    <p class="muted" id="resumen"></p>
+    <p class="muted" id="resumen" role="status"></p>
     <div class="fila"><button class="sec" id="recargar">Recargar</button><button class="sec" id="salir">Salir</button></div>
+    <label for="buscar">Buscar por nombre, cédula o referencia</label>
+    <input id="buscar" type="search" autocomplete="off" placeholder="Ana, 12345678, 00123…">
     <h2>Por revisar</h2>
     <div id="cola"></div>
     <h2>Resueltas</h2>
@@ -33,30 +35,46 @@ addEventListener("DOMContentLoaded", () => {
   const guardada = () => { try { return localStorage.getItem("ticketera-clave") ?? ""; } catch { return ""; } };
   let clave = guardada();
   let ordenes = [];
-  const METODO = { pago_movil_bnc: "PM BNC", pago_movil_ubii: "PM Ubii", binance: "Binance", zelle: "Zelle" };
+  const METODO = { pago_movil_bnc: "Pago móvil BNC", pago_movil_ubii: "Pago móvil Ubii", binance: "Binance", zelle: "Zelle" };
+  const ESTADO = { en_revision: "En revisión", aprobada: "Aprobada", rechazada: "Rechazada" };
   const DICTAMEN = { coincide: "IA: coincide", dudoso: "IA: dudoso", no_coincide: "IA: no coincide" };
+  const MOTIVOS = ["No llegó el pago", "El monto no coincide", "La referencia ya se usó"];
+  const norm = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
   function fallo(msg) { $("error").textContent = msg; $("error").hidden = !msg; }
 
   const enlace = (o) => new URL(`orden.html?t=${o.token}`, location.href).href;
-  function whatsapp(o) {
-    const tel = o.telefono.replace(/^0/, "58");
-    const txt = `Hola ${o.nombre.split(" ")[0]}, tu pago fue aprobado. Tus entradas para el jueves 29: ${enlace(o)}`;
-    return `https://wa.me/${tel}?text=${encodeURIComponent(txt)}`;
-  }
+  const waTel = (o) => o.telefono.replace(/^0/, "58");
+  const whatsapp = (o) => `https://wa.me/${waTel(o)}?text=${encodeURIComponent(`Hola ${o.nombre.split(" ")[0]}, tu pago fue aprobado. Tus entradas para ${FIESTA.nombre} (${FIESTA.fecha}): ${enlace(o)}`)}`;
+  const whatsappRechazo = (o) => `https://wa.me/${waTel(o)}?text=${encodeURIComponent(`Hola ${o.nombre.split(" ")[0]}, no pude confirmar tu pago de la orden #${o.numero} de ${FIESTA.nombre}${o.rechazo_motivo ? ` (${o.rechazo_motivo.toLowerCase()})` : ""}. Revisa tu comprobante y escríbeme.`)}`;
 
   function tarjeta(o) {
     const monto = o.monto_bs ? bs(o.monto_bs) : usd(o.monto_usd_cents);
     return `<div class="card">
       <p><strong>#${o.numero} · ${esc(o.nombre)}</strong> · ${esc(o.cedula)} · ${esc(o.telefono)}</p>
       <p class="monto">${monto}</p>
-      <p>${o.cantidad} entrada(s) · ${METODO[o.metodo]} · ref. <strong>${esc(o.referencia)}</strong> · ${new Date(o.creada_en).toLocaleString("es-VE", { timeZone: "America/Caracas" })}</p>
+      <p class="banco">${METODO[o.metodo] ?? esc(o.metodo)}</p>
+      <p>${o.cantidad} ${o.cantidad === 1 ? "entrada" : "entradas"} · ref. <strong>${esc(o.referencia)}</strong> · ${fechaHora(o.creada_en)}</p>
       <p><span class="estado ${o.dictamen ?? ""}">${o.dictamen ? DICTAMEN[o.dictamen] : "IA: pendiente"}</span> <span class="muted">${esc(o.dictamen_motivo ?? "")}</span></p>
-      ${o.captura_url ? `<a href="${esc(o.captura_url)}" target="_blank" rel="noopener"><img class="captura" src="${esc(o.captura_url)}" alt="Captura de la orden ${o.numero}"></a>` : ""}
+      ${o.captura_url ? `<a href="${esc(o.captura_url)}" target="_blank" rel="noopener"><img class="captura" loading="lazy" src="${esc(o.captura_url)}" alt="Captura de la orden ${o.numero}"></a>` : ""}
       ${o.estado === "en_revision"
         ? `<div class="fila"><button data-id="${o.id}" data-aprobar="1">Aprobar</button><button class="mal" data-id="${o.id}">Rechazar</button></div>`
-        : `<p><span class="estado ${o.estado}">${o.estado}</span> ${o.estado === "aprobada" ? `<a class="btn sec" href="${whatsapp(o)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>` : ""}</p>`}
+        : `<p><span class="estado ${o.estado}">${ESTADO[o.estado]}</span>${o.rechazo_motivo ? ` <span class="muted">${esc(o.rechazo_motivo)}</span>` : ""}
+           ${o.estado === "aprobada" ? `<a class="btn sec" href="${whatsapp(o)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>` : `<a class="btn sec" href="${whatsappRechazo(o)}" target="_blank" rel="noopener">Avisar por WhatsApp</a>`}</p>`}
     </div>`;
+  }
+
+  function pintar() {
+    const q = norm($("buscar").value);
+    const visibles = q ? ordenes.filter((o) => [o.nombre, o.cedula, o.referencia, o.telefono, o.numero].some((v) => norm(v).includes(q))) : ordenes;
+    const pend = visibles.filter((o) => o.estado === "en_revision").reverse(); // la más vieja primero
+    const hechas = visibles.filter((o) => o.estado !== "en_revision");
+    const aprobadas = ordenes.filter((o) => o.estado === "aprobada");
+    const nPend = ordenes.filter((o) => o.estado === "en_revision").length;
+    $("resumen").textContent = `${nPend} por revisar · ${aprobadas.reduce((s, o) => s + o.cantidad, 0)} entradas aprobadas · ${usd(aprobadas.reduce((s, o) => s + o.monto_usd_cents, 0))}`;
+    document.title = `${nPend ? `(${nPend}) ` : ""}Conciliar · Sindicato Baba`;
+    $("cola").innerHTML = pend.map(tarjeta).join("") || `<p class="muted">${q ? "Nada coincide." : "Nada pendiente."}</p>`;
+    $("hechas").innerHTML = hechas.map(tarjeta).join("") || `<p class="muted">${q ? "Nada coincide." : "Aún nada."}</p>`;
   }
 
   async function cargar() {
@@ -65,17 +83,12 @@ addEventListener("DOMContentLoaded", () => {
       ordenes = await funcion("admin", { clave, accion: "cola" });
     } catch (e) {
       $("panel").hidden = true; $("login").hidden = false;
-      fallo(e.message === "clave_invalida" ? "Clave incorrecta." : e.message);
+      fallo(e.message === "clave_invalida" || /clave_invalida/.test(e.message) ? "Clave incorrecta." : e.message);
       return;
     }
     try { localStorage.setItem("ticketera-clave", clave); } catch {}
     $("login").hidden = true; $("panel").hidden = false;
-    const pend = ordenes.filter((o) => o.estado === "en_revision").reverse(); // la más vieja primero
-    const hechas = ordenes.filter((o) => o.estado !== "en_revision");
-    const aprobadas = hechas.filter((o) => o.estado === "aprobada");
-    $("resumen").textContent = `${pend.length} por revisar · ${aprobadas.reduce((s, o) => s + o.cantidad, 0)} entradas aprobadas · ${usd(aprobadas.reduce((s, o) => s + o.monto_usd_cents, 0))}`;
-    $("cola").innerHTML = pend.map(tarjeta).join("") || `<p class="muted">Nada pendiente.</p>`;
-    $("hechas").innerHTML = hechas.map(tarjeta).join("") || `<p class="muted">Aún nada.</p>`;
+    pintar();
   }
 
   $("panel").addEventListener("click", async (ev) => {
@@ -83,14 +96,26 @@ addEventListener("DOMContentLoaded", () => {
     if (!b) return;
     const o = ordenes.find((x) => x.id === b.dataset.id);
     const aprobar = Boolean(b.dataset.aprobar);
-    if (!confirm(`${aprobar ? "Aprobar" : "Rechazar"} la orden #${o.numero} de ${o.nombre}?${aprobar ? "\n\n¿Ya viste el pago en tu banco?" : ""}`)) return;
+    let motivo = null;
+    if (aprobar) {
+      if (!confirm(`Aprobar la orden #${o.numero} de ${o.nombre}?\n\n¿Ya viste el pago en tu banco?`)) return;
+    } else {
+      const r = prompt(`Rechazar la orden #${o.numero} de ${o.nombre}. Motivo:\n${MOTIVOS.map((m, i) => `${i + 1}. ${m}`).join("\n")}\n\nEscribe el número o tu propio motivo.`);
+      if (r === null) return;
+      motivo = MOTIVOS[parseInt(r) - 1] ?? r.trim() ?? "";
+    }
     b.disabled = true;
-    try { await funcion("admin", { clave, accion: "resolver", id: o.id, aprobar }); } catch (e) { fallo(e.message); }
+    try {
+      await funcion("admin", { clave, accion: "resolver", id: o.id, aprobar, motivo });
+      if (aprobar) window.open(whatsapp(o), "_blank", "noopener");
+    } catch (e) { fallo(e.message); }
     await cargar();
   });
+  $("buscar").addEventListener("input", pintar);
   $("login").addEventListener("submit", (ev) => { ev.preventDefault(); clave = $("clave").value; cargar(); });
   $("recargar").addEventListener("click", cargar);
   $("salir").addEventListener("click", () => { try { localStorage.removeItem("ticketera-clave"); } catch {} location.reload(); });
+  setInterval(() => { if (!$("panel").hidden && !$("buscar").value) cargar(); }, 60000);
 
   if (clave) cargar(); else $("login").hidden = false;
 });

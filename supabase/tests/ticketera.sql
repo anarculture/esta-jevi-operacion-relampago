@@ -2,9 +2,12 @@
 --   docker exec -i supabase_db_sindicato-baba-ticketera psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql
 begin;
 
-update config set tasa = 200, tasa_consultada_en = now(),
-  metodos = jsonb_set(jsonb_set(jsonb_set(metodos,
-    '{pago_movil_bnc,activo}', 'true'), '{pago_movil_ubii,activo}', 'true'), '{zelle,activo}', 'true');
+-- Se activan por concatenación y no con jsonb_set: si la config local perdió una clave, jsonb_set no la crea.
+update config set tasa = 150, tasa_eur = 200, tasa_consultada_en = now(),
+  metodos = metodos
+    || jsonb_build_object('pago_movil_bnc', coalesce(metodos -> 'pago_movil_bnc', '{}') || '{"activo": true}')
+    || jsonb_build_object('pago_movil_ubii', coalesce(metodos -> 'pago_movil_ubii', '{}') || '{"activo": true}')
+    || jsonb_build_object('zelle', coalesce(metodos -> 'zelle', '{}') || '{"activo": true}');
 
 set local role anon;
 
@@ -16,7 +19,8 @@ begin
   assert (r ->> 'numero') is not null, 'crear_orden no devolvió número';
   assert (ver_orden((r ->> 'token')::uuid) ->> 'estado') = 'en_revision', 'estado inicial';
   assert (ver_orden((r ->> 'token')::uuid) -> 'entradas')::text = 'null', 'QR antes de aprobar';
-  assert (ver_orden((r ->> 'token')::uuid) ->> 'monto_bs')::numeric = 4000, 'monto Bs = 2 x 10 x 200';
+  assert (ver_orden((r ->> 'token')::uuid) ->> 'monto_bs')::numeric = 4000, 'monto Bs = 2 x 10 EUR x 200 (tasa euro, no dólar)';
+  assert (datos_venta() ->> 'tasa_eur')::numeric = 200, 'datos_venta sin tasa_eur';
   assert (ver_orden((r ->> 'token')::uuid) ->> 'cedula') = 'V12345678', 'cédula normalizada';
 
   -- Misma referencia con otro formato y por la otra cuenta de pago móvil.
@@ -47,12 +51,20 @@ end $$;
 reset role;
 
 do $$
-declare o ordenes; err text;
+declare o ordenes; z ordenes; err text; e json;
 begin
   select * into o from ordenes where metodo = 'pago_movil_bnc';
+  select * into z from ordenes where metodo = 'zelle';
+  assert ver_entrada(gen_random_uuid()) is null, 'ver_entrada con token inexistente';
   perform resolver_orden(o.id, true);
   assert (select count(*) from entradas where orden_id = o.id) = 2, 'aprobar no creó 2 entradas';
   assert json_array_length(ver_orden(o.token) -> 'entradas') = 2, 'ver_orden no muestra QR aprobada';
+  e := ver_entrada((ver_orden(o.token) -> 'entradas' ->> 1)::uuid);
+  assert (e ->> 'posicion') = '2' and (e ->> 'total') = '2' and (e ->> 'numero') = o.numero::text, 'ver_entrada posición: ' || e::text;
+  assert e::text not like '%Ana%' and e::text not like '%V12345678%', 'ver_entrada expone datos personales';
+  perform resolver_orden(z.id, false, '  No llegó el pago  ');
+  assert (ver_orden(z.token) ->> 'rechazo_motivo') = 'No llegó el pago', 'rechazo sin motivo';
+  assert ver_entrada(gen_random_uuid()) is null, 'ver_entrada de orden no aprobada';
   begin
     perform resolver_orden(o.id, false);
     assert false, 'orden resuelta dos veces';

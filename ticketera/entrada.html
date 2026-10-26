@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tu entrada · Sindicato Baba</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="t.css">
+<script src="qrcode.min.js" defer></script>
+<script src="comun.js" defer></script>
+</head>
+<body>
+<main id="m"><p class="muted" role="status">Cargando…</p></main>
+<script>
+addEventListener("DOMContentLoaded", async () => {
+  const m = document.getElementById("m");
+  const token = new URLSearchParams(location.search).get("e");
+  const CACHE = `ticketera-entrada-${token}`;
+
+  function pintar(e, desdeCache) {
+    let svg;
+    try { const q = qrcode(0, "M"); q.addData(token); q.make(); svg = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); }
+    catch { svg = `<p class="error">No se pudo dibujar el QR. Muestra el código de respaldo.</p>`; }
+    m.innerHTML = `
+      <h1>${FIESTA.nombre}</h1>
+      <p class="sub"><strong>${FIESTA.dj} · ${FIESTA.fecha} · ${FIESTA.hora} · ${FIESTA.lugar}</strong></p>
+      <div class="aviso"><strong>Haz captura de pantalla de este QR ahora.</strong> En la puerta sube el brillo y muéstralo.${desdeCache ? " Mostrando copia guardada, sin conexión." : ""}</div>
+      <div class="card qr">
+        <p><strong>Entrada ${e.posicion} de ${e.total}</strong> · orden #${e.numero}</p>
+        ${svg}
+        <p class="muted">Código de respaldo: ${token.slice(0, 8)}</p>
+      </div>`;
+  }
+
+  let e;
+  try {
+    e = await rpc("ver_entrada", { p_token: token });
+  } catch (err) {
+    const copia = leer(CACHE);
+    if (err instanceof ErrorRed && copia) return pintar(copia, true);
+    m.innerHTML = `<p class="error" role="alert">${esc(err.message)}</p><p><button type="button" class="sec" onclick="location.reload()">Reintentar</button></p>`;
+    return;
+  }
+  if (!e) {
+    m.innerHTML = `<h1>Entrada no encontrada</h1><p class="error" role="alert">Este enlace no corresponde a una entrada aprobada. Pídele a quien compró que te lo reenvíe completo.</p>`;
+    return;
+  }
+  guardar(CACHE, e);
+  pintar(e, false);
+});
+</script>
+</body>
+</html>
