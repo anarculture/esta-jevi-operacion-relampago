@@ -66,10 +66,13 @@ export function dictaminar(o: Orden, x: Ocr, destino: Destino): Dictamen {
   const nuestros = [last10(String(destino.telefono ?? "")), digits(String(destino.cedula ?? "")),
     digits(String(destino.id ?? "")), plain(String(destino.correo ?? ""))].filter((s) => s.length >= 5);
   const leidos = [last10(x.recipientPhone), digits(x.recipientId), plain(x.recipientId)].filter((s) => s.length >= 5);
+  // El nombre del titular solo no prueba el destino: un comprobante falso puede llevarlo. Con nombre y
+  // sin correo/teléfono/ID legibles, la orden espera a Mau (dudoso); nunca aprueba sola.
   const titular = plain(String(destino.titular ?? ""));
   const porNombre = titular && plain(x.recipientName).includes(titular.split(" ")[0]);
-  if (leidos.some((s) => nuestros.includes(s)) || porNombre) { /* destinatario nuestro */ }
+  if (leidos.some((s) => nuestros.includes(s))) { /* destinatario nuestro */ }
   else if (leidos.length) malos.push("el destinatario no es nuestra cuenta");
+  else if (porNombre) dudas.push("destinatario solo por nombre; confirmar la cuenta en el banco");
   else dudas.push("no se lee el destinatario");
 
   if (x.editSignals.trim()) dudas.push(`posible edición: ${x.editSignals.trim()}`);

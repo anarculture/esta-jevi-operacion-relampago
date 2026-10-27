@@ -39,6 +39,16 @@ Deno.test("zelle por correo en USD: coincide", () => {
   assertEquals(dictaminar(z, x, { correo: "mau@mail.com" }).dictamen, "coincide");
 });
 
+Deno.test("zelle solo con el nombre del titular: dudoso, nunca coincide", () => {
+  const z = { ...orden, metodo: "zelle", monto_bs: null };
+  const x = { ...ok, documentType: "zelle" as const, amount: "20.00", recipientPhone: "", recipientId: "", recipientName: "Mauricio Perez" };
+  const d = dictaminar(z, x, { correo: "mau@mail.com", titular: "Mauricio Perez" });
+  assertEquals(d.dictamen, "dudoso");
+  assertEquals(d.motivo.includes("solo por nombre"), true);
+  // Nombre correcto pero correo de otro: sigue siendo no_coincide.
+  assertEquals(dictaminar(z, { ...x, recipientId: "otro@mail.com" }, { correo: "mau@mail.com", titular: "Mauricio Perez" }).dictamen, "no_coincide");
+});
+
 Deno.test("hasta Bs 1 de menos: coincide; más de Bs 1 de menos: no_coincide", () => {
   assertEquals(dictaminar(orden, { ...ok, amount: "17723.60" }, destino).dictamen, "coincide");
   assertEquals(dictaminar(orden, { ...ok, amount: "17722.00" }, destino).dictamen, "no_coincide");
