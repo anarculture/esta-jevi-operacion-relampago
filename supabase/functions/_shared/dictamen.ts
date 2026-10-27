@@ -39,21 +39,28 @@ export function dictaminar(o: Orden, x: Ocr, destino: Destino): Dictamen {
   if (x.documentType === "other") return { dictamen: "no_coincide", motivo: "la imagen no parece un comprobante" };
   if (x.documentType !== tipo) malos.push(`comprobante de ${x.documentType}, la orden es ${tipo}`);
 
+  // Tolerancia absoluta y nunca a favor del pagador (docs/research/autenticidad-comprobantes.md, rec. 3):
+  // la estafa típica es un pago real por menos con el monto editado en la captura.
   const esperado = tipo === "pago_movil" ? Number(o.monto_bs) : o.monto_usd_cents / 100;
+  const tol = tipo === "pago_movil" ? 1 : 0.01;
   const monto = Number(x.amount);
   if (!x.amount || !Number.isFinite(monto)) dudas.push("no se lee el monto");
-  else if (monto < esperado * 0.99) malos.push(`monto ${monto} menor al esperado ${esperado}`);
-  else if (monto > esperado * 1.01) dudas.push(`monto ${monto} mayor al esperado ${esperado}`);
+  else if (monto < esperado - tol) malos.push(`monto ${monto} menor al esperado ${esperado}`);
+  else if (monto > esperado + tol) dudas.push(`monto ${monto} mayor al esperado ${esperado}`);
 
   // La app del banco a veces imprime la referencia larga y el comprador tipea los últimos dígitos.
+  // Menos de 6 dígitos tipeados no identifican el pago (rec. 2): nunca coincide solo.
   const a = normRef(x.reference), b = normRef(o.referencia);
   if (!a) dudas.push("no se lee la referencia");
-  else if (!(a.endsWith(b) || (b.endsWith(a) && a.length >= 4))) malos.push(`referencia ${x.reference} distinta a ${o.referencia}`);
+  else if (!(a.endsWith(b) || (b.endsWith(a) && a.length >= 6))) malos.push(`referencia ${x.reference} distinta a ${o.referencia}`);
+  else if (b.length < 6) dudas.push(`referencia tipeada corta (${b.length} caracteres)`);
 
+  // Ventana: del día de la orden a 1 día después (rec. 4). Una captura anterior puede ser un pago real reciclado.
   if (!x.transactionDate) dudas.push("no se lee la fecha");
   else {
-    const dias = (Date.parse(o.creada_en.slice(0, 10)) - Date.parse(x.transactionDate)) / 864e5;
-    if (!(dias >= -1 && dias <= 3)) dudas.push(`fecha ${x.transactionDate} lejos de la orden`);
+    const dias = (Date.parse(x.transactionDate) - Date.parse(o.creada_en.slice(0, 10))) / 864e5;
+    if (dias < 0) dudas.push(`captura del ${x.transactionDate}, anterior a la orden`);
+    else if (dias > 1) dudas.push(`fecha ${x.transactionDate} lejos de la orden`);
   }
 
   const nuestros = [last10(String(destino.telefono ?? "")), digits(String(destino.cedula ?? "")),
