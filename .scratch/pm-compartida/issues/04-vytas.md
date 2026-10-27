@@ -35,13 +35,13 @@ Decisiones congeladas:
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** 4 de 5 AC en verde; AC3 incumplido por la versión de recuperación (decide Mau)
 
 - [x] `ssh aios-vm 'set -a; . ~/.hermes/.env; curl -s -o /dev/null -w "%{http_code}" -X POST https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm -H "Content-Type: application/json" -d "{\"clave\":\"$PM_CLAVE\",\"accion\":\"leer\"}"'` imprime `200`. · `AC1=200`
 - [x] El skill existe en `~developer/.hermes/skills/` y `ssh aios-vm 'grep -rl "functions/v1/pm" ~/.hermes/skills'` encuentra exactamente un archivo, que contiene `ticketera.aprobadas.entradas`. · `1` archivo: `/home/developer/.hermes/skills/plataforma-sindicato-baba/SKILL.md`, con 1 coincidencia de `ticketera.aprobadas.entradas`
-- [ ] `versiones` en producción muestra una versión con autor `navegador` anterior a la primera con autor `vytas`, y ninguna con autor `claude`.
-- [ ] El `estado` de la versión de `vytas` es igual al de la versión anterior (comparación JSON en Node, sale 0).
-- [ ] `ssh aios-vm 'hermes -z "Según la plataforma del organizador de Sindicato Baba, ¿cuántas entradas pagadas llevamos? Responde solo el número."'` imprime el número que da la regla del skill aplicada a `leer`.
+- [ ] `versiones` en producción muestra una versión con autor `navegador` anterior a la primera con autor `vytas`, y ninguna con autor `claude`. · **FAIL literal**: `versiones: 1:navegador 2:vytas 3:claude` → `AC3 FAIL · navegador en 1, primera vytas en 2, claude: 1`. La v3 (`claude`, 03:21:58Z) la escribió el coordinador para recuperar el estado real de Mau (la v1 del navegador era la plantilla); no registra la orden #2 (`real.sold=0`). No hay borrado: queda para que Mau acepte la excepción.
+- [x] El `estado` de la versión de `vytas` es igual al de la versión anterior (comparación JSON en Node, sale 0). · `AC4 PASS · estado de v2 (vytas) == estado de v1` (`isDeepStrictEqual`)
+- [x] `ssh aios-vm 'hermes -z "Según la plataforma del organizador de Sindicato Baba, ¿cuántas entradas pagadas llevamos? Responde solo el número."'` imprime el número que da la regla del skill aplicada a `leer`. · intento 2 (tras arreglar el skill): imprime `0`; `leer` v3 sin bloque `ticketera` → `real.sold = 0`. Control no trivial: "tareas y versión" → `tareas=7 version=3` (coincide con la v3).
 
 Notas del agente:
 
