@@ -1,0 +1,61 @@
+# 03: El OCR precarga la referencia al subir la captura (y lee la hora)
+
+**Parent:** issue https://github.com/anarculture/sindicato-baba/issues/7 completo, más el punto 5
+del https://github.com/anarculture/sindicato-baba/issues/6 (hora de la transacción).
+
+**What to build:** el comprador elige la captura y, mientras termina de llenar el formulario, la
+página ya la subió y la leyó: el campo de referencia aparece lleno (editable) y debajo una línea
+"Leímos: Bs 9.930,88 · ref 61540227 · 27/10 21:03". En Zelle también se precarga el nombre si
+estaba vacío. Si la captura es de otro método que el elegido o el monto leído no es el de la
+orden, un aviso lo dice antes de enviar, sin bloquear. Al registrar la orden, `revisar` reutiliza
+esa lectura en vez de llamar al OCR otra vez. Cédula y WhatsApp siguen tecleados.
+
+Decisiones congeladas:
+
+- Edge Function nueva `lectura` (`verify_jwt = false` en `config.toml`, como las demás): recibe
+  `{ path }` de una captura ya subida al bucket `capturas`, corre el mismo OCR que `revisar` y
+  guarda el resultado en la tabla nueva `lecturas (path text primary key, ocr jsonb, ip text,
+  creada_en timestamptz default now())`. Responde el `ocr` sin `recipientPhone` ni `recipientId`
+  (son datos de la cuenta de destino, no del comprador). Si `path` ya tiene lectura, devuelve la
+  guardada sin volver al OCR.
+- El OCR (prompt, `FIELDS`, `SCHEMA`, `leer`) se mueve de `revisar/index.ts` a
+  `_shared/ocr.ts` y las dos funciones lo importan. El esquema gana `transactionTime` (HH:MM
+  local impreso en el comprobante, "" si no está); `Ocr` en `dictamen.ts` lo incluye como opcional
+  y no lo coteja todavía (se guarda para desempatar movimientos del mismo monto).
+- Rate limit en `lectura`: máximo 10 lecturas por IP (`x-forwarded-for`, primer valor) en la última
+  hora, contadas sobre `lecturas`; de más, 429 `{ error: "demasiadas_lecturas" }`. Sin IP legible,
+  se cuenta bajo "desconocida".
+- `revisar`: si existe `lecturas.ocr` para `o.captura`, lo usa; si no, llama al OCR como hoy. En
+  ambos casos guarda `ocr` en la orden como hasta ahora. El resto del flujo (dictamen, sufijo,
+  auto-aprobar) no cambia.
+- Formulario: al elegir la captura (`change`), tras la vista previa, sube con `subirCaptura` y
+  llama `lectura`; muestra "Leyendo el comprobante…" y luego la línea "Leímos: …" (monto con
+  moneda según `documentType`, referencia, fecha y hora si las hay). Precarga `referencia` solo si
+  el campo está vacío o si su valor es el precargado anterior (una referencia que el comprador ya
+  escribió a mano no se pisa); en Zelle precarga `nombre` con `senderName` si está vacío. La
+  `subida` existente se reutiliza en el envío (misma captura no se sube dos veces). Si `lectura`
+  falla o da 429, la línea dice "No pudimos leer la captura; escribe la referencia" y todo sigue
+  como hoy.
+- Avisos no bloqueantes bajo la línea "Leímos": "El comprobante parece de {método} y elegiste
+  {método}" y "El monto leído ({x}) no es el de la orden ({y})", con la misma tolerancia que
+  `dictamen.ts` (Bs 1 / $0,01). Se recalculan al cambiar método o cantidad.
+- Copy del `hint` de la referencia: "La leemos de la captura; revisa que sea la de tu pago."
+- `lecturas` no tiene políticas para `anon`; solo service role (la función) la toca. Las
+  capturas huérfanas quedan como hoy.
+- Tests: Deno para `_shared/ocr.ts` (el esquema contiene `transactionTime` y los campos del
+  emisor) y para el recorte de la respuesta de `lectura`; HTTP nuevo `supabase/tests/lectura.mjs`
+  (sube el recibo sintético, llama `lectura` dos veces y comprueba que la segunda no llama al
+  OCR: misma `creada_en`; 11 llamadas desde la misma IP → 429; luego `crear_orden` + `revisar`
+  y la orden queda con el mismo `ocr`); `ux.mjs` con el `rpc`/`funcion` interceptado como en los
+  demás casos (precarga, línea "Leímos", aviso de método, no pisa una referencia tecleada,
+  fallo de `lectura` deja el formulario usable).
+
+**Blocked by:** 02
+
+**Status:** ready-for-agent
+
+- [ ] `API=… DB_CONTAINER=… node supabase/tests/lectura.mjs` sale 0: segunda llamada con el mismo `path` devuelve la misma `creada_en`; la respuesta no trae `recipientPhone` ni `recipientId`; la llamada 11 desde la misma IP responde 429; tras `crear_orden` y `revisar`, `ordenes.ocr` es igual a `lecturas.ocr` y el OCR se llamó una sola vez (contador en el test por `creada_en` o por log).
+- [ ] `node ticketera/tests/ux.mjs` sale 0 con los casos: elegir captura → `lectura` recibe el `path` subido, `referencia` queda con el valor leído y aparece "Leímos:"; con método Zelle y lectura `pago_movil` aparece el aviso de método; referencia tecleada antes de la lectura no cambia; `lectura` con error deja enviar.
+- [ ] `deno test supabase/functions/` sale 0 e incluye un test de que `SCHEMA.required` contiene `transactionTime`.
+- [ ] `docker exec -i <DB_CONTAINER> psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 con el assert: `set role anon; select * from lecturas` lanza `insufficient_privilege` (o `permission denied`).
+- [ ] `node supabase/tests/flujo.mjs <imagen.png>`, `auto-aprobar.mjs`, `avisos.mjs`, `portero.mjs` siguen saliendo 0.
