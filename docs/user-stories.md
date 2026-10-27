@@ -12,8 +12,9 @@ cercano y la fiesta del jueves 29.
   y $15 en puerta.
 - Pago móvil convierte con la tasa BCV automática. Las cuentas de destino son BNC y
   Ubii Pagos.
-- Habrá referidos. Quien vende 3 entradas con su código recupera la suya, y por las
-  siguientes recibe un % en consumo.
+- ~~Habrá referidos. Quien vende 3 entradas con su código recupera la suya, y por las
+  siguientes recibe un % en consumo.~~ Decisión del 27-oct: sin alicientes por ahora; los
+  referidos y sus recompensas (historias 8 a 11c) quedan fuera de alcance.
 - El comprobante que vale es el que emite la plataforma con los datos de la compra. La
   captura del comprador es solo evidencia.
 - Preventa boca a boca hasta el lunes 26.
@@ -54,6 +55,8 @@ cercano y la fiesta del jueves 29.
 7c. **Admin · estado del aviso y reenvío.** Como Mau, veo por entrada si el aviso salió, a qué
     hora o con qué error, y puedo reenviarlo corrigiendo el número. *Hecho (27-oct):
     `admin.html`, acción `reenviar_aviso`.*
+*Historias 8 a 11c: fuera de alcance desde el 27-oct (sin vendedores, referidos ni recompensas para esta fiesta).*
+
 8. **Vendedor · su enlace.** Como vendedor, tengo un enlace o código propio, y las
    órdenes que entran por él quedan a mi nombre.
 9. **Vendedor · venta en mano.** Registro una venta que cobré yo (efectivo o a mi
@@ -83,9 +86,9 @@ eventos a la vez y cuentas de comprador con contraseña.
 ## Preguntas abiertas
 
 - ¿Cuántas entradas vende como máximo un solo comprador? ¿Hay aforo tope?
-- Referidos: ¿la entrada recuperada se devuelve en dinero o en consumo? ¿De cuánto es el
+- ~~Referidos: ¿la entrada recuperada se devuelve en dinero o en consumo? ¿De cuánto es el
   %? ¿El crédito de consumo sale de nuestro 50 % del patrocinio o lo pagamos al local?
-  ¿Cuentan las compras en puerta del jueves?
+  ¿Cuentan las compras en puerta del jueves?~~ Cerrada el 27-oct: sin alicientes por ahora.
 - ¿Qué datos de destino se publican: teléfono y cédula del pago móvil en BNC y en Ubii,
   ID de Binance, correo o teléfono de Zelle?
 - ~~¿El dictamen `coincide` basta para que tú apruebes con un clic, o siempre revisas el

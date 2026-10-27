@@ -28,7 +28,7 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
   avisa por WhatsApp.
 - **Portero**: valida QR en la puerta con `portero.html` y clave propia, también sin señal (lista
   descargada, cola local y reenvío); deshacer en 5 min; la lista no muestra datos personales.
-- **Vendedor / referido** *(pendiente)*: vende con enlace propio y gana consumo.
+- **Vendedor / referido** *(fuera por ahora, 27-oct)*: sin alicientes ni recompensas para esta fiesta.
 
 ## Platform
 
@@ -65,5 +65,5 @@ lector de pantalla, nada transmitido solo por color. El QR se mantiene negro sob
 ## Open decisions
 
 - Tarifa de puerta (historia 11 de `docs/user-stories.md`); el check-in (7) ya está hecho.
-- Referidos y vendedores (8 a 11c): % y forma de pago sin decidir.
+- ~~Referidos y vendedores (8 a 11c)~~: decidido el 27-oct, sin alicientes por ahora (`docs/referidos.md` queda como borrador).
 - Si la plataforma de PM adopta la misma identidad visual o se queda sobria *(inferido: se queda)*.
