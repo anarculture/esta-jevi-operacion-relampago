@@ -86,7 +86,49 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 
 ## BLOQUEADO
 
-(vacío)
+### 04 · Producción: espera el OK explícito de Mau (27-oct-2026)
+
+No es el hook: el General pidió no desplegar hasta que Mau autorice. `crear_orden` cambia de firma
+(pide `p_pagador`): **entre el paso 2 y el paso 4 la página publicada vieja no puede comprar**. Pages
+tarda 1 a 2 min. Correrlos seguidos, fuera del horario de venta fuerte. Rama `cotejo` en el worktree
+`/home/acracia/Code/sindicato-baba/.claude/worktrees/alfa`. El push es fast-forward: la rama contiene
+`origin/vm/evento-pm-v2` (8dfb7c6). Este worktree no está enlazado a producción
+(`supabase/.temp/project-ref` no existe), por eso el paso 0. En `supabase/config.toml` quedan sin
+commitear el `project_id` y los puertos del stack local; no afectan a `--linked` ni a `--project-ref`.
+
+```
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase link --project-ref ptbzdepejxxlavqfyepw
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase db query --linked "select tipo, right(referencia, 6) as sufijo, count(*) from ordenes group by 1, 2 having count(*) > 1"
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase db push --linked --dry-run
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase db push --linked --yes
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase functions deploy revisar admin lectura --project-ref ptbzdepejxxlavqfyepw
+! git -C /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa push origin HEAD:vm/evento-pm-v2
+```
+
+- Paso 0 (`link`): enlaza el worktree; con la sesión del CLI de Mau no hace falta clave.
+- Paso 1 (assert de la migración 01 contra producción): debe dar **0 filas**. Si trae alguna, no sigas:
+  dos órdenes del mismo tipo terminan igual y la migración fallaría; se decide a mano.
+- Paso 2 (`--dry-run`): debe listar exactamente `20261027210000_sufijo_referencia.sql`,
+  `20261027210100_pagador.sql` y `20261027210200_lecturas.sql`.
+- Pasos 3 a 5: migraciones, funciones (`revisar` reutiliza la lectura, `admin` devuelve `pagador`,
+  `lectura` es nueva con `verify_jwt = false`) y página. Secretos: `OPENROUTER_API_KEY` y
+  `ADMIN_CLAVE` ya existen en producción; no hace falta `secrets set`.
+
+Verificación después (Mau o un agente con permisos de producción):
+
+6. `supabase migration list --linked` muestra las tres aplicadas y ninguna pendiente.
+7. `https://postropicalia.com/sindicato-baba/index.html` responde 200 y contiene "Leímos";
+   `admin.html` contiene "desde". Ojo: el AC del ticket 04 pide "los últimos 6 caracteres" en
+   `index.html`, pero el ticket 03 cambió el hint; esa frase vive en `comun.js` (`ERRORES.referencia_invalida`).
+8. `lectura` con un `path` inexistente bien formado responde 404 (y uno mal formado, 400); `admin` con
+   clave mala sigue dando 401.
+9. Compra de prueba en la página publicada: 1 entrada, referencia `PRUEBACOTEJO1` (corrige la que
+   precargue la lectura), datos del pagador y el WhatsApp de Mau (04145287337). En el panel se ve con
+   "desde …" y su dictamen. Luego
+   `! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase db query --linked -f supabase/manual/borrar-prueba-cotejo.sql`
+   imprime 0 (borra la orden, sus entradas y la fila de `lecturas` de su captura).
+10. `git -C /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa grep -n "$(cat ~/.config/sindicato-baba/admin_clave)"` sale 1.
+11. Mau confirma que el formulario publicado le precargó la referencia desde su teléfono.
 
 ## Loop por ticket (lazy-fable)
 
