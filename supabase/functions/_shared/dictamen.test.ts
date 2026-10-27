@@ -2,10 +2,10 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { dictaminar, type Ocr } from "./dictamen.ts";
 
-const orden = { metodo: "pago_movil_bnc", referencia: "12283", monto_usd_cents: 2000, monto_bs: 17724.54, creada_en: "2026-10-25T14:00:00Z" };
+const orden = { metodo: "pago_movil_bnc", referencia: "712283", monto_usd_cents: 2000, monto_bs: 17724.54, creada_en: "2026-10-25T14:00:00Z" };
 const destino = { activo: true, telefono: "0414-1234567", cedula: "V-12.345.678" };
 const ok: Ocr = {
-  documentType: "pago_movil", amount: "17724.54", reference: "000012283", transactionDate: "2026-10-25",
+  documentType: "pago_movil", amount: "17724.54", reference: "000712283", transactionDate: "2026-10-25",
   recipientName: "", recipientPhone: "04141234567", recipientId: "", editSignals: "", confidence: "high",
 };
 
@@ -37,4 +37,25 @@ Deno.test("zelle por correo en USD: coincide", () => {
   const z = { ...orden, metodo: "zelle", monto_bs: null };
   const x = { ...ok, documentType: "zelle" as const, amount: "20.00", recipientPhone: "", recipientId: "Mau@Mail.com" };
   assertEquals(dictaminar(z, x, { correo: "mau@mail.com" }).dictamen, "coincide");
+});
+
+Deno.test("hasta Bs 1 de menos: coincide; más de Bs 1 de menos: no_coincide", () => {
+  assertEquals(dictaminar(orden, { ...ok, amount: "17723.60" }, destino).dictamen, "coincide");
+  assertEquals(dictaminar(orden, { ...ok, amount: "17722.00" }, destino).dictamen, "no_coincide");
+});
+
+Deno.test("zelle por 2 centavos menos: no_coincide", () => {
+  const z = { ...orden, metodo: "zelle", monto_bs: null };
+  const x = { ...ok, documentType: "zelle" as const, amount: "19.98", recipientPhone: "", recipientId: "mau@mail.com" };
+  assertEquals(dictaminar(z, x, { correo: "mau@mail.com" }).dictamen, "no_coincide");
+});
+
+Deno.test("referencia tipeada de 5 caracteres: dudoso aunque cuadre", () => {
+  assertEquals(dictaminar({ ...orden, referencia: "12283" }, { ...ok, reference: "000012283" }, destino).dictamen, "dudoso");
+});
+
+Deno.test("captura anterior a la orden: dudoso; un día después: coincide; dos días después: dudoso", () => {
+  assertEquals(dictaminar(orden, { ...ok, transactionDate: "2026-10-24" }, destino).dictamen, "dudoso");
+  assertEquals(dictaminar(orden, { ...ok, transactionDate: "2026-10-26" }, destino).dictamen, "coincide");
+  assertEquals(dictaminar(orden, { ...ok, transactionDate: "2026-10-27" }, destino).dictamen, "dudoso");
 });
