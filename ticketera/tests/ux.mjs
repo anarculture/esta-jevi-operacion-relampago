@@ -19,6 +19,8 @@ const PORT = 8766;
 const raiz = new URL("..", import.meta.url).pathname;
 const server = spawn("python3", ["-m", "http.server", String(PORT), "--bind", "127.0.0.1", "--directory", raiz], { stdio: "ignore" });
 await new Promise((r) => setTimeout(r, 700));
+// Con el puerto ocupado, http.server muere y el test hablaría con el servidor de otro proceso.
+if (server.exitCode !== null) throw new Error(`puerto ${PORT} ocupado: libéralo antes de correr el test`);
 const URLBASE = `http://127.0.0.1:${PORT}`;
 
 const VENTA = {
@@ -34,8 +36,8 @@ const ORDEN = {
 };
 const TOKENS = ["aaaaaaaa-0000-4000-8000-000000000001", "aaaaaaaa-0000-4000-8000-000000000002", "aaaaaaaa-0000-4000-8000-000000000003"];
 const COLA = [
-  { id: "o1", numero: 12, token: "t1", creada_en: "2026-10-26T18:00:00Z", nombre: "Ana Pérez", cedula: "V12345678", telefono: "04141234567", cantidad: 3, metodo: "pago_movil_bnc", referencia: "12283", monto_usd_cents: 3000, monto_bs: 29792.65, estado: "en_revision", dictamen: "coincide", dictamen_motivo: "monto, referencia, fecha y destinatario coinciden", rechazo_motivo: null, captura_url: null },
-  { id: "o2", numero: 11, token: "t2", creada_en: "2026-10-26T17:00:00Z", nombre: "Beto Díaz", cedula: "V87654321", telefono: "04241234567", cantidad: 1, metodo: "zelle", referencia: "ZX99", monto_usd_cents: 1000, monto_bs: null, estado: "aprobada", dictamen: "dudoso", dictamen_motivo: "no se lee la fecha", rechazo_motivo: null, captura_url: null },
+  { id: "o1", numero: 12, token: "t1", creada_en: "2026-10-26T18:00:00Z", nombre: "Ana Pérez", cedula: "V12345678", telefono: "04141234567", cantidad: 3, metodo: "pago_movil_bnc", referencia: "12283", monto_usd_cents: 3000, monto_bs: 29792.65, pagador: { banco: "Mercantil", telefono: "584147654321", cedula: "V9876543" }, estado: "en_revision", dictamen: "coincide", dictamen_motivo: "monto, referencia, fecha y destinatario coinciden", rechazo_motivo: null, captura_url: null },
+  { id: "o2", numero: 11, token: "t2", creada_en: "2026-10-26T17:00:00Z", nombre: "Beto Díaz", cedula: "V87654321", telefono: "04241234567", cantidad: 1, metodo: "zelle", referencia: "ZX99", monto_usd_cents: 1000, monto_bs: null, pagador: { titular: "Beto Díaz" }, estado: "aprobada", dictamen: "dudoso", dictamen_motivo: "no se lee la fecha", rechazo_motivo: null, captura_url: null },
   { id: "o3", numero: 10, token: "t3", creada_en: "2026-10-26T16:00:00Z", nombre: "Caro Ruiz", cedula: "V11111111", telefono: "04161234567", cantidad: 2, metodo: "pago_movil_bnc", referencia: "555", monto_usd_cents: 2000, monto_bs: 19861.77, estado: "rechazada", dictamen: "no_coincide", dictamen_motivo: "monto menor", rechazo_motivo: "El monto no coincide", captura_url: null },
 ];
 
@@ -51,7 +53,7 @@ async function pagina(fixtures, { offline = false, storage = {} } = {}) {
     const nombre = u.pathname.split("/").slice(-1)[0];
     const clave = u.pathname.includes("/storage/") ? "storage" : nombre;
     llamadas.push(clave);
-    if (offline) return route.abort("internetdisconnected");
+    if (typeof offline === "function" ? offline() : offline) return route.abort("internetdisconnected"); // función: red que se corta y vuelve
     const fx = fixtures[clave];
     if (fx === undefined) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ message: `sin fixture: ${clave}` }) });
     const body = typeof fx === "function" ? fx(route.request().postDataJSON?.() ?? {}) : fx;
@@ -64,6 +66,8 @@ async function caso(nombre, fn) {
   try { await fn(); console.log("ok ", nombre); }
   catch (e) { fallos++; console.log("FAIL", nombre, "\n   ", e.message.split("\n")[0]); }
 }
+// La captura se sube y se lee al elegirla (issue #7): espera a que la lectura termine, bien o mal.
+const leida = (page) => page.waitForFunction(() => { const p = document.querySelector("#leimos"); return p && !p.hidden && !p.textContent.includes("Leyendo"); });
 const foto = (page, n) => page.screenshot({ path: join(OUT, `${n}.png`), fullPage: true });
 
 // ---------- compra ----------
@@ -92,24 +96,30 @@ await caso("compra: pasos ocultos, monto en euros a tasa BCV, copiar plano, vali
 
   await page.click("#ya-pague");
   await page.waitForSelector("#reporte:not([hidden])");
-  await page.fill("#referencia", "12283");
+  await page.fill("#referencia", "712283");
+  await page.selectOption("#pagador-banco", "Mercantil");
+  await page.fill("#pagador-telefono", "04147654321");
+  await page.fill("#pagador-cedula", "9876543");
   await page.fill("#nombre", "Ana Pérez");
   await page.fill("#cedula", "12");
   await page.fill("#telefono", "04141234567");
+  await page.fill("#wa-2", "04241234567");
+  await page.fill("#wa-3", "04161234567");
   const png = join(tmpdir(), "captura-test.png");
   writeFileSync(png, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64"));
   await page.setInputFiles("#captura", png);
   a.equal(await page.isVisible("#preview"), true, "sin miniatura de la captura");
+  await leida(page);
   llamadas.length = 0;
   await page.click("#enviar");
   await page.waitForSelector("#e-cedula:not([hidden])");
-  a.ok(!llamadas.includes("storage"), "subió la captura con la cédula inválida");
+  a.ok(!llamadas.includes("crear_orden"), "registró con la cédula inválida");
   await foto(page, "03-compra-error-cedula");
 
   await page.fill("#cedula", "V12345678");
   await page.click("#enviar");
   await page.waitForURL(/orden\.html\?t=/);
-  a.ok(llamadas.includes("storage") && llamadas.includes("crear_orden"), "no subió ni registró");
+  a.ok(llamadas.includes("crear_orden") && !llamadas.includes("storage"), "no registró, o subió la captura dos veces");
   a.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("ticketera-orden")).numero), 13, "orden no guardada en el teléfono");
   await ctx.close();
 });
@@ -126,6 +136,270 @@ await caso("compra: cantidad fuera de rango avisa en vez de recortar; zelle en d
   await page.fill("#cantidad", "15");
   a.equal(await page.isVisible("#e-cantidad"), true, "no avisa con 15 entradas");
   a.equal(await page.inputValue("#cantidad"), "15", "recortó la cantidad en silencio");
+  await ctx.close();
+});
+
+await caso("compra: un WhatsApp por entrada, error antes de registrar, recarga los conserva, p_whatsapps normalizados", async () => {
+  let args = null;
+  const ctx = await pagina({ tasa: VENTA, crear_orden: (b) => ((args = b), { numero: 14, token: TOKENS[1] }), storage: { Key: "x" }, revisar: {} });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.fill("#cantidad", "3");
+  await page.check("input[value=zelle]");
+  await page.click("#ya-pague");
+  a.equal(await page.locator("#telefono, #otros-wa input[type=tel]").count(), 3, "cantidad 3 sin 3 campos de WhatsApp");
+  a.equal(await page.textContent("label[for=telefono]"), "Tu WhatsApp");
+  a.equal(await page.textContent("label[for=wa-3]"), "WhatsApp de la entrada 3");
+  a.ok((await page.textContent("#otros-wa")).includes("Le llegará su QR por WhatsApp"), "sin ayuda en los campos de amigos");
+  await page.fill("#referencia", "ZX12345");
+  await page.fill("#pagador-titular", "Ana Pérez");
+  await page.fill("#nombre", "Ana Pérez");
+  await page.fill("#cedula", "V12345678");
+  await page.fill("#telefono", "0414-123.45.67");
+  await page.fill("#wa-2", "+1 305 555 0100");
+  await page.fill("#wa-3", "12345");
+  await page.reload();
+  await page.waitForSelector("#wa-3");
+  a.deepEqual([await page.inputValue("#telefono"), await page.inputValue("#wa-2"), await page.inputValue("#wa-3")],
+    ["0414-123.45.67", "+1 305 555 0100", "12345"], "la recarga no restauró los 3 WhatsApps");
+  const png = join(tmpdir(), "captura-test.png");
+  await page.setInputFiles("#captura", png);
+  await leida(page);
+  llamadas.length = 0;
+  await page.click("#enviar");
+  await page.waitForSelector("#e-wa-3:not([hidden])");
+  a.ok(!llamadas.includes("crear_orden"), "registró con un WhatsApp de 5 dígitos");
+  a.equal(await page.isHidden("#e-wa-2"), true, "marcó un número extranjero válido");
+  await foto(page, "03b-compra-whatsapp-invalido");
+  await page.fill("#wa-3", "04241112233");
+  await page.click("#enviar");
+  await page.waitForURL(/orden\.html\?t=/);
+  a.deepEqual(args.p_whatsapps, ["584141234567", "13055550100", "584241112233"], "p_whatsapps sin normalizar");
+  // Misma tabla que ticketera.sql: venezolano sin el 0 y +58 0414… no pueden salir a otro país.
+  a.deepEqual(await page.evaluate(() => ["0414-123.45.67", "414 123 4567", "+58 0414 123 4567", "+1 (305) 555-0100", "12345"].map(normalizarWhatsapp)),
+    ["584141234567", "584141234567", "584141234567", "13055550100", null], "normalizarWhatsapp distinta de SQL");
+  await ctx.close();
+});
+
+await caso("compra: referencia de 5 caracteres marca error sin registrar; con 6 envía", async () => {
+  const ctx = await pagina({ tasa: VENTA, crear_orden: () => ({ numero: 15, token: TOKENS[2] }), storage: { Key: "x" }, revisar: {} });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  a.equal(await page.getAttribute("#referencia", "placeholder"), "La leemos de la captura; revisa que sea la de tu pago.", "hint de la referencia");
+  await page.fill("#referencia", "0-12.283"); // 5 tras normalizar: el cero a la izquierda no cuenta
+  await page.selectOption("#pagador-banco", "BNC");
+  await page.fill("#pagador-telefono", "04147654321");
+  await page.fill("#pagador-cedula", "V9876543");
+  await page.fill("#nombre", "Ana Pérez");
+  await page.fill("#cedula", "V12345678");
+  await page.fill("#telefono", "04141234567");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  llamadas.length = 0;
+  await page.click("#enviar");
+  await page.waitForSelector("#e-referencia:not([hidden])");
+  a.ok((await page.textContent("#e-referencia")).includes("últimos 6"), "el error no pide los últimos 6");
+  a.ok(!llamadas.includes("crear_orden"), "registró con 5 caracteres");
+  await foto(page, "03c-compra-referencia-corta");
+  await page.fill("#referencia", "712283");
+  await page.click("#enviar");
+  await page.waitForURL(/orden\.html\?t=/);
+  a.ok(llamadas.includes("crear_orden"), "con 6 caracteres no registró");
+  await ctx.close();
+});
+
+await caso("compra: pago móvil pide banco, teléfono y cédula del pagador; p_pagador con las tres claves; Zelle solo titular", async () => {
+  let args = null;
+  const ctx = await pagina({ tasa: VENTA, crear_orden: (b) => ((args = b), { numero: 16, token: TOKENS[0] }), storage: { Key: "x" }, revisar: {} });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  for (const id of ["pagador-banco", "pagador-telefono", "pagador-cedula"]) a.equal(await page.isVisible(`#${id}`), true, `sin #${id} en pago móvil`);
+  for (const id of ["pagador-titular", "pagador-id"]) a.equal(await page.isHidden(`#${id}`), true, `#${id} visible en pago móvil`);
+  await page.fill("#referencia", "712283");
+  await page.fill("#nombre", "Ana Pérez");
+  await page.fill("#cedula", "V12345678");
+  await page.fill("#telefono", "04141234567");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  llamadas.length = 0;
+  await page.click("#enviar");
+  await page.waitForSelector("#e-pagador-banco:not([hidden])");
+  a.equal(await page.isVisible("#e-pagador-telefono"), true, "teléfono del pagador vacío sin error");
+  a.equal(await page.isVisible("#e-pagador-cedula"), true, "cédula del pagador vacía sin error");
+  a.ok(!llamadas.includes("crear_orden"), "registró sin datos del pagador");
+  await page.selectOption("#pagador-banco", "Mercantil");
+  await page.fill("#pagador-telefono", "0414-765.43.21");
+  await page.fill("#pagador-cedula", "v-9.876.543");
+  await page.reload();
+  await page.waitForSelector("#pagador-banco");
+  a.deepEqual([await page.inputValue("#pagador-banco"), await page.inputValue("#pagador-telefono"), await page.inputValue("#pagador-cedula")],
+    ["Mercantil", "0414-765.43.21", "v-9.876.543"], "la recarga no restauró los datos del pagador");
+  await foto(page, "03d-compra-pagador-pago-movil");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await page.click("#enviar");
+  await page.waitForURL(/orden\.html\?t=/);
+  a.deepEqual(args.p_pagador, { banco: "Mercantil", telefono: "0414-765.43.21", cedula: "v-9.876.543" }, "p_pagador de pago móvil");
+
+  const z = await ctx.newPage();
+  await z.goto(`${URLBASE}/index.html`);
+  await z.waitForSelector("#metodos input");
+  await z.check("input[value=zelle]");
+  await z.click("#ya-pague");
+  a.equal(await z.isVisible("#pagador-titular"), true, "sin titular en Zelle");
+  for (const id of ["pagador-banco", "pagador-telefono", "pagador-cedula", "pagador-id"]) a.equal(await z.isHidden(`#${id}`), true, `#${id} visible en Zelle`);
+  await ctx.close();
+});
+
+const OCR_PM = {
+  documentType: "pago_movil", amount: "9930.88", reference: "61540227", transactionDate: "2026-10-27", transactionTime: "21:03",
+  recipientName: "", editSignals: "", confidence: "high", senderName: "Ana Pérez", senderPhone: "", senderId: "", senderBank: "",
+};
+// Llena lo que no es referencia ni captura, para poder enviar.
+async function datosComprador(page, metodo) {
+  if (metodo === "zelle") await page.fill("#pagador-titular", "Ana Pérez");
+  else { await page.selectOption("#pagador-banco", "BNC"); await page.fill("#pagador-telefono", "04147654321"); await page.fill("#pagador-cedula", "9876543"); }
+  if (!(await page.inputValue("#nombre"))) await page.fill("#nombre", "Ana Pérez");
+  await page.fill("#cedula", "V12345678");
+  await page.fill("#telefono", "04141234567");
+}
+
+await caso("lectura: elegir la captura la sube, la lee y precarga la referencia con 'Leímos'; avisa el monto; no se sube dos veces", async () => {
+  let leidoPath = null, args = null;
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" }, revisar: {},
+    lectura: (b) => ((leidoPath = b.path), { ocr: OCR_PM, creada_en: "2026-10-27T21:04:00Z" }),
+    crear_orden: (b) => ((args = b), { numero: 17, token: TOKENS[0] }) });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  llamadas.length = 0;
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  a.ok(/^[0-9a-f-]{36}\.png$/.test(leidoPath ?? ""), `lectura sin el path subido: ${leidoPath}`);
+  a.equal(await page.inputValue("#referencia"), "61540227", "no precargó la referencia");
+  a.equal(await page.textContent("#leimos"), "Leímos: Bs 9.930,88 · ref 61540227 · 27/10 21:03");
+  a.equal(await page.locator("#avisos-lectura .aviso").count(), 0, "aviso con monto y método correctos");
+  await page.fill("#cantidad", "2");
+  await page.waitForSelector("#avisos-lectura .aviso");
+  a.ok((await page.textContent("#avisos-lectura")).includes("El monto leído (Bs 9.930,88) no es el de la orden"), "sin aviso de monto");
+  await foto(page, "03e-compra-lectura-monto");
+  await page.fill("#cantidad", "1");
+  await page.fill("#telefono", "04141234567");
+  await datosComprador(page, "pago_movil");
+  await page.click("#enviar");
+  await page.waitForURL(/orden\.html\?t=/);
+  a.equal(args.p_captura, leidoPath, "crear_orden recibió otra captura que la leída");
+  a.equal(llamadas.filter((c) => c === "storage").length, 1, "la captura se subió más de una vez");
+  await ctx.close();
+});
+
+await caso("compra: 'Pagué yo' copia cédula y teléfono del pago móvil y los sigue mientras está marcado; en Zelle no aparece", async () => {
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" }, lectura: { ocr: OCR_PM, creada_en: "2026-10-27T21:04:00Z" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  a.equal(await page.isVisible("#l-mismo"), true, "sin la casilla 'Pagué yo' en pago móvil");
+  await page.fill("#pagador-telefono", "04129988776");
+  await page.fill("#pagador-cedula", "V9876543");
+  await page.check("#mismo");
+  a.equal(await page.inputValue("#cedula"), "V9876543", "no copió la cédula");
+  a.equal(await page.inputValue("#telefono"), "04129988776", "no copió el teléfono");
+  await page.fill("#pagador-cedula", "V9876544");
+  a.equal(await page.inputValue("#cedula"), "V9876544", "no siguió el cambio de cédula");
+  await page.uncheck("#mismo");
+  await page.fill("#pagador-cedula", "V1111111");
+  a.equal(await page.inputValue("#cedula"), "V9876544", "copió con la casilla apagada");
+  await page.check("input[value=zelle]");
+  a.equal(await page.isVisible("#l-mismo"), false, "la casilla aparece en Zelle");
+  await foto(page, "03f-compra-pague-yo");
+  await ctx.close();
+});
+
+await caso("lectura: Zelle con comprobante de pago móvil avisa el método y precarga el nombre; no pisa la referencia tecleada", async () => {
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" }, lectura: { ocr: OCR_PM, creada_en: "2026-10-27T21:04:00Z" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=zelle]");
+  await page.click("#ya-pague");
+  await page.fill("#referencia", "ZX778899");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  a.equal(await page.inputValue("#referencia"), "ZX778899", "la lectura pisó la referencia tecleada");
+  a.equal(await page.inputValue("#nombre"), "Ana Pérez", "no precargó el nombre en Zelle");
+  a.ok((await page.textContent("#avisos-lectura")).includes("El comprobante parece de pago móvil y elegiste Zelle"), "sin aviso de método");
+  await foto(page, "03f-compra-lectura-metodo");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.waitForFunction(() => !document.querySelector("#avisos-lectura").textContent.includes("parece de"));
+  await ctx.close();
+});
+
+await caso("lectura: otra captura cuya lectura falla no hereda la referencia leída de la anterior", async () => {
+  let n = 0;
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" },
+    lectura: () => (++n === 1 ? { ocr: OCR_PM, creada_en: "2026-10-27T21:04:00Z" } : { __status: 502, error: "lectura_fallida" }) });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  a.equal(await page.inputValue("#referencia"), "61540227");
+  const otra = join(tmpdir(), "captura-test-2.png");
+  writeFileSync(otra, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mNk+M9QzwAEjDAGACCDAv8cI7IoAAAAAElFTkSuQmCC", "base64"));
+  await page.setInputFiles("#captura", otra);
+  await leida(page);
+  a.equal(await page.textContent("#leimos"), "No pudimos leer la captura; escribe la referencia");
+  a.equal(await page.inputValue("#referencia"), "", "quedó la referencia leída de la captura anterior");
+  await ctx.close();
+});
+
+await caso("lectura: lo leído con HTML no se inyecta en la página", async () => {
+  const hostil = { ...OCR_PM, documentType: "zelle", reference: '<img id="xss1" src=x>', senderName: '<img id="xss2" src=x>', amount: "1" };
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" }, lectura: { ocr: hostil, creada_en: "2026-10-27T21:04:00Z" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  a.equal(await page.locator("#xss1, #xss2").count(), 0, "lo leído se inyectó como HTML");
+  a.ok((await page.textContent("#leimos")).includes('ref <img id="xss1" src=x>'), "la referencia leída no se muestra como texto");
+  a.equal(await page.inputValue("#referencia"), '<img id="xss1" src=x>', "precarga como valor");
+  a.ok((await page.textContent("#avisos-lectura")).includes("parece de Zelle"), "sin aviso de método");
+  await ctx.close();
+});
+
+await caso("lectura: si falla (429) avisa y el formulario se envía igual", async () => {
+  let args = null;
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" }, revisar: {},
+    lectura: { __status: 429, error: "demasiadas_lecturas" }, crear_orden: (b) => ((args = b), { numero: 18, token: TOKENS[1] }) });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=zelle]");
+  await page.click("#ya-pague");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  a.equal(await page.textContent("#leimos"), "No pudimos leer la captura; escribe la referencia");
+  a.equal(await page.inputValue("#referencia"), "", "precargó algo sin lectura");
+  await page.fill("#referencia", "ZX445566");
+  await datosComprador(page, "zelle");
+  await page.click("#enviar");
+  await page.waitForURL(/orden\.html\?t=/);
+  a.equal(args.p_referencia, "ZX445566");
   await ctx.close();
 });
 
@@ -158,12 +432,17 @@ await caso("orden en revisión: espera neutra con contacto, guardar enlace", asy
 });
 
 await caso("orden aprobada: QR por entrada, enviar a un amigo, consejo de captura, copia offline", async () => {
-  const aprobada = { ...ORDEN, estado: "aprobada", entradas: TOKENS };
+  const MASCARAS = ["4567", "2233", "0100"];
+  const aprobada = { ...ORDEN, estado: "aprobada", entradas: TOKENS.map((token, i) => ({
+    token, whatsapp_mascara: MASCARAS[i], avisada_en: i === 1 ? "2026-10-30T01:03:00Z" : null })) };
   const ctx = await pagina({ ver_orden: aprobada });
   const page = await ctx.newPage();
   await page.goto(`${URLBASE}/orden.html?t=${TOKENS[0]}`);
   await page.waitForSelector(".qr svg");
   a.equal(await page.locator(".qr svg").count(), 3, "no hay 3 QR");
+  a.deepEqual(await page.$$eval(".qr .envio", (ps) => ps.map((p) => p.textContent)),
+    ["Para el ···4567 · pendiente de envío", "Enviada al ···2233 a las 21:03", "Para el ···0100 · pendiente de envío"], "tarjeta sin WhatsApp o estado de envío");
+  a.ok(!(await page.textContent("main")).includes("584141234567"), "número completo en la orden");
   a.ok((await page.textContent(".aviso")).includes("captura de pantalla"));
   a.equal(await page.locator(".qr a.btn").count(), 3, "sin botón de enviar por entrada");
   a.ok((await page.getAttribute(".qr a.btn", "href")).includes(encodeURIComponent(`entrada.html?e=${TOKENS[0]}`)));
@@ -181,6 +460,15 @@ await caso("orden aprobada: QR por entrada, enviar a un amigo, consejo de captur
   a.ok((await p2.textContent("main")).includes("sin conexión"));
   await foto(p2, "06-orden-sin-red");
   await off.close();
+
+  // Copia guardada antes del issue #5: tokens en texto, sin WhatsApp.
+  const vieja = await pagina({}, { offline: true, storage: { [`ticketera-orden-${TOKENS[0]}`]: JSON.stringify({ ...ORDEN, estado: "aprobada", entradas: TOKENS }) } });
+  const p3 = await vieja.newPage();
+  await p3.goto(`${URLBASE}/orden.html?t=${TOKENS[0]}`);
+  await p3.waitForSelector(".qr svg");
+  a.equal(await p3.locator(".qr svg").count(), 3, "la copia vieja sin red no pintó los QR");
+  a.ok((await p3.textContent(".qr")).includes(`Código de respaldo: ${TOKENS[0].slice(0, 8)}`), "copia vieja sin código de respaldo");
+  await vieja.close();
 });
 
 await caso("orden rechazada con motivo y salida por WhatsApp; sin red y sin copia; no encontrada", async () => {
@@ -211,12 +499,13 @@ await caso("orden rechazada con motivo y salida por WhatsApp; sin red y sin copi
 
 // ---------- entrada ----------
 await caso("entrada individual: QR, posición, sin datos personales; inexistente", async () => {
-  const ctx = await pagina({ ver_entrada: { numero: 12, posicion: 2, total: 3 } });
+  const ctx = await pagina({ ver_entrada: { numero: 12, posicion: 2, total: 3, whatsapp_mascara: "2233" } });
   const page = await ctx.newPage();
   await page.goto(`${URLBASE}/entrada.html?e=${TOKENS[1]}`);
   await page.waitForSelector(".qr svg");
   const txt = await page.textContent("main");
   a.ok(txt.includes("Entrada 2 de 3") && txt.includes("CC Chacaíto") && !txt.includes("Ana"));
+  a.ok(txt.includes("···2233"), "entrada sin el WhatsApp enmascarado");
   await foto(page, "09-entrada");
   await ctx.close();
   const nf = await pagina({ ver_entrada: null });
@@ -264,6 +553,268 @@ await caso("admin: cola, título con pendientes, filtro, rechazo con motivo, Wha
   await page.waitForFunction(() => window.__abiertos.length === 1);
   a.equal(resueltas[1].aprobar, true);
   a.ok((await page.evaluate(() => window.__abiertos[0])).startsWith("https://wa.me/584141234567?text="), "no abrió WhatsApp al aprobar");
+  await ctx.close();
+});
+
+await caso("admin: 'desde' con los datos del pagador; el buscador encuentra por cédula y teléfono del pagador", async () => {
+  // El pagador lo escribe el comprador: llega al panel escapado, nunca como HTML.
+  const xss = { ...COLA[2], id: "o4", numero: 9, pagador: { titular: '<img id="xss" src=x>' } };
+  const ctx = await pagina({ admin: () => [...COLA, xss] }, { storage: { "ticketera-clave": "clave-buena-de-prueba" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/admin.html`);
+  await page.waitForSelector("#cola .card");
+  a.equal(await page.locator("#xss").count(), 0, "el pagador se inyectó como HTML");
+  a.ok((await page.textContent("#hechas")).includes('desde <img id="xss" src=x>'), "el pagador con < no se muestra como texto");
+  a.ok((await page.textContent("#cola .card")).includes("desde 04147654321 · V9876543 · Mercantil"), "sin 'desde' de pago móvil");
+  a.ok((await page.textContent("#hechas")).includes("desde Beto Díaz"), "sin 'desde' de Zelle");
+  await foto(page, "10d-admin-pagador");
+  for (const q of ["9876543", "04147654321"]) {
+    await page.fill("#buscar", q);
+    a.equal(await page.locator("#cola .card").count(), 1, `buscar ${q}: no encontró la orden`);
+    a.equal(await page.locator("#hechas .card").count(), 0, `buscar ${q}: trajo otras`);
+  }
+  await ctx.close();
+});
+
+await caso("admin: chip 'Aprobada por IA' solo en las que aprobó la IA", async () => {
+  const cola = [{ ...COLA[1], id: "ia", numero: 21, aprobada_por: "ia" }, { ...COLA[1], id: "mau", numero: 20, nombre: "Dani Mora", aprobada_por: "admin" }];
+  const ctx = await pagina({ admin: () => cola }, { storage: { "ticketera-clave": "clave-buena-de-prueba" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/admin.html`);
+  await page.waitForSelector("#hechas .card");
+  const tarjetas = await page.$$eval("#hechas .card", (cs) => cs.map((c) => c.textContent));
+  a.ok(tarjetas[0].includes("#21") && tarjetas[0].includes("Aprobada por IA"), "la de la IA sin chip");
+  a.ok(tarjetas[1].includes("#20") && !tarjetas[1].includes("por IA"), "la de Mau con chip de IA");
+  await foto(page, "10b-admin-aprobada-por-ia");
+  await ctx.close();
+});
+
+await caso("admin: estado del aviso por entrada y 'Reenviar' con número corregido", async () => {
+  const entradas = [
+    { id: "e1", posicion: 1, whatsapp_mascara: "4567", avisada_en: "2026-10-30T01:03:00Z", aviso_error: null, aviso_intentos: 0 },
+    { id: "e2", posicion: 2, whatsapp_mascara: "2233", avisada_en: null, aviso_error: null, aviso_intentos: 0 },
+    { id: "e3", posicion: 3, whatsapp_mascara: "0100", avisada_en: null, aviso_error: "número sin WhatsApp", aviso_intentos: 2 },
+    { id: "e4", posicion: 4, whatsapp_mascara: "9999", avisada_en: null, aviso_error: "timeout", aviso_intentos: 5 },
+  ];
+  const pedidas = [];
+  const ctx = await pagina({ admin: (b) => {
+    if (b.accion === "reenviar_aviso") {
+      pedidas.push(b);
+      Object.assign(entradas[3], { whatsapp_mascara: "4321", aviso_error: null, aviso_intentos: 0 });
+      return { id: b.id, whatsapp_mascara: "4321" };
+    }
+    return [{ ...COLA[1], cantidad: 4, entradas }];
+  } }, { storage: { "ticketera-clave": "clave-buena-de-prueba" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/admin.html`);
+  await page.waitForSelector("#hechas .envio");
+  const filas = await page.$$eval("#hechas .envio", (fs) => fs.map((f) => f.textContent.replace(/\s+/g, " ").trim()));
+  a.ok(filas[0].includes("Entrada 1 · ···4567") && filas[0].includes("enviada 21:03"), `enviada: ${filas[0]}`);
+  a.ok(filas[1].includes("···2233") && filas[1].includes("pendiente"), `pendiente: ${filas[1]}`);
+  a.ok(filas[2].includes("error: número sin WhatsApp"), `error: ${filas[2]}`);
+  a.ok(filas[3].includes("intentos agotados"), `agotados: ${filas[3]}`);
+  a.ok(!filas.join(" ").includes("584"), "el panel muestra el número completo");
+  await foto(page, "10c-admin-avisos");
+
+  await page.click('button[data-reenviar="e4"]');
+  await page.fill(".reenvio:not([hidden]) input", "123");
+  await page.click('button[data-confirmar="e4"]');
+  await page.waitForSelector("#error:not([hidden])");
+  a.equal(pedidas.length, 0, "reenvió un número inválido");
+  await page.fill(".reenvio:not([hidden]) input", "0416-765.43.21");
+  await page.click('button[data-confirmar="e4"]');
+  await page.waitForFunction(() => document.querySelectorAll("#hechas .envio")[3]?.textContent.includes("···4321"));
+  a.deepEqual(pedidas.map((b) => [b.accion, b.id, b.whatsapp]), [["reenviar_aviso", "e4", "0416-765.43.21"]], "Reenviar no llamó a admin con el número tecleado");
+  a.ok((await page.$$eval("#hechas .envio", (fs) => fs[3].textContent)).includes("pendiente"), "tras reenviar la fila no quedó pendiente");
+  await ctx.close();
+});
+
+// ---------- portero ----------
+const CLAVE_PT = "clave-portero-de-prueba";
+const PT = { bbbbbbbb: "bbbbbbbb-0000-4000-8000-000000000001", cccccccc: "cccccccc-0000-4000-8000-000000000002", eeeeeeee: "eeeeeeee-0000-4000-8000-000000000003" };
+const HORA_PT = "2026-10-30T02:14:00Z"; // 22:14 en Caracas
+function puerta(llamadasPt) {
+  return (b) => {
+    llamadasPt.push(b);
+    if (b.clave !== CLAVE_PT) return { __status: 401, error: "clave_invalida" };
+    if (b.accion === "resumen") return { aprobadas: 112, ingresadas: 37 };
+    if (b.accion === "deshacer") return { ok: true };
+    const c = b.codigo ?? b.token?.slice(0, 8);
+    if (c === "bbbbbbbb" || c === "eeeeeeee") return { resultado: "valida", token: PT[c], numero: 12, posicion: 1, total: 2, checked_in_at: HORA_PT };
+    if (c === "cccccccc") return { resultado: "ya_usada", token: PT[c], numero: 12, posicion: 2, total: 2, checked_in_at: HORA_PT };
+    return { resultado: "invalida", motivo: "no_existe" };
+  };
+}
+const espiarVibracion = () => { window.__vib = []; Object.defineProperty(navigator, "vibrate", { value: (p) => (window.__vib.push(p), true) }); };
+async function teclear(page, codigo) {
+  await page.fill("#codigo", codigo);
+  await page.press("#codigo", "Enter");
+}
+
+await caso("portero: sin clave pide clave; clave mala avisa; buena entra con contador", async () => {
+  const ll = [];
+  const ctx = await pagina({ portero: puerta(ll) });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/portero.html`);
+  await page.waitForSelector("#login:not([hidden])");
+  a.equal(await page.isHidden("#panel"), true, "panel visible sin clave");
+  a.equal(ll.length, 0, "llamó a la función sin clave");
+  await foto(page, "11-portero-clave");
+  await page.fill("#clave", "mala");
+  await page.click("#login button");
+  await page.waitForSelector("#error:not([hidden])");
+  a.equal(await page.textContent("#error"), "Clave incorrecta.");
+  await page.fill("#clave", CLAVE_PT);
+  await page.click("#login button");
+  await page.waitForSelector("#panel:not([hidden])");
+  a.equal(await page.textContent("#contador"), "37 ingresaron de 112 aprobadas");
+  a.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("ticketera-portero-clave"))), CLAVE_PT, "no guardó la clave");
+  await ctx.close();
+});
+
+await caso("portero: válida verde con vibración y deshacer, vuelve sola; ya usada con hora; inválida roja", async () => {
+  const ll = [];
+  const ctx = await pagina({ portero: puerta(ll) }, { storage: { "ticketera-portero-clave": JSON.stringify(CLAVE_PT) } });
+  const page = await ctx.newPage();
+  await page.addInitScript(espiarVibracion);
+  await page.goto(`${URLBASE}/portero.html`);
+  await page.waitForSelector("#panel:not([hidden])");
+
+  await teclear(page, "BBBBBBBB");
+  await page.waitForSelector("#resultado:not([hidden])");
+  a.equal(await page.getAttribute("#resultado", "data-estado"), "valida");
+  a.ok((await page.getAttribute("#resultado", "class")).includes("valida"));
+  a.equal(await page.evaluate(() => getComputedStyle(document.getElementById("resultado")).backgroundColor), "rgb(46, 216, 71)", "válida no es verde neón");
+  a.ok((await page.textContent("#resultado")).includes("Entrada 1 de 2"), "válida sin 'Entrada 1 de 2'");
+  a.deepEqual(await page.evaluate(() => window.__vib), [[80]], "no vibró un pulso corto");
+  a.equal(await page.isVisible("#deshacer"), true, "sin 'Deshacer' tras una válida");
+  a.equal(ll.filter((b) => b.accion === "checkin").at(-1).codigo, "bbbbbbbb", "no mandó el código normalizado");
+  // Lo confirmado con señal queda marcado en el teléfono: sin señal, la lista vieja no lo daría por nuevo.
+  a.equal(await page.evaluate((t) => JSON.parse(localStorage.getItem("ticketera-portero-marcas") ?? "{}")[t], PT.bbbbbbbb), HORA_PT, "la válida online no quedó marcada en local");
+  await foto(page, "12-portero-valida");
+
+  await teclear(page, "bbbbbbbb"); // mismo código dentro de los 3 s: se ignora
+  await page.waitForSelector("#resultado", { state: "hidden", timeout: 3500 });
+  a.equal(ll.filter((b) => b.accion === "checkin").length, 1, "reenvió el mismo código antes de 3 s");
+
+  await teclear(page, "cccccccc");
+  await page.waitForSelector("#resultado:not([hidden])");
+  a.equal(await page.getAttribute("#resultado", "data-estado"), "ya_usada");
+  a.ok((await page.textContent("#resultado")).includes("22:14"), "ya usada sin la hora del primer ingreso");
+  a.equal(await page.evaluate(() => getComputedStyle(document.getElementById("resultado")).backgroundColor), "rgb(255, 214, 10)", "ya usada no es amarillo marcador");
+  await foto(page, "13-portero-ya-usada");
+  await page.click("#resultado"); // un toque lo cierra antes
+  a.equal(await page.isHidden("#resultado"), true, "el toque no cerró el resultado");
+
+  await teclear(page, "dddddddd");
+  await page.waitForSelector("#resultado:not([hidden])");
+  a.equal(await page.getAttribute("#resultado", "data-estado"), "invalida");
+  a.ok((await page.textContent("#r-titulo")).includes("Inválida"));
+  a.equal(await page.isHidden("#deshacer"), true, "'Deshacer' visible tras una inválida");
+  a.deepEqual((await page.evaluate(() => window.__vib)).at(-1), [400], "inválida no vibró largo");
+  await foto(page, "14-portero-invalida");
+  await page.click("#resultado");
+
+  await teclear(page, "eeeeeeee");
+  await page.waitForSelector("#resultado:not([hidden])");
+  await page.click("#resultado");
+  await page.click("#deshacer");
+  await page.waitForSelector("#aviso:not([hidden])");
+  a.deepEqual(ll.filter((b) => b.accion === "deshacer").map((b) => b.token), [PT.eeeeeeee], "deshacer no mandó el token de la última válida");
+  a.equal(await page.isHidden("#deshacer"), true);
+  await ctx.close();
+});
+
+await caso("portero sin señal: lista descargada, validación local en cola, reenvío con aviso, lista ordenada e imprimible", async () => {
+  const A = "a1a1a1a1-0000-4000-8000-000000000001", B = "f0f0f0f0-0000-4000-8000-000000000009";
+  const LISTA = { generada_en: "2026-10-30T00:35:00Z", entradas: [ // desordenada a propósito
+    { token: B, numero: 14, posicion: 1, total: 1, checked_in_at: null },
+    { token: A, numero: 12, posicion: 1, total: 2, checked_in_at: null },
+    { token: "a2a2a2a2-0000-4000-8000-000000000002", numero: 12, posicion: 2, total: 2, checked_in_at: "2026-10-30T01:50:00Z" },
+  ] };
+  const ll = [];
+  let sinRedPt = false, claveMala = false;
+  const ctx = await pagina({ portero: (b) => {
+    ll.push(b);
+    if (claveMala) return { __status: 401, error: "clave_invalida" };
+    if (b.accion === "lista") return LISTA;
+    if (b.accion === "resumen") return { aprobadas: 3, ingresadas: 1 };
+    if (b.accion === "deshacer") return { ok: true };
+    if (b.token === B) return { resultado: "ya_usada", token: B, numero: 14, posicion: 1, total: 1, checked_in_at: "2026-10-30T01:00:00Z" };
+    return { resultado: "valida", token: b.token, numero: 12, posicion: 1, total: 2, checked_in_at: "2026-10-30T02:00:00Z" };
+  } }, { offline: () => sinRedPt, storage: { "ticketera-portero-clave": JSON.stringify(CLAVE_PT) } });
+  const page = await ctx.newPage();
+  const ls = (k) => page.evaluate((k) => JSON.parse(localStorage.getItem(k)), k);
+  const checkins = () => ll.filter((b) => b.accion === "checkin").map((b) => b.token);
+  async function resultado(codigo) {
+    await teclear(page, codigo);
+    await page.waitForSelector("#resultado:not([hidden])");
+    const r = { estado: await page.getAttribute("#resultado", "data-estado"), texto: await page.innerText("#resultado") };
+    await page.click("#resultado");
+    return r;
+  }
+  await page.goto(`${URLBASE}/portero.html`);
+  await page.waitForSelector("#panel:not([hidden])");
+  await page.click("#descargar");
+  await page.waitForSelector("#lista-info:not([hidden])");
+  a.equal(await page.textContent("#lista-info"), "Lista del 29/10 20:35 · 3 entradas");
+  a.equal((await ls("ticketera-portero-lista")).entradas.length, 3, "no guardó la lista");
+
+  sinRedPt = true;
+  const v = await resultado("f0f0f0f0");
+  a.equal(v.estado, "valida");
+  a.ok(/sin conexión/i.test(v.texto), "válida local sin la etiqueta 'sin conexión'");
+  a.deepEqual(await ls("ticketera-portero-cola"), [B], "no quedó en cola");
+  a.ok((await page.textContent("#contador")).startsWith("2 ingresaron de 3"), "contador sin red no sale de la lista local");
+  await page.waitForTimeout(3100); // pasa el anti-rebote del mismo código
+  a.equal((await resultado("f0f0f0f0")).estado, "ya_usada", "el mismo código sin red no sale ya usada");
+  a.equal((await resultado("99999999")).estado, "invalida", "código fuera de la lista no sale inválido");
+  a.equal((await resultado("a1a1a1a1")).estado, "valida");
+  a.deepEqual(checkins(), [], "con la red cortada llegó algo al servidor");
+
+  sinRedPt = false;
+  await page.evaluate(() => dispatchEvent(new Event("online")));
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("ticketera-portero-cola")).length === 0);
+  a.deepEqual(checkins(), [B, A], "el servidor no recibió los tokens encolados");
+  await page.waitForSelector("#aviso:not([hidden])");
+  a.ok((await page.textContent("#aviso")).includes("orden #14"), "sin aviso de la válida local que ya había entrado");
+  await foto(page, "17-portero-aviso");
+
+  // La última válida sin red (A) ya subió: Deshacer va al servidor y borra la marca local.
+  a.equal(await page.isVisible("#deshacer"), true, "sin 'Deshacer' para la válida que subió");
+  await page.click("#deshacer");
+  await page.waitForFunction(() => document.getElementById("deshacer").hidden);
+  a.deepEqual(ll.filter((b) => b.accion === "deshacer").map((b) => b.token), [A], "deshacer de una válida ya subida no llamó al servidor");
+  a.equal((await ls("ticketera-portero-marcas"))[A], undefined, "deshacer dejó la marca local");
+  a.equal(await page.textContent("#aviso"), "Ingreso deshecho.");
+
+  // Si al subir el servidor ya la tenía de otro teléfono, Deshacer desaparece (borraría ese ingreso).
+  sinRedPt = true;
+  await page.evaluate(() => { const m = JSON.parse(localStorage.getItem("ticketera-portero-marcas")); delete m["f0f0f0f0-0000-4000-8000-000000000009"]; localStorage.setItem("ticketera-portero-marcas", JSON.stringify(m)); });
+  a.equal((await resultado("f0f0f0f0")).estado, "valida");
+  sinRedPt = false;
+  await page.evaluate(() => dispatchEvent(new Event("online")));
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("ticketera-portero-cola")).length === 0);
+  a.equal(await page.isHidden("#deshacer"), true, "'Deshacer' visible para una válida que el servidor ya tenía");
+
+  await page.click("#ver-lista");
+  a.deepEqual(await page.$$eval("#filas tr td:first-child", (tds) => tds.map((t) => t.textContent)), ["a1a1a1a1", "a2a2a2a2", "f0f0f0f0"], "lista no ordenada por código");
+  a.ok((await page.textContent("#filas")).includes("#12") && (await page.textContent("#filas")).includes("2 de 2"));
+  await foto(page, "18-portero-lista");
+  await page.emulateMedia({ media: "print" });
+  a.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(255, 255, 255)", "impresión sin fondo blanco");
+  a.equal(await page.isHidden("#imprimir"), true, "botones en la impresión");
+  await foto(page, "19-portero-impresion");
+  await page.emulateMedia({ media: "screen" });
+
+  // Una clave mala borra la clave guardada, no la lista ni la cola.
+  await page.click("#volver");
+  await page.evaluate((t) => localStorage.setItem("ticketera-portero-cola", JSON.stringify([t])), A);
+  claveMala = true;
+  await page.click("#descargar");
+  await page.waitForSelector("#login:not([hidden])");
+  a.equal(await ls("ticketera-portero-clave"), null, "la clave mala quedó guardada");
+  a.ok((await ls("ticketera-portero-lista")) && (await ls("ticketera-portero-cola")).length === 1, "la clave mala borró la lista o la cola");
   await ctx.close();
 });
 

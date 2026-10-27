@@ -40,10 +40,26 @@ corre `supabase db reset` antes). Casos, en este orden:
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done (commit del ticket 02)
 
-- [ ] `supabase db reset && node supabase/tests/pm-navegador.mjs` sale 0 con los 6 casos.
-- [ ] `supabase db reset && node supabase/tests/pm.mjs` sigue saliendo 0.
-- [ ] `cmp app.js supabase/functions/_shared/app.js` sale 0.
-- [ ] `node -e "const M=require('./app.js'); process.exit(M.validateState(M.defaultState()).ok?0:1)"` sale 0.
-- [ ] `google-chrome --headless=new --disable-gpu --virtual-time-budget=4000 --dump-dom http://127.0.0.1:<puerto>/index.html | grep -c 'id="v-sold"'` imprime `1` (sin clave la página sigue renderizando).
+- [x] `supabase db reset && node supabase/tests/pm-navegador.mjs` sale 0 con los 6 casos. · `OK pm-navegador: 6 casos`
+- [x] `supabase db reset && node supabase/tests/pm.mjs` sigue saliendo 0. · `OK pm: 8 casos del contrato y la carrera de guardados`
+- [x] `cmp app.js supabase/functions/_shared/app.js` sale 0. · `cmp=0`
+- [x] `node -e "const M=require('./app.js'); process.exit(M.validateState(M.defaultState()).ok?0:1)"` sale 0. · `build=0`
+- [x] `google-chrome --headless=new --disable-gpu --virtual-time-budget=4000 --dump-dom http://127.0.0.1:<puerto>/index.html | grep -c 'id="v-sold"'` imprime `1` (sin clave la página sigue renderizando). · `dump_dom=1`
+
+Notas del agente:
+
+- La CSP de `index.html` tenía `connect-src 'none'`: se abrió solo a
+  `https://ptbzdepejxxlavqfyepw.supabase.co` y `http://127.0.0.1:54321`. Sin eso, todo `fetch` fallaba como
+  "sin conexión".
+- El aviso de conflicto va al banner `#storage-alert` (visible desde cualquier sección) y a la
+  línea de estado `#data-msg`; se limpia con el siguiente guardado remoto exitoso.
+- Debilidades encontradas en la autocrítica y arregladas: con clave, "Borrar todo" también reemplaza
+  el estado compartido y el diálogo ahora lo dice; `fetch` con timeout de 20 s para que un pedido
+  colgado no trabe la cola; el texto de la introducción ya no dice "datos solo en este navegador".
+- Anotada, no arreglada (es lo que pide la spec): si se cierra la pestaña con cambios sin subir,
+  al reabrir gana el remoto y esos cambios quedan en el respaldo anterior, restaurables.
+- El primer pedido a una función local recién arrancada tarda ~8 s (arranque en frío); el smoke
+  espera hasta 20 s. `CAPTURA=<ruta.png>` guarda la pantalla del conflicto.
+- `/security-review`: sin hallazgos altos ni medios.

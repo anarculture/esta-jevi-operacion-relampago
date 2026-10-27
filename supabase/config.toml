@@ -421,5 +421,20 @@ verify_jwt = false
 [functions.revisar]
 verify_jwt = false
 
+# Lectura de la captura al elegirla (issue #7): anónima, con límite por IP en reservar_lectura.
+[functions.lectura]
+verify_jwt = false
+
 [functions.admin]
+verify_jwt = false
+
+[functions.portero]
+verify_jwt = false
+
+# Plataforma del organizador: la llaman el navegador de Mau y los agentes con PM_CLAVE.
+[functions.pm]
+verify_jwt = false
+
+# Avisos por WhatsApp (issue #5): la llama vytas con PM_CLAVE.
+[functions.avisos]
 verify_jwt = false

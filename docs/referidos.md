@@ -1,5 +1,8 @@
 # Referidos — escenarios de recompensa
 
+> **Pospuesto (27-oct-2026):** Mau decidió no ofrecer alicientes para esta fiesta. Este borrador
+> queda como referencia si se retoma después del evento.
+
 Borrador del 24-oct-2026. Los montos van en USD. Solo cuentan las entradas anticipadas
 ($10) aprobadas.
 

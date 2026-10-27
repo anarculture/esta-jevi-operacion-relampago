@@ -128,6 +128,7 @@ legend { padding: 0; margin-bottom: var(--s2); }
 
 /* ---------- Botones ---------- */
 .actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+#pm-form { align-items: end; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; min-height: var(--hit); padding: 0 var(--s3);
   border: 1px solid var(--green); border-radius: var(--r); background: var(--surface); color: var(--green);

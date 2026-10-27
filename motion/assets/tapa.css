@@ -1,0 +1,22 @@
+/* Lienzo de reel 9:16 transparente. La tapa (PNG 9:16 sin fondo) ocupa el cuadro entero; .pos la corre en vertical
+   para no tapar la cara del DJ en el congelado y .anim es la que se mueve. Una fila = la misma imagen recortada con
+   clip-path, para animar MISS / VENE / ZUE / LA (o DJ / BABATR) por separado. */
+html,
+body {
+  margin: 0;
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  background: transparent;
+}
+.pos,
+.anim,
+.anim img {
+  position: absolute;
+  inset: 0;
+}
+.anim img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}

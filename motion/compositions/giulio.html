@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- giulio · escena 3 · 1,6 s. Letras rubber hose de los años 30: la palabra salta desde abajo y aterriza aplastada
+     (squash and stretch), y después baila: se inclina a un lado y al otro y da saltitos al compás, como un cartoon
+     de los años 30. Corrido 20 % hacia abajo, debajo de la cara. -->
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="../assets/tapa.css" />
+    <script src="../assets/gsap.min.js"></script>
+  </head>
+  <body>
+    <div data-composition-id="giulio" data-start="0" data-duration="1.6" data-width="1080" data-height="1920">
+      <div class="pos clip" data-start="0" data-duration="1.6" style="transform: translateY(20%)">
+        <div class="anim" style="transform-origin: 50% 62%">
+          <img src="../assets/tapas/giulio.png" alt="GIULIO" />
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const raiz = document.querySelector('[data-composition-id="giulio"]');
+        const anim = raiz.querySelector(".anim");
+        const tl = gsap.timeline({ paused: true });
+        // salto: sube estirada, aterriza aplastada y recupera
+        tl.fromTo(anim, { y: 700, scaleX: 0.7, scaleY: 1.4, opacity: 0 }, { y: 0, scaleX: 1, scaleY: 1, opacity: 1, duration: 0.3, ease: "power2.out" }, 0)
+          .to(anim, { scaleX: 1.15, scaleY: 0.82, duration: 0.07, ease: "power1.out" }, 0.3)
+          .to(anim, { scaleX: 1, scaleY: 1, duration: 0.25, ease: "elastic.out(1, 0.4)" }, 0.37)
+          // baile: tres vaivenes de 0,18 s con un saltito en cada uno
+          .to(anim, { skewX: -8, duration: 0.09, ease: "sine.out" }, 0.55)
+          .to(anim, { skewX: 8, duration: 0.18, repeat: 3, yoyo: true, ease: "sine.inOut" }, 0.64)
+          .to(anim, { y: -26, duration: 0.09, repeat: 7, yoyo: true, ease: "power1.out" }, 0.55)
+          .to(anim, { opacity: 0, duration: 0.15, ease: "power2.in" }, 1.45);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["giulio"] = tl;
+      })();
+    </script>
+  </body>
+</html>

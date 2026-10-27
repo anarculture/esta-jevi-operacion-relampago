@@ -48,22 +48,54 @@
 
     <section class="card" id="reporte" hidden>
       <h2>3. Reporta tu pago</h2>
-      <label for="referencia" id="l-referencia">Número de referencia</label>
-      <input id="referencia" name="referencia" type="text" autocomplete="off" required>
-      <p class="campo-error" id="e-referencia" hidden></p>
       <label for="captura">Captura del comprobante</label>
       <input id="captura" name="captura" type="file" accept="image/jpeg,image/png,image/webp" required>
       <img id="preview" class="preview" alt="Vista previa de la captura elegida" hidden>
       <p class="campo-error" id="e-captura" hidden></p>
+      <p class="muted" id="leimos" aria-live="polite" hidden></p>
+      <div id="avisos-lectura"></div>
+      <label for="referencia" id="l-referencia">Número de referencia</label>
+      <input id="referencia" name="referencia" type="text" autocomplete="off" placeholder="La leemos de la captura; revisa que sea la de tu pago." required>
+      <p class="campo-error" id="e-referencia" hidden></p>
+      <!-- Desde dónde pagó: cambia con el método. Con estos datos Mau encuentra el pago en su banco. -->
+      <div id="pagador">
+        <div data-tipo="pago_movil" hidden>
+          <label for="pagador-banco">Banco desde el que pagaste</label>
+          <select id="pagador-banco">
+            <option value="">Elige tu banco</option>
+            <option>BNC</option><option>Mercantil</option><option>Banesco</option><option>Provincial</option>
+            <option>Venezuela</option><option>BFC</option><option>Bancamiga</option><option>Banplus</option><option>Otro</option>
+          </select>
+          <p class="campo-error" id="e-pagador-banco" hidden></p>
+          <label for="pagador-telefono">Teléfono con el que pagaste</label>
+          <input id="pagador-telefono" type="tel" autocomplete="off" placeholder="04141234567">
+          <p class="campo-error" id="e-pagador-telefono" hidden></p>
+          <label for="pagador-cedula">Cédula con la que pagaste</label>
+          <input id="pagador-cedula" type="text" inputmode="numeric" placeholder="V12345678">
+          <p class="campo-error" id="e-pagador-cedula" hidden></p>
+        </div>
+        <div data-tipo="zelle" hidden>
+          <label for="pagador-titular">Titular de la cuenta que envió el Zelle</label>
+          <input id="pagador-titular" type="text" autocomplete="off" placeholder="Como aparece en el banco">
+          <p class="campo-error" id="e-pagador-titular" hidden></p>
+        </div>
+        <div data-tipo="binance" hidden>
+          <label for="pagador-id">Tu Binance ID o nickname</label>
+          <input id="pagador-id" type="text" autocomplete="off">
+          <p class="campo-error" id="e-pagador-id" hidden></p>
+        </div>
+      </div>
       <label for="nombre">Nombre y apellido</label>
       <input id="nombre" name="nombre" type="text" autocomplete="name" required>
       <p class="campo-error" id="e-nombre" hidden></p>
+      <label class="check" id="l-mismo" hidden><input type="checkbox" id="mismo" name="mismo"> <span>Pagué yo: misma cédula y mismo teléfono que el pago móvil</span></label>
       <label for="cedula">Cédula</label>
       <input id="cedula" name="cedula" type="text" inputmode="numeric" placeholder="V12345678" required>
       <p class="campo-error" id="e-cedula" hidden></p>
-      <label for="telefono">Teléfono (WhatsApp)</label>
+      <label for="telefono">Tu WhatsApp</label>
       <input id="telefono" name="telefono" type="tel" autocomplete="tel" placeholder="04141234567" required>
       <p class="campo-error" id="e-telefono" hidden></p>
+      <div id="otros-wa"></div>
       <button class="full" id="enviar">Enviar comprobante</button>
       <div class="error" id="error" role="alert" hidden></div>
     </section>
@@ -75,11 +107,7 @@
 addEventListener("DOMContentLoaded", async () => {
   const $ = (id) => document.getElementById(id);
   const f = $("f");
-  const REF = {
-    pago_movil: ["Referencia del pago móvil", "Los números que muestra tu banco al confirmar"],
-    binance: ["Order ID de Binance Pay", "Está en el detalle del pago"],
-    zelle: ["Número de confirmación de Zelle", "Lo muestra tu banco al enviar"],
-  };
+  const REF = { pago_movil: "Referencia del pago móvil", binance: "Order ID de Binance Pay", zelle: "Número de confirmación de Zelle" };
   const DATOS = { banco: "Banco", telefono: "Teléfono", cedula: "Cédula", id: "Binance Pay ID", correo: "Correo Zelle", titular: "Titular" };
   const tipo = (m) => (m.startsWith("pago_movil") ? "pago_movil" : m);
 
@@ -105,11 +133,85 @@ addEventListener("DOMContentLoaded", async () => {
       }</small></span></label>`).join("")
     : `<p class="aviso">La venta aún no abre.</p>`;
 
+  // Lectura de la captura (issue #7): se sube y se lee al elegirla; la referencia leída se precarga.
+  let subida = { file: null, path: null }; // path: promesa de la subida; la misma captura no se sube dos veces
+  function subir(file) {
+    if (subida.file !== file) {
+      const path = subirCaptura(file);
+      subida = { file, path };
+      path.catch(() => { if (subida.path === path) subida = { file: null, path: null }; }); // un fallo no queda pegado: el envío reintenta
+    }
+    return subida.path;
+  }
+  let lectura = { estado: "", ocr: null }; // estado: "" | leyendo | ok | error
+  let precargada = ""; // la referencia que puso la lectura; si el comprador la cambió, no se pisa
+  let enviada = false; // tras registrar la orden, una lectura tardía ya no toca el formulario ni el borrador
+  let leyendo = null; // promesa de la lectura en curso: el envío la espera para que `revisar` no pague otro OCR
+  const DOC = { pago_movil: "pago móvil", zelle: "Zelle", binance: "Binance" };
+  const numero = (s) => (s && Number.isFinite(Number(s)) ? Number(s) : null);
+  const montoLeido = (o) => (numero(o.amount) === null ? ""
+    : o.documentType === "pago_movil" ? bs(numero(o.amount))
+    : o.documentType === "binance" ? `${numero(o.amount)} USDT` : `$${numero(o.amount).toFixed(2)}`);
+  // Línea "Leímos: …" y avisos que no bloquean (el dictamen decide). Misma tolerancia que dictamen.ts.
+  function pintarLectura() {
+    const o = lectura.ocr;
+    const util = o && o.documentType !== "other" && (o.reference || numero(o.amount) !== null);
+    $("leimos").hidden = !lectura.estado;
+    // Mientras se lee: la vista previa late y una línea verde la recorre (t.css .leyendo).
+    for (const id of ["preview", "leimos"]) $(id).classList.toggle("leyendo", lectura.estado === "leyendo");
+    const linea = lectura.estado === "leyendo" ? "Leyendo el comprobante"
+      : util ? `Leímos: ${[montoLeido(o), o.reference && `ref ${o.reference}`,
+          [fechaCorta(o.transactionDate), o.transactionTime].filter(Boolean).join(" ")].filter(Boolean).join(" · ")}`
+      : "No pudimos leer la captura; escribe la referencia";
+    // Solo si cambia: la línea y los avisos se anuncian (aria-live) y pintar corre en cada tecla.
+    if ($("leimos").textContent !== linea) $("leimos").textContent = linea;
+    const avisos = [];
+    const metodo = f.metodo?.value, cant = cantidad();
+    if (util && metodo && lectura.estado === "ok") {
+      const pm = tipo(metodo) === "pago_movil";
+      const esperado = pm ? Math.round(cant * venta.precio_pm_eur_cents * venta.tasa_eur) / 100 : cant * venta.precio_usd_cents / 100;
+      if (o.documentType !== tipo(metodo)) {
+        avisos.push(`El comprobante parece de ${Object.hasOwn(DOC, o.documentType) ? DOC[o.documentType] : "otro método"} y elegiste ${venta.metodos[metodo]?.nombre ?? metodo}`);
+      } else if (cant && numero(o.amount) !== null && Math.abs(numero(o.amount) - esperado) > (pm ? 1 : 0.01)) {
+        avisos.push(`El monto leído (${montoLeido(o)}) no es el de la orden (${pm ? bs(esperado) : usd(cant * venta.precio_usd_cents)})`);
+      }
+    }
+    const html = avisos.map((t) => `<p class="aviso" role="status">${esc(t)}</p>`).join("");
+    if ($("avisos-lectura").innerHTML !== html) $("avisos-lectura").innerHTML = html;
+  }
+
   // El formulario sobrevive a que el navegador recargue la pestaña al volver de la app del banco.
-  const CAMPOS = ["cantidad", "metodo", "referencia", "nombre", "cedula", "telefono"];
+  const CAMPOS = ["cantidad", "metodo", "referencia", "nombre", "cedula", "telefono",
+    "pagador-banco", "pagador-telefono", "pagador-cedula", "pagador-titular", "pagador-id"];
   const borrador = leer("ticketera-borrador") ?? {};
   for (const c of CAMPOS) if (borrador[c] && f[c]) f[c].value = borrador[c];
-  f.addEventListener("input", () => guardar("ticketera-borrador", Object.fromEntries(CAMPOS.map((c) => [c, f[c]?.value ?? ""]))));
+  $("mismo").checked = Boolean(borrador.mismo);
+  precargada = borrador.precargada ?? "";
+  // Un WhatsApp por entrada: el 1 es "Tu WhatsApp" (#telefono); los demás se generan según la cantidad.
+  const otros = $("otros-wa");
+  const whatsapps = () => [f.telefono.value, ...[...otros.querySelectorAll("input")].map((i) => i.value)];
+  function camposWa(valores = []) {
+    const n = cantidad() ?? otros.children.length + 1; // cantidad inválida: se dejan los campos como están
+    while (otros.children.length > n - 1) otros.lastElementChild.remove();
+    for (let k = otros.children.length + 2; k <= n; k++) {
+      otros.insertAdjacentHTML("beforeend", `<div>
+        <label for="wa-${k}">WhatsApp de la entrada ${k}</label>
+        <input id="wa-${k}" type="tel" autocomplete="off" placeholder="04141234567" aria-describedby="ayuda-wa-${k}">
+        <p class="muted" id="ayuda-wa-${k}">Le llegará su QR por WhatsApp.</p>
+        <p class="campo-error" id="e-wa-${k}" hidden></p></div>`);
+      $(`wa-${k}`).value = valores[k - 1] ?? "";
+    }
+  }
+  camposWa(borrador.whatsapps);
+  f.addEventListener("input", () => guardar("ticketera-borrador", { ...Object.fromEntries(CAMPOS.map((c) => [c, f[c]?.value ?? ""])), whatsapps: whatsapps(), precargada, mismo: $("mismo").checked }));
+  // "Pagué yo": la cédula y el WhatsApp del comprador se copian de los del pago móvil mientras esté marcado.
+  function copiarPagador() {
+    if (!$("mismo").checked || $("l-mismo").hidden) return;
+    f.cedula.value = valor("pagador-cedula"); f.telefono.value = valor("pagador-telefono");
+    campoError("cedula", ""); campoError("telefono", "");
+  }
+  $("mismo").addEventListener("change", copiarPagador);
+  for (const id of ["pagador-cedula", "pagador-telefono"]) $(id).addEventListener("input", copiarPagador);
 
   function campoError(id, msg) {
     const p = $(`e-${id}`), i = $(id);
@@ -128,6 +230,11 @@ addEventListener("DOMContentLoaded", async () => {
   function pintar() {
     const metodo = f.metodo?.value;
     const cant = cantidad();
+    camposWa();
+    for (const g of document.querySelectorAll("#pagador [data-tipo]")) g.hidden = !metodo || g.dataset.tipo !== tipo(metodo);
+    $("l-mismo").hidden = !metodo || tipo(metodo) !== "pago_movil";
+    copiarPagador();
+    pintarLectura();
     $("precio").textContent = metodo && tipo(metodo) === "pago_movil" ? eur(venta.precio_pm_eur_cents) : usd(venta.precio_usd_cents);
     if (!metodo || !cant) return;
     const m = venta.metodos[metodo];
@@ -143,9 +250,7 @@ addEventListener("DOMContentLoaded", async () => {
     }
     $("destino").innerHTML = Object.entries(DATOS).filter(([k]) => m[k])
       .map(([k, t]) => `<dt>${t}</dt><dd>${esc(m[k])}${k === "titular" ? "" : ` <button type="button" class="sec copiar" data-copiar="${esc(m[k])}">Copiar</button>`}</dd>`).join("");
-    const [label, hint] = REF[tipo(metodo)] ?? REF.pago_movil;
-    $("l-referencia").textContent = label;
-    $("referencia").placeholder = hint;
+    $("l-referencia").textContent = REF[tipo(metodo)] ?? REF.pago_movil;
     $("pago").hidden = false;
   }
   f.addEventListener("input", pintar);
@@ -163,32 +268,66 @@ addEventListener("DOMContentLoaded", async () => {
   });
 
   let urlPreview;
-  $("captura").addEventListener("change", () => {
+  $("captura").addEventListener("change", async () => {
     const file = $("captura").files[0];
     if (urlPreview) URL.revokeObjectURL(urlPreview);
     $("preview").hidden = !file;
     campoError("captura", "");
+    const precargar = (id, v) => { $(id).value = v; $(id).dispatchEvent(new Event("input", { bubbles: true })); };
+    // La referencia que puso la captura anterior no es la de esta.
+    if (precargada && valor("referencia") === precargada) precargar("referencia", (precargada = ""));
+    lectura = { estado: file ? "leyendo" : "", ocr: null };
+    pintarLectura();
     if (!file) return;
     urlPreview = URL.createObjectURL(file);
     $("preview").src = urlPreview;
-  });
 
-  // Mismas reglas que crear_orden en SQL, para no subir la captura y recién ahí fallar.
+    let path;
+    try { path = await subir(file); } catch (e) {
+      // La subida falló (tipo, tamaño, red): ese es el error que importa; el envío reintenta la subida.
+      if ($("captura").files[0] === file) { campoError("captura", e.message); lectura = { estado: "", ocr: null }; pintarLectura(); }
+      return;
+    }
+    leyendo = funcion("lectura", { path }).then((r) => r.ocr, () => null); // sin lectura: se teclea como antes
+    const ocr = await leyendo;
+    if (enviada || $("captura").files[0] !== file) return; // ya se envió, o eligió otra captura mientras tanto
+    lectura = { estado: ocr ? "ok" : "error", ocr };
+    // Precarga sin pisar: solo si el campo está vacío o tiene lo que puso la lectura anterior.
+    // Lo leído lo escribe quien sube la imagen: se recorta, y solo va como valor del campo.
+    if (ocr?.reference && (!valor("referencia") || valor("referencia") === precargada)) precargar("referencia", (precargada = String(ocr.reference).slice(0, 80)));
+    if (ocr?.senderName && f.metodo?.value && tipo(f.metodo.value) === "zelle" && !valor("nombre")) precargar("nombre", String(ocr.senderName).slice(0, 80));
+    pintarLectura();
+  });
+  const valor = (id) => $(id).value.trim();
+  // Lo que va en p_pagador: solo las claves del método elegido; crear_orden normaliza.
+  const pagador = (m) => ({
+    pago_movil: { banco: valor("pagador-banco"), telefono: valor("pagador-telefono"), cedula: valor("pagador-cedula") },
+    zelle: { titular: valor("pagador-titular") },
+    binance: { id: valor("pagador-id") },
+  })[tipo(m)];
+
+  // Mismas reglas que crear_orden en SQL, para no registrar y recién ahí fallar.
   function validar() {
     const errores = [];
     const chk = (id, ok, msg) => { campoError(id, ok ? "" : msg); if (!ok) errores.push(id); };
-    chk("referencia", f.referencia.value.replace(/[^A-Za-z0-9]/g, "").replace(/^0+/, "").length >= 4, ERRORES.referencia_invalida);
+    chk("referencia", f.referencia.value.replace(/[^A-Za-z0-9]/g, "").replace(/^0+/, "").length >= 6, ERRORES.referencia_invalida);
     chk("captura", Boolean(f.captura.files[0]), "Falta la captura del comprobante.");
+    const t = f.metodo?.value ? tipo(f.metodo.value) : null;
+    const largo = (id) => [...valor(id)].length >= 2 && [...valor(id)].length <= 80; // caracteres, como length() en SQL
+    if (t === "pago_movil") {
+      chk("pagador-banco", largo("pagador-banco"), "Elige el banco desde el que pagaste.");
+      chk("pagador-telefono", /^58\d{10}$/.test(normalizarWhatsapp(valor("pagador-telefono")) ?? ""), "Revisa el teléfono con el que pagaste: 11 dígitos, por ejemplo 04141234567.");
+      chk("pagador-cedula", /^[VE]?\d{5,9}$/.test(valor("pagador-cedula").toUpperCase().replace(/[^VE0-9]/g, "")), ERRORES.cedula_invalida);
+    } else if (t === "zelle") chk("pagador-titular", largo("pagador-titular"), "Escribe el nombre del titular de la cuenta que envió el Zelle.");
+    else if (t) chk("pagador-id", largo("pagador-id"), "Escribe tu Binance ID o nickname.");
     chk("nombre", f.nombre.value.trim().length >= 2 && f.nombre.value.trim().length <= 80, ERRORES.nombre_invalido);
     chk("cedula", /^[VE]?\d{5,9}$/.test(f.cedula.value.toUpperCase().replace(/[^VE0-9]/g, "")), ERRORES.cedula_invalida);
-    const tel = f.telefono.value.replace(/\D/g, "").length;
-    chk("telefono", tel >= 10 && tel <= 13, ERRORES.telefono_invalido);
+    whatsapps().forEach((v, i) => chk(i ? `wa-${i + 1}` : "telefono", Boolean(normalizarWhatsapp(v)), ERRORES.whatsapp_invalido));
     if (!f.metodo?.value) errores.push("metodos");
     if (!cantidad()) errores.push("cantidad");
     return errores;
   }
 
-  let subida = { file: null, path: null }; // la captura ya subida se reutiliza si el registro falla
   f.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     $("error").hidden = true;
@@ -203,18 +342,22 @@ addEventListener("DOMContentLoaded", async () => {
     boton.disabled = true;
     try {
       const file = f.captura.files[0];
-      if (subida.file !== file) {
-        boton.textContent = "Subiendo captura…";
-        subida = { file, path: await subirCaptura(file) };
+      if (subida.file !== file) boton.textContent = "Subiendo captura…";
+      const path = await subir(file);
+      if (lectura.estado === "leyendo" && leyendo) {
+        boton.textContent = "Leyendo la captura…";
+        await Promise.race([leyendo, new Promise((r) => setTimeout(r, 20000))]); // shortcut: a los 20 s sigue; `revisar` leerá de nuevo
       }
       boton.textContent = "Registrando…";
       const o = await rpc("crear_orden", {
         p_nombre: f.nombre.value, p_cedula: f.cedula.value, p_telefono: f.telefono.value,
         p_cantidad: cantidad(), p_metodo: f.metodo.value,
-        p_referencia: f.referencia.value, p_captura: subida.path,
+        p_referencia: f.referencia.value, p_captura: path,
+        p_whatsapps: whatsapps().map(normalizarWhatsapp), p_pagador: pagador(f.metodo.value),
       });
       funcion("revisar", { token: o.token }).catch(() => {}); // el dictamen no bloquea al comprador
-      guardar("ticketera-orden", { token: o.token, numero: o.numero });
+      guardar("ticketera-orden", { token: o.token, numero: o.numero, telefono: normalizarWhatsapp(f.telefono.value) });
+      enviada = true;
       try { localStorage.removeItem("ticketera-borrador"); } catch {}
       location.href = `orden.html?t=${o.token}`;
     } catch (e) {

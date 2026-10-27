@@ -1,11 +1,11 @@
 # BUILD: plataforma del organizador compartida (Mau, Claude Code, vytas)
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 01
-- Último verde: — · commit — · —
-- Gates: build ⬜ · test ⬜ · smoke ⬜
-- Bloqueado: —
-- Rama de trabajo: — (la anota el setup)
+- Ticket actual: — (verificación independiente del Done global)
+- Último verde: 04 `4f23c81` (4/5 AC) · 01 `fad50f4`, 02 `fb1ecb8`, 03 `c8a5b70`, arreglo de textos `81d9a73`, arreglo de la pestaña tras olvidar la clave `d5ac597` · 2026-10-27
+- Gates: build ✅ · test ✅ · smoke ✅
+- Bloqueado: — · Excepción: AC3 del 04 (v3 de recuperación con autor `claude`), decide Mau
+- Rama de trabajo: `pm-compartida` (worktree en `.claude/worktrees/pm-compartida`, creado a mano con git: la herramienta del harness no se permite desde un subagente con cwd fijo)
 
 Spec: https://github.com/anarculture/sindicato-baba/issues/2 (léela completa antes del ticket 01:
 `gh issue view 2 --repo anarculture/sindicato-baba`). Tickets en `.scratch/pm-compartida/issues/`.
@@ -27,7 +27,7 @@ Spec: https://github.com/anarculture/sindicato-baba/issues/2 (léela completa an
    `supabase functions serve --env-file supabase/functions/.env`. Si el log muestra error de
    arranque, arréglalo antes de seguir.
 5. Herramientas que ya están en la máquina y bastan: `node` (trae `fetch` y `WebSocket`),
-   `deno`, `google-chrome`, `supabase` CLI, `gh`, `zenity`, `ssh aios-vm`. No instales deps nuevas.
+   `deno`, `google-chrome`, `supabase` CLI, `gh`, `zenity`, `ssh` a la VM. No instales deps nuevas.
 
 ## Tu rol
 
@@ -56,10 +56,10 @@ congeladas (no las reabras):
 
 ## Tickets
 
-- [ ] 01 · Edge Function `pm` con su tabla y contrato HTTP · Bloqueado por: — · → .scratch/pm-compartida/issues/01-edge-function-pm.md
-- [ ] 02 · El navegador sincroniza con `pm` · Bloqueado por: 01 · → .scratch/pm-compartida/issues/02-navegador-sincroniza.md
-- [ ] 03 · Producción y acceso de Claude · Bloqueado por: 01, 02 · → .scratch/pm-compartida/issues/03-produccion-y-claude.md
-- [ ] 04 · vytas usa la plataforma · Bloqueado por: 03 · → .scratch/pm-compartida/issues/04-vytas.md
+- [x] 01 · Edge Function `pm` con su tabla y contrato HTTP · Bloqueado por: — · → .scratch/pm-compartida/issues/01-edge-function-pm.md · evidencia: `OK pm: 8 casos del contrato y la carrera de guardados`, `supabase/functions/pm/index.ts:24` (401), smoke `401`
+- [x] 02 · El navegador sincroniza con `pm` · Bloqueado por: 01 · → .scratch/pm-compartida/issues/02-navegador-sincroniza.md · evidencia: `OK pm-navegador: 6 casos`, `index.html:6` (connect-src), `dump_dom=1`
+- [x] 03 · Producción y acceso de Claude · Bloqueado por: 01, 02 · → .scratch/pm-compartida/issues/03-produccion-y-claude.md · evidencia: `('20261026120000', '20261026120000')`, `secrets_PM_CLAVE=1`, `leer` prod `http=200` / mala `401`, `pages_pm_app_js=1`
+- [ ] 04 · vytas usa la plataforma · Bloqueado por: 03 · → .scratch/pm-compartida/issues/04-vytas.md · 4/5 AC: AC1 `200`, AC2 1 archivo, AC4 PASS, AC5 `0`; **AC3 FAIL** (v3 de recuperación con autor `claude`; ver ticket)
 
 ## Gates
 
@@ -154,7 +154,7 @@ Todos `[x]`, build + test verdes, `functions serve` arranca, smoke pasa. Al cerr
 
 - Las claves (`PM_CLAVE`, `ADMIN_CLAVE`, service role) nunca en el repo, en commits, en logs ni
   en el chat. La de producción vive solo en el secreto de Supabase, `~/.config/sindicato-baba/pm_clave`
-  (600), `~developer/.hermes/.env` y el diálogo zenity a Mau.
+  (600), el home de vytas y el diálogo zenity a Mau.
 - Las migraciones existentes no se editan; todo cambio de esquema va en una migración nueva.
 - RLS activado en toda tabla nueva; `anon` no lee ni escribe el estado de la plataforma.
 - `ordenes`, `entradas`, `config` y las funciones `admin`, `revisar` y `tasa` no se tocan.

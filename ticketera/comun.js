@@ -5,7 +5,7 @@ const API = LOCAL ? "http://127.0.0.1:54321" : "https://ptbzdepejxxlavqfyepw.sup
 const KEY = LOCAL ? "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH" : "sb_publishable_iN1zfxf9SYEg42123alZHQ_4c3UYh_D";
 
 // Datos de la fiesta y contacto humano (WhatsApp del organizador). Un solo lugar para las tres páginas.
-const FIESTA = { nombre: "Sindicato Baba", dj: "DJ BABATR", fecha: "jueves 29 de octubre", hora: "21:00", lugar: "CC Chacaíto" };
+const FIESTA = { nombre: "Sindicato Baba", dj: "DJ BABATR", fecha: "jueves 29 de octubre", hora: "21:00", lugar: "CC Chacaíto", mapa: "https://maps.app.goo.gl/D9tyCVLa8ppZVfDE6" };
 const CONTACTO_WA = "584145287337";
 const waContacto = (texto) => `https://wa.me/${CONTACTO_WA}?text=${encodeURIComponent(texto)}`;
 
@@ -15,9 +15,11 @@ const ERRORES = {
   nombre_invalido: "Escribe tu nombre y apellido.",
   cedula_invalida: "Revisa la cédula: solo números, con V o E delante si quieres.",
   telefono_invalido: "Revisa el teléfono: 11 dígitos, por ejemplo 04141234567.",
+  whatsapp_invalido: "Revisa el WhatsApp: 11 dígitos como 04141234567, o con código de país si es de fuera (+1…).",
   metodo_invalido: "Elige un método de pago.",
-  referencia_invalida: "La referencia debe tener al menos 4 caracteres.",
+  referencia_invalida: "Escribe al menos los últimos 6 caracteres de la referencia.",
   captura_invalida: "Sube la captura como JPG, PNG o WEBP.",
+  pagador_invalido: "Revisa los datos de la cuenta desde la que pagaste.",
   sin_conexion: "Sin conexión. Revisa tu señal y vuelve a intentar.",
 };
 
@@ -34,7 +36,7 @@ async function pedir(url, opts) {
   if (!r.ok) {
     const code = d?.message ?? d?.error ?? `HTTP ${r.status}`;
     // Lo no mapeado es un fallo nuestro, no del comprador: se le da una salida humana.
-    throw new Error(ERRORES[code] ?? `Algo falló de nuestro lado (${code}). Escríbenos por WhatsApp y lo resolvemos.`);
+    throw Object.assign(new Error(ERRORES[code] ?? `Algo falló de nuestro lado (${code}). Escríbenos por WhatsApp y lo resolvemos.`), { status: r.status });
   }
   return d;
 }
@@ -62,6 +64,20 @@ const bs = (n) => `Bs ${Number(n).toLocaleString("es-VE", { minimumFractionDigit
 const bsPlano = (n) => Number(n).toFixed(2).replace(".", ",");
 const fechaCorta = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : "");
 const fechaHora = (iso) => new Date(iso).toLocaleString("es-VE", { timeZone: "America/Caracas", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const horaCorta = (iso) => new Date(iso).toLocaleTimeString("es-VE", { timeZone: "America/Caracas", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+// Misma regla que normalizar_whatsapp en SQL: venezolano (04141234567, 4141234567, +58 0414…) → 58…;
+// con código de país, 10 a 15 dígitos tal cual.
+function normalizarWhatsapp(s) {
+  const d = String(s ?? "").replace(/\D/g, "");
+  if (/^0\d{10}$/.test(d)) return `58${d.slice(1)}`;
+  if (/^580\d{10}$/.test(d)) return `58${d.slice(3)}`;
+  if (/^[24]\d{9}$/.test(d)) return `58${d}`;
+  return /^[1-9]\d{9,14}$/.test(d) ? d : null;
+}
+// "Para el ···1234 · pendiente de envío" / "Enviada al ···1234 a las 21:03"; nada si la entrada no tiene WhatsApp.
+const estadoEnvio = (x) => (!x?.whatsapp_mascara ? ""
+  : x.avisada_en ? `Enviada al ···${x.whatsapp_mascara} a las ${horaCorta(x.avisada_en)}`
+  : `Para el ···${x.whatsapp_mascara} · pendiente de envío`);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 // Botón "Copiar" con feedback dentro del mismo botón; `data-copiar` lleva el valor plano.

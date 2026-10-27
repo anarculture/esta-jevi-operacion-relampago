@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- DJ BABATR · escena 6A · 1,6 s. BABATR sube de un golpe desde abajo, grande y torcido, y se clava con rebote (back);
+     DJ cae desde arriba 160 ms después y el cuadro tiembla con el impacto. Al 88 % y 14 % abajo, sobre el pecho. -->
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="../assets/tapa.css" />
+    <script src="../assets/gsap.min.js"></script>
+  </head>
+  <body>
+    <div data-composition-id="dj-babatr" data-start="0" data-duration="1.6" data-width="1080" data-height="1920">
+      <div class="pos clip" data-start="0" data-duration="1.6" style="transform: translateY(14%) scale(0.88)">
+        <div class="anim">
+          <img class="dj" src="../assets/tapas/dj-babatr.png" alt="DJ" style="clip-path: inset(0 0 59.5% 0); transform-origin: 50% 32%" />
+          <img class="babatr" src="../assets/tapas/dj-babatr.png" alt="BABATR" style="clip-path: inset(40.5% 0 0 0); transform-origin: 50% 56%" />
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const raiz = document.querySelector('[data-composition-id="dj-babatr"]');
+        const anim = raiz.querySelector(".anim");
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo(raiz.querySelector(".babatr"), { y: 900, scale: 1.5, rotation: 8, opacity: 0 }, { y: 0, scale: 1, rotation: 0, opacity: 1, duration: 0.38, ease: "back.out(1.6)" }, 0)
+          .fromTo(raiz.querySelector(".dj"), { y: -700, rotation: -12, opacity: 0 }, { y: 0, rotation: 0, opacity: 1, duration: 0.32, ease: "back.out(2)" }, 0.16);
+        // temblor del impacto: cinco golpes que se apagan
+        [[-14, 8], [12, -6], [-8, 4], [5, -2], [0, 0]].forEach(([x, y], i) => tl.to(anim, { x, y, duration: 0.04, ease: "none" }, 0.36 + i * 0.04));
+        tl.to(anim, { opacity: 0, scale: 1.04, duration: 0.15, ease: "power2.in" }, 1.45);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["dj-babatr"] = tl;
+      })();
+    </script>
+  </body>
+</html>

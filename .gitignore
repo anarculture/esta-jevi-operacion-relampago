@@ -1,0 +1,9 @@
+ticketera/tests/evidencia/
+# material de diseño y datos de compradores: fuera del repo
+/elements/
+/FLYER FINAL BABA.png
+/entradas-manuales/
+/pruebas-e2e/*.png
+# estado de herramientas
+.impeccable/critique/
+.impeccable/live/

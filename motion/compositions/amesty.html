@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- amesty · escena 5 · 1,6 s. Onomatopeya de manga: el pincel la pinta de izquierda a derecha en 0,22 s (recorte que
+     se abre), inclinada y grande, se endereza de golpe y el cuadro tiembla con el impacto. Corrido 18 % hacia abajo. -->
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="../assets/tapa.css" />
+    <script src="../assets/gsap.min.js"></script>
+  </head>
+  <body>
+    <div data-composition-id="amesty" data-start="0" data-duration="1.6" data-width="1080" data-height="1920">
+      <div class="pos clip" data-start="0" data-duration="1.6" style="transform: translateY(18%)">
+        <div class="anim">
+          <img src="../assets/tapas/amesty.png" alt="amesty" />
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const raiz = document.querySelector('[data-composition-id="amesty"]');
+        const anim = raiz.querySelector(".anim");
+        const img = anim.querySelector("img");
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo(img, { clipPath: "inset(0% 100% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 0.22, ease: "power4.out" }, 0)
+          .fromTo(anim, { skewX: -14, scale: 1.25 }, { skewX: 0, scale: 1, duration: 0.3, ease: "back.out(2.2)" }, 0.06);
+        // impacto: cuatro golpes que se apagan
+        [[-12, 6], [10, -5], [-5, 3], [0, 0]].forEach(([x, y], i) => tl.to(anim, { x, y, duration: 0.04, ease: "none" }, 0.3 + i * 0.04));
+        tl.to(anim, { opacity: 0, duration: 0.15, ease: "power2.in" }, 1.45);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["amesty"] = tl;
+      })();
+    </script>
+  </body>
+</html>

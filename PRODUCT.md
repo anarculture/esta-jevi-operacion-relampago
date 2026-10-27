@@ -10,9 +10,17 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
 
 - **Ticketera** (`ticketera/`): venta de entradas sin pasarela. El comprador paga por transferencia
   a la cuenta personal del organizador, sube la captura, y recibe entradas con QR cuando el
-  organizador concilia a mano contra su banco, con un dictamen de IA como apoyo.
-- **Plataforma de PM** (`index.html`): presupuesto, caja, tareas y operación del evento, local al
-  navegador del organizador.
+  organizador concilia a mano contra su banco, con un dictamen de IA como apoyo. Cada entrada lleva
+  su propio WhatsApp (el primero es el del comprador) y vytas avisa a cada dueño desde su número
+  cuando la orden se aprueba (Edge Function `avisos`, clave `PM_CLAVE`; reintento en el panel admin).
+  Al elegir la captura, el formulario la sube y la lee con IA (Edge Function `lectura`) para precargar
+  la referencia; al registrar la orden, `revisar` reutiliza esa lectura en vez de pagarla de nuevo.
+- **Plataforma de PM** (`index.html`, publicada en `pm/`): presupuesto, caja, tareas y operación del
+  evento. Su estado vive en Supabase detrás de la Edge Function `pm` (clave `PM_CLAVE`); Claude Code y
+  vytas lo leen y actualizan por HTTP. Sin clave, el navegador guarda solo en local.
+  "Ventas y patrocinios" lee las ventas de la ticketera (bloque `ticketera` del `leer` de `pm`, con
+  "Actualizar" y la última lectura en local) y las suma a lo que se anota a mano fuera de ella;
+  la caja real usa el total. Sin conexión ni lectura previa, la caja usa solo lo manual.
 
 ## Users
 
@@ -20,8 +28,9 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
   o WhatsApp. Paga a un desconocido y necesita confianza y una salida humana.
 - **Organizador (Mau)**: una sola persona, en su teléfono, concilia pagos entre otras tareas y
   avisa por WhatsApp.
-- **Portero** *(pendiente)*: valida QR en la puerta, a veces sin señal.
-- **Vendedor / referido** *(pendiente)*: vende con enlace propio y gana consumo.
+- **Portero**: valida QR en la puerta con `portero.html` y clave propia, también sin señal (lista
+  descargada, cola local y reenvío); deshacer en 5 min; la lista no muestra datos personales.
+- **Vendedor / referido** *(fuera por ahora, 27-oct)*: sin alicientes ni recompensas para esta fiesta.
 
 ## Platform
 
@@ -32,10 +41,28 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
 
 - Métodos de pago: pago móvil (Bs, se cobra €10 a tasa BCV del euro), Zelle y Binance ($10).
   En puerta $15. Todo cae a cuentas personales del organizador; nada se verifica contra API bancaria.
-- Nada se aprueba solo: el dictamen de IA orienta, Mau decide.
+- La referencia tiene al menos 6 caracteres y su terminación de 6 (`ordenes.sufijo`) es única por método:
+  una misma captura no se vuelve dos órdenes tipeando un dígito de más. Si la terminación que lee la IA
+  ya está en otra orden del mismo método, el dictamen es `no_coincide`.
+- Cada orden guarda desde dónde pagó el comprador (`ordenes.pagador`): banco, teléfono y cédula en pago
+  móvil, titular en Zelle, ID en Binance. Son las llaves para buscar el pago en la app del banco; solo
+  las ve el panel admin (ni la orden pública, ni la entrada, ni el portero, ni los avisos). Que no
+  coincidan con lo que lee la IA del emisor es una duda, nunca un rechazo. No verifica nada contra el banco.
+- La lectura previa (`lecturas`, por path de la captura) trae datos del pagador de gente que quizá no
+  compre: tope de 10 lecturas por IP y 200 en total por hora, se borra al día, y el comprador solo ve
+  monto, referencia, fecha, hora y nombre del emisor (no los datos del destino ni las señales de edición).
+- Solo un dictamen `coincide` aprueba sin Mau (interruptor `config.auto_aprobar`, activo por defecto).
+  `dudoso` y `no_coincide` esperan en el panel: ahí el dictamen orienta y Mau decide.
+- Los avisos salen del número de vytas, nunca del de Mau. El texto lo arma el servidor y lleva el enlace
+  a la entrada, no una imagen, y cierra con «¿Problemas? Responde a este mensaje.»: las dudas se resuelven
+  en el mismo chat, no en un enlace al WhatsApp del organizador. Las entradas anteriores al cambio quedaron como ya avisadas.
+- Quien responde al aviso lo atiende vytas con un recepcionista sin IA (reglas fijas): le reenvía sus
+  entradas (el mismo texto del aviso, vía la acción `consultar` de la función `avisos`, solo lectura, con la clave de la PM,
+  que busca por número las órdenes y entradas aprobadas atadas a él). Los demás casos pasan
+  a miss v. Las órdenes de prueba se borran con `supabase/manual/borrar-prueba-recepcion.sql`.
 - El comprobante que vale es el que emite la plataforma (QR firmado por token); la captura del
   comprador es evidencia.
-- Contacto humano: WhatsApp del organizador, visible en compra, orden y rechazo.
+- Contacto humano: WhatsApp del organizador, visible en compra, orden y rechazo; tras el aviso, el mismo chat de vytas.
 - Idioma: español de Venezuela (cédula, pago móvil, referencia, tasa BCV).
 
 ## Brand commitments
@@ -53,6 +80,6 @@ lector de pantalla, nada transmitido solo por color. El QR se mantiene negro sob
 
 ## Open decisions
 
-- Check-in del portero y tarifa de puerta (historias 7 y 11 de `docs/user-stories.md`).
-- Referidos y vendedores (8 a 11c): % y forma de pago sin decidir.
+- Tarifa de puerta (historia 11 de `docs/user-stories.md`); el check-in (7) ya está hecho.
+- ~~Referidos y vendedores (8 a 11c)~~: decidido el 27-oct, sin alicientes por ahora (`docs/referidos.md` queda como borrador).
 - Si la plataforma de PM adopta la misma identidad visual o se queda sobria *(inferido: se queda)*.

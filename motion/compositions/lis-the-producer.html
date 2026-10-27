@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- lis the producer · escena 4 · 1,6 s. Power-up de arcade: cada fila (LIS / THE / PRODUCER) aparece a saltos de
+     escala, sin interpolar (steps), escalonada 90 ms; parpadea dos veces como "insert coin" y rebota a saltos. -->
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="../assets/tapa.css" />
+    <script src="../assets/gsap.min.js"></script>
+  </head>
+  <body>
+    <div data-composition-id="lis-the-producer" data-start="0" data-duration="1.6" data-width="1080" data-height="1920">
+      <div class="pos clip" data-start="0" data-duration="1.6">
+        <div class="anim">
+          <img class="fila" src="../assets/tapas/lis-the-producer.png" alt="LIS" style="clip-path: inset(0 0 59% 0); transform-origin: 50% 32%" />
+          <img class="fila" src="../assets/tapas/lis-the-producer.png" alt="THE" style="clip-path: inset(41% 0 45.5% 0); transform-origin: 50% 47.7%" />
+          <img class="fila" src="../assets/tapas/lis-the-producer.png" alt="PRODUCER" style="clip-path: inset(54.5% 0 0 0); transform-origin: 50% 64%" />
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const raiz = document.querySelector('[data-composition-id="lis-the-producer"]');
+        const filas = raiz.querySelectorAll(".fila");
+        const anim = raiz.querySelector(".anim");
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo(filas, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.24, ease: "steps(4)", stagger: 0.09 }, 0)
+          .to(anim, { opacity: 0, duration: 0.05, repeat: 3, yoyo: true, ease: "steps(1)" }, 0.5)
+          .to(anim, { y: -14, duration: 0.3, repeat: 1, yoyo: true, ease: "steps(2)" }, 0.75)
+          .to(anim, { opacity: 0, duration: 0.15, ease: "steps(3)" }, 1.45);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["lis-the-producer"] = tl;
+      })();
+    </script>
+  </body>
+</html>

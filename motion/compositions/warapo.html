@@ -1,0 +1,33 @@
+<!doctype html>
+<!-- warapo · escena 2 · 1,6 s. El nombre sube desde abajo como una llamarada: estirado en alto, borroso y quemado de
+     brillo, se asienta en 0,5 s y después titila como fuego. Corrido 14 % hacia arriba para no tapar a warapo. -->
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="../assets/tapa.css" />
+    <script src="../assets/gsap.min.js"></script>
+  </head>
+  <body>
+    <div data-composition-id="warapo" data-start="0" data-duration="1.6" data-width="1080" data-height="1920">
+      <div class="pos clip" data-start="0" data-duration="1.6" style="transform: translateY(-14%)">
+        <div class="anim" style="transform-origin: 50% 72%">
+          <img src="../assets/tapas/warapo.png" alt="WARAPO" />
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const raiz = document.querySelector('[data-composition-id="warapo"]');
+        const anim = raiz.querySelector(".anim");
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo(anim, { y: 300, scaleY: 1.4, opacity: 0, filter: "blur(16px) brightness(2.2)" }, { y: 0, scaleY: 1, opacity: 1, filter: "blur(0px) brightness(1)", duration: 0.5, ease: "power3.out" }, 0)
+          .to(anim, { filter: "blur(0px) brightness(1.25)", duration: 0.07, repeat: 9, yoyo: true, ease: "none" }, 0.5)
+          .to(anim, { scaleY: 1.03, duration: 0.35, repeat: 1, yoyo: true, ease: "sine.inOut" }, 0.5)
+          .to(anim, { opacity: 0, duration: 0.15, ease: "power2.in" }, 1.45);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["warapo"] = tl;
+      })();
+    </script>
+  </body>
+</html>

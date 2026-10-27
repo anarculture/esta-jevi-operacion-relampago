@@ -33,11 +33,24 @@ Decisiones congeladas para este ticket:
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (commit del ticket 01)
 
-- [ ] `supabase db reset` sale 0 (todas las migraciones aplican).
-- [ ] `node supabase/tests/pm.mjs` sale 0 con los 8 casos (requiere `supabase functions serve --env-file supabase/functions/.env` corriendo).
-- [ ] `cmp app.js supabase/functions/_shared/app.js` sale 0.
-- [ ] `node -e "const M=require('./app.js'); process.exit(M.validateState(M.defaultState()).ok?0:1)"` sale 0.
-- [ ] `deno test supabase/functions/` sale 0 (los 7 tests del dictamen siguen verdes).
-- [ ] `curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:54321/functions/v1/pm -H 'Content-Type: application/json' -d '{"clave":"mala","accion":"leer"}'` imprime `401`.
+- [x] `supabase db reset` sale 0 (todas las migraciones aplican). · `Applying migration 20261026120000_pm_compartida.sql...` · `db_reset=0`
+- [x] `node supabase/tests/pm.mjs` sale 0 con los 8 casos (requiere `supabase functions serve --env-file supabase/functions/.env` corriendo). · `OK pm: 8 casos del contrato y la carrera de guardados`
+- [x] `cmp app.js supabase/functions/_shared/app.js` sale 0. · `cmp=0`
+- [x] `node -e "const M=require('./app.js'); process.exit(M.validateState(M.defaultState()).ok?0:1)"` sale 0. · `build=0`
+- [x] `deno test supabase/functions/` sale 0 (los 7 tests del dictamen siguen verdes). · `ok | 7 passed | 0 failed`
+- [x] `curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:54321/functions/v1/pm -H 'Content-Type: application/json' -d '{"clave":"mala","accion":"leer"}'` imprime `401`. · `smoke=401`
+
+Notas del agente:
+
+- 409 devuelve `{ error: "base_vieja", version, guardado_en, autor, estado }` (la vigente completa),
+  así quien guarda no necesita otra llamada para recargar. La atomicidad la da la clave primaria
+  `version`: el que pierde la carrera recibe 23505 y se le responde 409.
+- El límite de cuerpo vive en `serve` de `_shared/db.ts` como parámetro opcional (`maxBytes`, por
+  defecto sin límite): `admin`, `revisar` y `tasa` no cambian. Mide `text.length`, como
+  `parseBackup`. Rechazo: 413 `cuerpo_muy_grande`.
+- Debilidad anotada: `versiones` lista solo las 100 últimas (comentario `ponytail:`); las viejas se
+  leen con `leer` + `version`.
+- `/security-review`: sin hallazgos altos ni medios (bajos descartados: comparación de clave no
+  constante como en `admin`, clave compartida por diseño).

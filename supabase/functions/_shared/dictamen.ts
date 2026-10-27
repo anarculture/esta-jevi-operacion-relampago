@@ -6,12 +6,20 @@ export type Ocr = {
   amount: string;
   reference: string;
   transactionDate: string;
+  transactionTime?: string; // HH:MM impreso; se guarda para desempatar movimientos del mismo monto, no se coteja
   recipientName: string;
   recipientPhone: string;
   recipientId: string;
   editSignals: string;
   confidence: "high" | "medium" | "low";
+  senderName: string;
+  senderPhone: string;
+  senderId: string;
+  senderBank: string;
 };
+
+// Lo que declaró el comprador (crear_orden): pago móvil { banco, telefono, cedula }, Zelle { titular }, Binance { id }.
+export type Pagador = { banco?: string; telefono?: string; cedula?: string; titular?: string; id?: string };
 
 export type Orden = {
   metodo: string;
@@ -19,6 +27,7 @@ export type Orden = {
   monto_usd_cents: number;
   monto_bs: number | null;
   creada_en: string;
+  pagador?: Pagador | null;
 };
 
 export type Destino = Record<string, string | boolean>;
@@ -39,31 +48,64 @@ export function dictaminar(o: Orden, x: Ocr, destino: Destino): Dictamen {
   if (x.documentType === "other") return { dictamen: "no_coincide", motivo: "la imagen no parece un comprobante" };
   if (x.documentType !== tipo) malos.push(`comprobante de ${x.documentType}, la orden es ${tipo}`);
 
+  // Tolerancia absoluta y nunca a favor del pagador (docs/research/autenticidad-comprobantes.md, rec. 3):
+  // la estafa típica es un pago real por menos con el monto editado en la captura.
   const esperado = tipo === "pago_movil" ? Number(o.monto_bs) : o.monto_usd_cents / 100;
+  const tol = tipo === "pago_movil" ? 1 : 0.01;
   const monto = Number(x.amount);
   if (!x.amount || !Number.isFinite(monto)) dudas.push("no se lee el monto");
-  else if (monto < esperado * 0.99) malos.push(`monto ${monto} menor al esperado ${esperado}`);
-  else if (monto > esperado * 1.01) dudas.push(`monto ${monto} mayor al esperado ${esperado}`);
+  else if (monto < esperado - tol) malos.push(`monto ${monto} menor al esperado ${esperado}`);
+  else if (monto > esperado + tol) dudas.push(`monto ${monto} mayor al esperado ${esperado}`);
 
   // La app del banco a veces imprime la referencia larga y el comprador tipea los últimos dígitos.
+  // crear_orden exige 6 tipeados (rec. 2); una lectura más corta que la tipeada vale solo si trae 6 o más.
   const a = normRef(x.reference), b = normRef(o.referencia);
   if (!a) dudas.push("no se lee la referencia");
-  else if (!(a.endsWith(b) || (b.endsWith(a) && a.length >= 4))) malos.push(`referencia ${x.reference} distinta a ${o.referencia}`);
+  else if (!(a.endsWith(b) || (b.endsWith(a) && a.length >= 6))) malos.push(`referencia ${x.reference} distinta a ${o.referencia}`);
 
+  // Ventana: del día de la orden a 1 día después (rec. 4). Una captura anterior puede ser un pago real reciclado.
   if (!x.transactionDate) dudas.push("no se lee la fecha");
   else {
-    const dias = (Date.parse(o.creada_en.slice(0, 10)) - Date.parse(x.transactionDate)) / 864e5;
-    if (!(dias >= -1 && dias <= 3)) dudas.push(`fecha ${x.transactionDate} lejos de la orden`);
+    // El comprobante trae la fecha local de Venezuela (UTC-4, sin horario de verano); creada_en viene en UTC.
+    const diaOrden = new Date(Date.parse(o.creada_en) - 4 * 3600e3).toISOString().slice(0, 10);
+    const dias = (Date.parse(x.transactionDate) - Date.parse(diaOrden)) / 864e5;
+    if (dias < 0) dudas.push(`captura del ${x.transactionDate}, anterior a la orden`);
+    else if (dias > 1) dudas.push(`fecha ${x.transactionDate} lejos de la orden`);
   }
 
   const nuestros = [last10(String(destino.telefono ?? "")), digits(String(destino.cedula ?? "")),
     digits(String(destino.id ?? "")), plain(String(destino.correo ?? ""))].filter((s) => s.length >= 5);
   const leidos = [last10(x.recipientPhone), digits(x.recipientId), plain(x.recipientId)].filter((s) => s.length >= 5);
+  // El nombre del titular solo no prueba el destino: un comprobante falso puede llevarlo. Con nombre y
+  // sin correo/teléfono/ID legibles, la orden espera a Mau (dudoso); nunca aprueba sola.
   const titular = plain(String(destino.titular ?? ""));
   const porNombre = titular && plain(x.recipientName).includes(titular.split(" ")[0]);
-  if (leidos.some((s) => nuestros.includes(s)) || porNombre) { /* destinatario nuestro */ }
+  if (leidos.some((s) => nuestros.includes(s))) { /* destinatario nuestro */ }
   else if (leidos.length) malos.push("el destinatario no es nuestra cuenta");
+  else if (porNombre) dudas.push("destinatario solo por nombre; confirmar la cuenta en el banco");
   else dudas.push("no se lee el destinatario");
+
+  // Emisor (issue #6, punto 2): solo duda, nunca malos. Se compara lo que se leyó completo contra lo
+  // declarado; una lectura enmascarada (0414***567, V-**345678) o vacía no se compara.
+  // Duda solo si nada de lo comparable coincide: un teléfono distinto con la cédula correcta suele
+  // ser un error al declarar, no otro pagador, y Mau lo ve igual en el panel.
+  const p = o.pagador ?? {};
+  const oculto = (s: string) => /[*•…]/.test(s ?? "");
+  const palabras = (s: string) => plain(s).split(/\s+/).filter((w) => w.length >= 3);
+  const cotejos: boolean[] = [];
+  const tel = [last10(x.senderPhone), last10(p.telefono ?? "")];
+  if (!oculto(x.senderPhone) && tel[0].length === 10 && tel[1].length === 10) cotejos.push(tel[0] === tel[1]);
+  // Cédula contra cédula o RIF. El RIF de una persona son 9 dígitos: la cédula con ceros a la izquierda
+  // hasta 8 y un verificador (V-09876543-2). Solo una lectura de 9 dígitos se trata como RIF.
+  const leidaCed = digits(x.senderId);
+  const ced = [leidaCed.length === 9 ? leidaCed.slice(0, 8) : leidaCed, digits(p.cedula ?? "")].map((s) => s.replace(/^0+/, ""));
+  if (!oculto(x.senderId) && ced[0].length >= 5 && ced[1].length >= 5) cotejos.push(ced[0] === ced[1]);
+  const id = [plain(x.senderId), plain(p.id ?? "")];
+  if (!oculto(x.senderId) && id[0] && id[1]) cotejos.push(id[0] === id[1]);
+  // Titular: palabras completas de 3 o más letras ("Ana" no coincide con "Mariana"; "J" no cuenta).
+  const [declarado, leido] = [palabras(p.titular ?? ""), palabras(x.senderName)];
+  if (!oculto(x.senderName) && declarado.length && leido.length) cotejos.push(declarado.some((w) => leido.includes(w)));
+  if (cotejos.length && !cotejos.some(Boolean)) dudas.push("el pagador leído no es el declarado");
 
   if (x.editSignals.trim()) dudas.push(`posible edición: ${x.editSignals.trim()}`);
   if (x.confidence === "low") dudas.push("captura poco legible");
