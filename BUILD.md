@@ -1,10 +1,10 @@
 # BUILD: plataforma del organizador compartida (Mau, Claude Code, vytas)
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 02
-- Último verde: 01 · commit 88eee1a · 2026-10-26
+- Ticket actual: 03
+- Último verde: 02 · commit 816b004 · 2026-10-26
 - Gates: build ✅ · test ✅ · smoke ✅
-- Bloqueado: —
+- Bloqueado: 03 (y 04 por herencia) espera permiso para escribir en producción: `supabase db push --linked` lo denegó el clasificador de permisos del harness. No es un fallo de código; nada se escribió en producción.
 - Rama de trabajo: `pm-compartida` (worktree en `.claude/worktrees/pm-compartida`, creado a mano con git: la herramienta del harness no se permite desde un subagente con cwd fijo)
 
 Spec: https://github.com/anarculture/sindicato-baba/issues/2 (léela completa antes del ticket 01:

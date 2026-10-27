@@ -26,7 +26,7 @@ Decisiones congeladas:
 - **La orden #2 no se registra a mano** (decisión de Mau): ya está aprobada en la ticketera y la
   cuenta el bloque `ticketera`. Sumarla a `real.sold` la contaría doble.
 - **Pausa humana (única del build):** antes de cualquier escritura en producción, el agente avisa
-  a Mau con `zenity --info` (abre https://anarculture.github.io/sindicato-baba/, pega la clave en
+  a Mau con `zenity --info` (abre https://anarculture.github.io/sindicato-baba/pm/ —la PM se movió a `pm/` en `249bdf4`—, pega la clave en
   "Datos y respaldo") y espera, consultando `leer` cada 30 s hasta 30 min, a que exista una
   versión con autor `navegador`. Si no aparece en 30 min → este ticket va a BLOQUEADO con "Mau no
   conectó el navegador"; no se escribe nada.

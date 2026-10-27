@@ -30,8 +30,22 @@ Decisiones congeladas:
 **Status:** ready-for-agent
 
 - [ ] `supabase migration list --linked` (con `--project-ref ptbzdepejxxlavqfyepw` o tras `supabase link`) muestra la migración nueva aplicada en remoto.
-- [ ] `test -s ~/.config/sindicato-baba/pm_clave && stat -c %a ~/.config/sindicato-baba/pm_clave` imprime `600`.
+- [x] `test -s ~/.config/sindicato-baba/pm_clave && stat -c %a ~/.config/sindicato-baba/pm_clave` imprime `600`. · `600` (44 caracteres, `openssl rand -base64 33`)
 - [ ] `supabase secrets list --project-ref ptbzdepejxxlavqfyepw | grep -c PM_CLAVE` imprime `1`.
 - [ ] Con la clave del archivo, `leer` contra `https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm` responde 200 y JSON con `version`; con clave mala responde 401.
 - [ ] `curl -s https://anarculture.github.io/sindicato-baba/app.js | grep -c 'functions/v1/pm'` imprime 1 o más (reintentar hasta 5 min tras el push; Pages tarda).
-- [ ] `git grep -n "$(cat ~/.config/sindicato-baba/pm_clave)"` no encuentra nada (sale 1).
+- [x] `git grep -n "$(cat ~/.config/sindicato-baba/pm_clave)"` no encuentra nada (sale 1). · `git_grep_exit=1` (re-verificar tras el push)
+
+Notas del agente:
+
+- **URL de Pages cambiada después de escribir este ticket.** El commit `249bdf4` (Mau, otra sesión:
+  "ci: publicar la ticketera como raíz de Pages") publica Pages con un workflow: la ticketera en la
+  raíz y la plataforma PM en `pm/`. `https://anarculture.github.io/sindicato-baba/app.js` ahora da
+  404 y la plataforma vive en `https://anarculture.github.io/sindicato-baba/pm/`. El AC de Pages se
+  comprueba en `.../sindicato-baba/pm/app.js` (mismo check, ubicación vigente). El `localStorage` de
+  Mau no se pierde: es por origen (`anarculture.github.io`), no por ruta.
+- `supabase migration list --linked` antes de aplicar: `20261024000000` y `20261026000000` aplicadas
+  en remoto, `20261026120000` pendiente; `db push --dry-run` aplicaría solo
+  `20261026120000_pm_compartida.sql`.
+- **Espera permiso:** `supabase db push --linked` fue denegado por el clasificador de permisos del
+  harness (escritura en producción). No se hizo ninguna escritura en producción.
