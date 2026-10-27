@@ -10,16 +10,16 @@
 </head>
 <body>
 <main>
-  <img class="banner" src="flyer-banner.jpg" alt="Flyer: DJ BABATR, Sindicato Baba" width="1080" height="480">
+  <img class="banner" src="banner-fotocopia.jpg" srcset="banner-fotocopia.jpg 1080w, banner-fotocopia@2x.jpg 2160w" sizes="(min-width: 34rem) 34rem, 100vw" alt="DJ BABATR en letras cromadas sobre cables y fachada de Caracas en fotocopia" width="1080" height="480">
   <h1>Sindicato Baba</h1>
   <p class="sub"><strong>DJ BABATR · jueves 29 de octubre · 21:00 · CC Chacaíto</strong></p>
-  <p class="muted">Preventa <span id="precio">$10</span> por entrada · en puerta $15</p>
+  <p class="muted">Preventa <span id="precio">$10</span> por entrada</p>
   <p id="mi-orden" hidden><a class="btn sec" id="mi-orden-link" href="#">Ver mi orden</a></p>
 
   <ol class="pasos">
-    <li>Pagas a la cuenta de Mauricio Dávila, el organizador.</li>
+    <li>Pagas por transferencia a la cuenta del organizador.</li>
     <li>Subes la captura del pago aquí mismo.</li>
-    <li>Mau lo confirma en su banco y te llegan tus entradas con QR.</li>
+    <li>Confirmamos el pago en el banco y te llegan tus entradas con QR.</li>
   </ol>
 
   <form id="f" novalidate>
@@ -69,7 +69,7 @@
     </section>
   </form>
 
-  <p class="muted contacto">¿Dudas antes de pagar? <a id="wa-dudas" href="#" target="_blank" rel="noopener">Escríbele a Mau por WhatsApp</a></p>
+  <p class="muted contacto">¿Dudas antes de pagar? <a id="wa-dudas" href="#" target="_blank" rel="noopener">Escríbenos por WhatsApp</a></p>
 </main>
 <script>
 addEventListener("DOMContentLoaded", async () => {
@@ -83,7 +83,7 @@ addEventListener("DOMContentLoaded", async () => {
   const DATOS = { banco: "Banco", telefono: "Teléfono", cedula: "Cédula", id: "Binance Pay ID", correo: "Correo Zelle", titular: "Titular" };
   const tipo = (m) => (m.startsWith("pago_movil") ? "pago_movil" : m);
 
-  $("wa-dudas").href = waContacto("Hola Mau, tengo una duda sobre las entradas de Sindicato Baba.");
+  $("wa-dudas").href = waContacto("Hola, tengo una duda sobre las entradas de Sindicato Baba.");
   const ultima = leer("ticketera-orden");
   if (ultima?.token) {
     $("mi-orden-link").href = `orden.html?t=${ultima.token}`;
@@ -121,7 +121,7 @@ addEventListener("DOMContentLoaded", async () => {
   function cantidad() {
     const n = parseInt($("cantidad").value);
     const ok = Number.isInteger(n) && n >= 1 && n <= 10;
-    campoError("cantidad", ok ? "" : "Entre 1 y 10 por compra. Para más, escríbele a Mau.");
+    campoError("cantidad", ok ? "" : "Entre 1 y 10 por compra. Para más, escríbenos por WhatsApp.");
     return ok ? n : null;
   }
 

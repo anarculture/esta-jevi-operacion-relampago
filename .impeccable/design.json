@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-27T00:45:00Z",
+  "title": "Design System: Sindicato Baba",
+  "extensions": {
+    "colorMeta": {
+      "verde-neon": { "role": "primary", "displayName": "Verde neón", "canonical": "#2ed847", "tonalRamp": ["#07230d", "#0b3d17", "#0f5a21", "#15802e", "#1ea83a", "#2ed847", "#7ae88b", "#d6f8dc"] },
+      "verde-neon-tinta": { "role": "primary", "displayName": "Verde neón tinta", "canonical": "#0b3d17", "tonalRamp": ["#07230d", "#0b3d17", "#0f5a21", "#15802e", "#1ea83a", "#2ed847", "#7ae88b", "#d6f8dc"] },
+      "toner-negro": { "role": "neutral", "displayName": "Tóner negro", "canonical": "#0f0f0f", "tonalRamp": ["#0f0f0f", "#1a1a1a", "#262626", "#3a3a3a", "#5a5a5a", "#8a8a8a", "#c4c4c4", "#f2f2f2"] },
+      "toner-carbon": { "role": "neutral", "displayName": "Tóner carbón", "canonical": "#1a1a1a", "tonalRamp": ["#0f0f0f", "#1a1a1a", "#262626", "#3a3a3a", "#5a5a5a", "#8a8a8a", "#c4c4c4", "#f2f2f2"] },
+      "toner-grafito": { "role": "neutral", "displayName": "Tóner grafito", "canonical": "#262626", "tonalRamp": ["#0f0f0f", "#1a1a1a", "#262626", "#3a3a3a", "#5a5a5a", "#8a8a8a", "#c4c4c4", "#f2f2f2"] },
+      "linea-fotocopia": { "role": "neutral", "displayName": "Línea fotocopia", "canonical": "#2f3440", "tonalRamp": ["#14161b", "#2f3440", "#444b5c", "#5c667c", "#75819c", "#8c9fc6", "#b7c3dc", "#e3e8f2"] },
+      "gris-fotocopia": { "role": "neutral", "displayName": "Gris fotocopia", "canonical": "#8c9fc6", "tonalRamp": ["#14161b", "#2f3440", "#444b5c", "#5c667c", "#75819c", "#8c9fc6", "#b7c3dc", "#e3e8f2"] },
+      "papel": { "role": "neutral", "displayName": "Papel", "canonical": "#f2f2f2", "tonalRamp": ["#0f0f0f", "#1a1a1a", "#262626", "#3a3a3a", "#5a5a5a", "#8a8a8a", "#c4c4c4", "#f2f2f2"] },
+      "rojo-aviso": { "role": "semantic", "displayName": "Rojo aviso", "canonical": "#ff5a50", "tonalRamp": ["#3a1210", "#5e1a16", "#8a241e", "#b52e26", "#e04a40", "#ff5a50", "#ff948d", "#ffd9d6"] },
+      "rojo-aviso-tinta": { "role": "semantic", "displayName": "Rojo aviso tinta", "canonical": "#3a1210", "tonalRamp": ["#3a1210", "#5e1a16", "#8a241e", "#b52e26", "#e04a40", "#ff5a50", "#ff948d", "#ffd9d6"] },
+      "amarillo-marcador": { "role": "semantic", "displayName": "Amarillo marcador", "canonical": "#ffd60a", "tonalRamp": ["#3d3200", "#5f4f00", "#8a7300", "#b59700", "#dfbb00", "#ffd60a", "#ffe566", "#fff6c2"] },
+      "amarillo-marcador-tinta": { "role": "semantic", "displayName": "Amarillo marcador tinta", "canonical": "#3d3200", "tonalRamp": ["#3d3200", "#5f4f00", "#8a7300", "#b59700", "#dfbb00", "#ffd60a", "#ffe566", "#fff6c2"] },
+      "qr-blanco": { "role": "neutral", "displayName": "QR blanco", "canonical": "#ffffff", "tonalRamp": ["#0f0f0f", "#1a1a1a", "#262626", "#3a3a3a", "#5a5a5a", "#8a8a8a", "#c4c4c4", "#ffffff"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Nombre de la fiesta y número de orden. Oswald en mayúsculas, uno por pantalla." },
+      "headline": { "displayName": "Headline", "purpose": "Títulos de paso y de sección." },
+      "monto": { "displayName": "Monto", "purpose": "La cifra a pagar, tabular." },
+      "title": { "displayName": "Title", "purpose": "Botones y datos destacados (HIG 17px semibold)." },
+      "body": { "displayName": "Body", "purpose": "Párrafos, filas y campos (HIG 17px)." },
+      "secondary": { "displayName": "Secondary", "purpose": "Metadatos y ayuda (HIG 15px)." },
+      "label": { "displayName": "Label", "purpose": "Etiquetas de campo y chips (13px)." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Transición de 150 ms al presionar botones y al cambiar de capa." },
+      { "name": "duration-press", "value": "150ms", "purpose": "Oscurecer el relleno al presionar." }
+    ],
+    "breakpoints": [
+      { "name": "columna", "value": "34rem" }
+    ],
+    "textures": [
+      { "name": "grano-fotocopia", "value": "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.08 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>\")", "purpose": "Superposición monocroma al 8 % solo en cabecera y marco del QR." }
+    ],
+    "fonts": [
+      { "name": "Oswald", "source": "https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap", "purpose": "Display, headline y monto." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "La acción de la pantalla: enviar comprobante, ya pagué, aprobar.",
+      "html": "<button class=\"ds-btn-primary\">Enviar comprobante</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 20px; border: 0; border-radius: 10px; background: #2ed847; color: #0f0f0f; font: 600 17px/1.3 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { background: #3fe257; } .ds-btn-primary:active { background: #26b83c; } .ds-btn-primary:focus-visible { outline: 3px solid #2ed847; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón tonal",
+      "kind": "button",
+      "refersTo": "button-tonal",
+      "description": "Secundario: copiar enlace, recargar, enviar por WhatsApp cuando no es la acción principal.",
+      "html": "<button class=\"ds-btn-tonal\">Copiar enlace</button>",
+      "css": ".ds-btn-tonal { display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 20px; border: 0; border-radius: 10px; background: #262626; color: #2ed847; font: 600 17px/1.3 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-tonal:hover { background: #303030; } .ds-btn-tonal:active { background: #1a1a1a; } .ds-btn-tonal:focus-visible { outline: 3px solid #2ed847; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón destructivo",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Rechazar una orden. Texto rojo sobre grafito, nunca relleno rojo.",
+      "html": "<button class=\"ds-btn-destructive\">Rechazar</button>",
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 20px; border: 0; border-radius: 10px; background: #262626; color: #ff5a50; font: 600 17px/1.3 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; cursor: pointer; } .ds-btn-destructive:hover { background: #303030; } .ds-btn-destructive:active { background: #3a1210; } .ds-btn-destructive:focus-visible { outline: 3px solid #2ed847; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón copiar",
+      "kind": "button",
+      "refersTo": "button-copiar",
+      "description": "Píldora junto a un dato de pago. Pasa a 'Copiado' dos segundos.",
+      "html": "<button class=\"ds-btn-copiar\">Copiar</button> <button class=\"ds-btn-copiar is-ok\">Copiado</button>",
+      "css": ".ds-btn-copiar { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: #262626; color: #2ed847; font: 600 13px/1.3 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; letter-spacing: 0.02em; cursor: pointer; } .ds-btn-copiar:hover { background: #303030; } .ds-btn-copiar.is-ok { background: #0b3d17; } .ds-btn-copiar:focus-visible { outline: 3px solid #2ed847; outline-offset: 2px; }"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo del formulario de compra, con etiqueta encima y estado de error.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Cédula</span><input class=\"ds-input\" value=\"V12345678\"></label> <label class=\"ds-field\"><span class=\"ds-field-label\">Teléfono (WhatsApp)</span><input class=\"ds-input is-error\" value=\"0414\" aria-invalid=\"true\"><span class=\"ds-field-error\">Revisa el teléfono: 11 dígitos, por ejemplo 04141234567.</span></label>",
+      "css": ".ds-field { display: block; margin: 0 0 16px; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; } .ds-field-label { display: block; font: 600 13px/1.3 system-ui, sans-serif; letter-spacing: 0.02em; color: #8c9fc6; margin-bottom: 4px; } .ds-input { box-sizing: border-box; width: 100%; height: 48px; padding: 0 12px; border: 2px solid transparent; border-radius: 10px; background: #262626; color: #f2f2f2; font: 400 17px/1.35 system-ui, sans-serif; } .ds-input:focus-visible { outline: 0; border: 2px solid #2ed847; } .ds-input.is-error { border: 2px solid #ff5a50; } .ds-field-error { display: block; margin-top: 4px; font: 400 15px/1.35 system-ui, sans-serif; color: #ff5a50; }"
+    },
+    {
+      "name": "Opción de método",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Fila de lista con radio; la elegida pasa a grafito con borde neón y check.",
+      "html": "<div class=\"ds-opciones\"><label class=\"ds-opcion is-on\"><input type=\"radio\" name=\"m\" checked><span class=\"ds-opcion-txt\"><strong>Pago móvil BNC</strong><small>€10 por entrada, en Bs a tasa BCV</small></span><svg aria-hidden=\"true\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"#2ed847\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 10.5l4 4 8-9\"/></svg></label><label class=\"ds-opcion\"><input type=\"radio\" name=\"m\"><span class=\"ds-opcion-txt\"><strong>Zelle</strong><small>$10 por entrada</small></span></label></div>",
+      "css": ".ds-opciones { display: grid; gap: 8px; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; } .ds-opcion { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; border-radius: 12px; background: #1a1a1a; border: 2px solid transparent; color: #f2f2f2; cursor: pointer; } .ds-opcion input { accent-color: #2ed847; width: 20px; height: 20px; margin: 0; } .ds-opcion-txt { flex: 1; display: flex; flex-direction: column; font: 400 17px/1.3 system-ui, sans-serif; } .ds-opcion-txt small { font-size: 15px; color: #8c9fc6; } .ds-opcion.is-on { background: #262626; border-color: #2ed847; }"
+    },
+    {
+      "name": "Tarjeta",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Contenedor de paso o de datos: carbón sobre negro, sin borde ni sombra.",
+      "html": "<div class=\"ds-card\"><h2 class=\"ds-card-h\">2. Paga este monto</h2><p class=\"ds-monto\">Bs 29.792,65</p><p class=\"ds-sec\">€30 a tasa BCV del euro Bs 993,09 (23/10)</p></div>",
+      "css": ".ds-card { background: #1a1a1a; border-radius: 12px; padding: 16px; color: #f2f2f2; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; } .ds-card-h { margin: 0 0 8px; font: 600 22px/1.15 Oswald, Impact, 'Arial Narrow', sans-serif; text-transform: uppercase; } .ds-monto { margin: 8px 0 0; font: 700 40px/1 Oswald, Impact, 'Arial Narrow', sans-serif; font-variant-numeric: tabular-nums; } .ds-sec { margin: 4px 0 0; font-size: 15px; color: #8c9fc6; }"
+    },
+    {
+      "name": "Chip de estado",
+      "kind": "chip",
+      "refersTo": "chip-estado",
+      "description": "Estado de la orden y dictamen de la IA.",
+      "html": "<span class=\"ds-chip\">En revisión</span> <span class=\"ds-chip is-ok\">Aprobada</span> <span class=\"ds-chip is-mal\">Rechazada</span>",
+      "css": ".ds-chip { display: inline-block; padding: 3px 10px; border-radius: 999px; background: #3d3200; color: #ffd60a; font: 600 13px/1.3 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; letter-spacing: 0.02em; } .ds-chip.is-ok { background: #0b3d17; color: #2ed847; } .ds-chip.is-mal { background: #3a1210; color: #ff5a50; }"
+    },
+    {
+      "name": "Marco de QR",
+      "kind": "custom",
+      "refersTo": "qr-marco",
+      "description": "La única superficie blanca: QR negro a 280 px con grano en el borde.",
+      "html": "<div class=\"ds-qr\"><p class=\"ds-qr-t\">Entrada 1 de 3</p><div class=\"ds-qr-box\" aria-label=\"QR\"></div><p class=\"ds-qr-c\">Código de respaldo: aaaaaaaa</p></div>",
+      "css": ".ds-qr { position: relative; box-sizing: border-box; width: 312px; padding: 16px; border-radius: 16px; background: #ffffff; color: #0f0f0f; text-align: center; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; } .ds-qr::after { content: ''; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; background: url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.08 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>\"); mask: linear-gradient(#000, #000) content-box exclude, linear-gradient(#000, #000); padding: 16px; } .ds-qr-t { margin: 0 0 8px; font: 600 17px/1.3 system-ui, sans-serif; } .ds-qr-box { width: 280px; height: 280px; margin: 0 auto; background: repeating-conic-gradient(#0f0f0f 0 25%, #fff 0 50%) 0 0 / 40px 40px; } .ds-qr-c { margin: 8px 0 0; font: 600 13px/1.3 system-ui, sans-serif; color: #56615a; letter-spacing: 0.02em; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Fotocopia en el poste",
+    "overview": "El flyer de la fiesta es una fotocopia pegada en la calle: cables, fachada, tóner negro que se come los medios tonos, un gris azulado de fotocopiadora y una sola cosa a color, el handle en verde neón. El sistema vive dentro de esa hoja. El fondo es tóner, no \"modo oscuro\": negro casi puro, sin azules de interfaz. El texto es papel. Todo lo que se puede tocar o que confirma algo es verde neón, y nada más lo es.\n\nDebajo de esa piel, los componentes se comportan como iOS: listas agrupadas por capas tonales, botones rellenos de 50 px, campos con fondo propio, radios de 10 a 12 px, tipografía del sistema a 17 px y objetivos de 44 px. El comprador reconoce el gesto aunque la hoja sea de otro mundo. El cromo de las letras del flyer no se imita en la interfaz: lo reemplaza una condensada de cartel, en mayúsculas, que lee como afiche. El grano de fotocopia existe, pero solo en la cabecera y en el marco del QR; las tarjetas, las listas y los formularios son planos.",
+    "keyCharacteristics": [
+      "Tóner negro como ground, papel como texto, un solo acento neón.",
+      "Capas tonales en vez de bordes y sombras (negro → carbón → grafito).",
+      "Display condensada en mayúsculas; cuerpo en tipografía del sistema (HIG).",
+      "Grano de fotocopia confinado a cabecera y QR.",
+      "El QR siempre negro sobre blanco, dentro de un marco papel."
+    ],
+    "rules": [
+      { "name": "The One Neon Rule", "body": "El verde neón es el único color de acción. Si dos cosas de una pantalla compiten por él, una de las dos pasa a tonal. Nunca se usa de fondo de superficie grande.", "section": "colors" },
+      { "name": "The Paper Text Rule", "body": "El texto principal es papel (#f2f2f2) sobre tóner; el gris fotocopia solo lleva texto corto y secundario. Contraste mínimo 4,5:1 en todos los pares.", "section": "colors" },
+      { "name": "The Street Poster Rule", "body": "Oswald solo en mayúsculas y solo en display, headline y monto. Nunca en párrafos, botones ni campos.", "section": "typography" },
+      { "name": "The Three Toners Rule", "body": "Tres capas y no más: negro, carbón, grafito. Si hace falta una cuarta, el componente está mal anidado.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar verde neón (#2ed847) solo para acción, enlace, foco y aprobado.",
+      "Do separar capas por tono (negro → carbón → grafito), nunca por sombra ni borde.",
+      "Do mantener el QR negro sobre blanco puro dentro de su marco.",
+      "Do escribir display, headline y monto en Oswald mayúsculas; todo lo demás en system-ui a 17/15/13.",
+      "Do respetar 44 px de objetivo táctil y 16 px de margen lateral."
+    ],
+    "donts": [
+      "Don't usar blanco puro como texto o fondo fuera del marco del QR; el texto es papel (#f2f2f2).",
+      "Don't meter grano detrás de texto, campos o tarjetas.",
+      "Don't rellenar un botón de rojo; destructivo es texto rojo sobre grafito.",
+      "Don't imitar el cromo del flyer con degradados o efectos metálicos en la interfaz.",
+      "Don't añadir un segundo color de acento (ni el verde #1f6f4a de la plataforma de PM)."
+    ]
+  }
+}
