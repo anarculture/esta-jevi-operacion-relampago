@@ -31,8 +31,9 @@ cercano y la fiesta del jueves 29.
    parámetros de cada método, marca señales de edición y deja un dictamen: `coincide`,
    `dudoso` o `no coincide`, con el motivo.
 5. **Admin · conciliar.** Como Mau, veo la cola de órdenes con el dictamen de la IA y la
-   captura al lado. Apruebo o rechazo cada una tras mirarla en mi app del banco. Nada se
-   aprueba solo.
+   captura al lado. Apruebo o rechazo cada una tras mirarla en mi app del banco. Desde el 27-oct,
+   un dictamen `coincide` aprueba solo (referencia exacta y sin sufijo repetido; interruptor
+   `config.auto_aprobar`); `dudoso` y `no coincide` esperan aquí.
 6. **Sistema · emitir entrada.** Al aprobar, cada entrada recibe un QR único firmado y
    el comprador obtiene un enlace a su comprobante con sus QR.
 
@@ -40,7 +41,8 @@ cercano y la fiesta del jueves 29.
 
 7. **Portero · check-in.** Escaneo el QR con el teléfono. La pantalla dice válida,
    ya usada (con la hora) o inválida, y marca el ingreso. Si no hay internet, existe una
-   lista de respaldo descargada.
+   lista de respaldo descargada. *Hecho (27-oct): `ticketera/portero.html`, clave propia,
+   deshacer en 5 min.*
 8. **Vendedor · su enlace.** Como vendedor, tengo un enlace o código propio, y las
    órdenes que entran por él quedan a mi nombre.
 9. **Vendedor · venta en mano.** Registro una venta que cobré yo (efectivo o a mi
@@ -75,5 +77,5 @@ eventos a la vez y cuentas de comprador con contraseña.
   ¿Cuentan las compras en puerta del jueves?
 - ¿Qué datos de destino se publican: teléfono y cédula del pago móvil en BNC y en Ubii,
   ID de Binance, correo o teléfono de Zelle?
-- ¿El dictamen `coincide` basta para que tú apruebes con un clic, o siempre revisas el
-  banco?
+- ~~¿El dictamen `coincide` basta para que tú apruebes con un clic, o siempre revisas el
+  banco?~~ Resuelta el 27-oct: basta, y aprueba solo (ver historia 5).
