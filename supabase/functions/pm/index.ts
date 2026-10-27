@@ -36,6 +36,7 @@ serve(async ({ clave, accion, version, base, autor, estado }) => {
   if (CLAVE.length < 16 || clave !== CLAVE) return json({ error: "clave_invalida" }, 401);
 
   if (accion === "leer") {
+    // ponytail: versión y totales van en serie (dos viajes a la base por `leer`); si la latencia molesta, Promise.all.
     if (version === undefined) return json({ ...((await leer()) ?? VACIO), ticketera: await ticketera() });
     if (!Number.isInteger(version) || (version as number) < 1) return json({ error: "version_invalida" }, 400);
     const v = await leer(version as number);

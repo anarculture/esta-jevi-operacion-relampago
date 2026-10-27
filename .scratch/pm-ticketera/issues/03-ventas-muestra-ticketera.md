@@ -60,4 +60,10 @@ Decisiones congeladas:
 - Código: `index.html:364` aviso nuevo, `index.html:368` columna Ticketera; `app.js:621` `TK_KEY`; `app.js:769` `cashReal(state, tk)`; `app.js:967` `renderTicketera`; `app.js:1267` `leerRemoto` toma el bloque; `app.js:1277` `tkValida`; `app.js:1294` `actualizarTicketera` (solo bloque); `app.js:1349` olvidar la clave borra la lectura; `app.js:1425` CSV con el bloque.
 - Captura de Ventas (fuera del repo): `CAPTURA_TK=<ruta.png> node supabase/tests/pm-navegador.mjs`.
 - Notas del test: la página llama a `127.0.0.1:54321` fijo, así que con otro `API` el test levanta un proxy en 54321 (`ponytail`/shortcut comentado; no corre si otro stack ocupa 54321). La red caída se simula con CDP `Fetch.failRequest` sobre `/functions/v1/pm`.
+- Code review del cierre (hallazgo de corrección, reabrió el 03): `tkValida` (UI) aceptaba cualquier entero ≥ 0
+  y `cashReal` rechazaba más de 10000 entradas o 1e8 centavos. Un bloque así se guardaba y la caja mostraba
+  "Datos inconsistentes" con un estado sano. Ahora hay un solo validador, `ticketeraValida`, en el modelo (mismas
+  `RULES` que la caja), que usan la UI y `cashReal`. `pm-modelo.mjs` lo prueba: con el `app.js` anterior falla
+  (`ticketeraValida` no existe). Tras el arreglo: `OK pm-modelo`, `OK pm-navegador: 10 casos`,
+  `OK pm: 8 casos`, `OK pm-ticketera: 6 casos`, `deno` 13 passed, `OK ux.mjs`, `OK flujo`, smoke 200.
 - Autocrítica (no bloquea): (1) con clave y sin lectura previa, mientras la primera lectura está en vuelo, la línea dice "Sin conexión con la ticketera" un instante; (2) los Bs usan el formato `es-419` de la plataforma (`4,000.00`), no el venezolano (`4.000,00`); (3) con campos de Finanzas inválidos, "Vendidas" muestra "—" como el resto de los derivados (antes mostraba solo lo manual).

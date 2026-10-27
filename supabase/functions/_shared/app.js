@@ -427,14 +427,23 @@
     return out;
   }
 
+  // Bloque `ticketera` de `leer` (spec #3), de la red o de localStorage. Con otra forma o fuera de las reglas
+  // de la caja → null: la UI lo ignora y cashReal lo rechaza con las mismas reglas, así nunca tumba la caja.
+  function ticketeraValida(b) {
+    const g = x => !!x && check(RULES.real.sold, x.ordenes) && check(RULES.real.sold, x.entradas) && check(RULES.real.ticketsCollectedCents, x.usd_cents);
+    const m = b && b.por_metodo;
+    return b && typeof b.consultado_en === 'string' && !isNaN(Date.parse(b.consultado_en)) && g(b.aprobadas) && g(b.en_revision)
+      && m && g(m.pago_movil) && Number.isFinite(m.pago_movil.bs) && g(m.zelle) && g(m.binance) ? b : null;
+  }
+
   // ticketera: bloque `ticketera` de `leer` (spec #3), aparte del estado; null o ausente = solo lo manual.
   // real.sold y real.ticketsCollectedCents son lo vendido fuera de la ticketera.
   function cashReal(state, ticketera) {
     const r = state.real;
     for (const k of Object.keys(RULES.real)) if (!check(RULES.real[k], r[k])) throw new RangeError('Caja inválida: ' + k);
     assertBudget(state.budget);
+    if (ticketera && !ticketeraValida(ticketera)) throw new RangeError('Ticketera inválida');
     const tk = ticketera ? ticketera.aprobadas : { entradas: 0, usd_cents: 0 };
-    if (!(tk && check(RULES.real.sold, tk.entradas) && check(RULES.real.ticketsCollectedCents, tk.usd_cents))) throw new RangeError('Ticketera inválida');
     const income = r.ticketsCollectedCents + tk.usd_cents + r.sponsorCollectedCents + r.barCollectedCents;
     let paid = 0, due = 0, unknown = 0;
     for (const it of state.budget) {
@@ -566,7 +575,7 @@
   const Model = {
     APP_ID, SCHEMA_VERSION, STORAGE_KEY, BACKUP_KEY, CORRUPT_KEY, CLAVE_KEY, LIMITS, ENUMS, PRESET_COVERS, COMPARE_TICKETS, COMPARE_TARIFFS,
     defaultState, defaultScenario, newItem, splitTickets, isCovered, forecastCost, budgetTotals, barShare, calcScenario, breakEven,
-    compareGrid, chartDomain, chartSeries, niceTicks, cashReal, nextAction, blockedTasks, resetScenario, parseField, validateState,
+    compareGrid, chartDomain, chartSeries, niceTicks, ticketeraValida, cashReal, nextAction, blockedTasks, resetScenario, parseField, validateState,
     parseBackup, serializeState, saveState, loadState, backupBeforeReplace, readBackup, toCSV, fmtMoney, fmtInt, fmtInput,
   };
 
@@ -620,7 +629,7 @@
     // Última lectura del bloque `ticketera` (spec #3): fuera del estado, del respaldo y del sync, bajo su propia clave.
     const TK_KEY = M.STORAGE_KEY + ':ticketera';
     let tk = null;
-    try { tk = tkValida(JSON.parse(storage && storage.getItem(TK_KEY))); } catch (e) { tk = null; }
+    try { tk = M.ticketeraValida(JSON.parse(storage && storage.getItem(TK_KEY))); } catch (e) { tk = null; }
     let tkFresca = false; // leída en esta sesión y la última lectura no falló
 
     // ---------- utilidades DOM (solo textContent / atributos, nunca HTML) ----------
@@ -1273,18 +1282,9 @@
       renderSave();
     }
 
-    // El bloque viene de la red o de localStorage: sin la forma de `leer`, se ignora (nunca rompe la caja).
-    function tkValida(b) {
-      const n = v => Number.isSafeInteger(v) && v >= 0;
-      const g = x => !!x && n(x.ordenes) && n(x.entradas) && n(x.usd_cents);
-      const pm = b && b.por_metodo;
-      return b && typeof b.consultado_en === 'string' && !isNaN(Date.parse(b.consultado_en)) && g(b.aprobadas) && g(b.en_revision)
-        && pm && g(pm.pago_movil) && Number.isFinite(pm.pago_movil.bs) && g(pm.zelle) && g(pm.binance) ? b : null;
-    }
-
     // Sin red, error o `ticketera: null` (falló el cálculo): queda la última lectura, marcada vieja.
     function tomarTicketera(b) {
-      const v = tkValida(b);
+      const v = M.ticketeraValida(b);
       tkFresca = !!v;
       if (v) { tk = v; try { storage.setItem(TK_KEY, JSON.stringify(v)); } catch (e) { /* sin almacenamiento: vale solo en esta pestaña */ } }
       renderDerived();

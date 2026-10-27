@@ -31,6 +31,12 @@ assert.equal(sin.ticketeraCents, 0);
 assert.equal(sin.soldTotal, 3);
 assert.deepEqual(sin, M.cashReal(s), "null y ausente no dan lo mismo");
 assert.throws(() => M.cashReal(s, { aprobadas: { entradas: -1, usd_cents: 0 } }), RangeError, "bloque inválido aceptado");
+// Un solo validador para la UI y la caja: lo que la UI acepta, cashReal no lo rechaza (code review).
+assert.equal(M.ticketeraValida(bloque), bloque);
+assert.equal(M.ticketeraValida(null), null);
+const fuera = { ...bloque, aprobadas: { ordenes: 1, entradas: 10001, usd_cents: 0 } };
+assert.equal(M.ticketeraValida(fuera), null, "la UI guardaría un bloque que la caja rechaza");
+assert.throws(() => M.cashReal(s, fuera), RangeError);
 
 // CSV: filas propias para cada fuente; "Ingresos cobrados" es el total.
 const plano = (csv) => csv.replace(/"/g, "");
