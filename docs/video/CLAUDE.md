@@ -91,6 +91,8 @@ entrada de DJ sin cámara lenta: destello de 4 cuadros y congelado de 1,0 s con 
 `.mov`). Mezcla: solo música + audio de Kling, sin riser/golpe/chasquido/whoosh ni sidechain. `MUSICA_INICIO` se calcula
 en el script a partir de `DROP` y `TANQUE` para que el drop siga cayendo en el tanque (reel 3,6 s). El script falla si el
 total pasa de 30 s. Copia para el teléfono: `elements/entregas/reel-hibrido-movil.mp4` (< 30 MB, para `SendUserFile`).
+Mau lo aprobó ("va", 19:40) y pidió cerrar con el flyer: `FLYER FINAL BABA.png` (4:5, centrado sobre sí mismo
+desenfocado) 3,0 s al final con la música sonando (`FLYER`, `FLYER_DUR`); total 31,8 s.
 
 ## Qué es
 

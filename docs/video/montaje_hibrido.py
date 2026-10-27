@@ -39,7 +39,8 @@ ORDEN = [("v5/1a", 0.3, 3.84, "fade", CORTE),
          ("v4/6a", 0.2, None, "fade", 0.1),
          ("v4/6b", 0.0, None, "fade", 0.1),
          ("v4/6c", 0.0, None, "fade", 0.1),
-         ("v4/6d", 0.0, 4.2, None, 0)]                   # corta con BABATR coronado, antes del primer plano del raptor
+         ("v4/6d", 0.0, 4.2, "fade", 0.3)]               # corta con BABATR coronado, antes del primer plano del raptor
+FLYER, FLYER_DUR = os.path.join(RAIZ, "FLYER FINAL BABA.png"), 3.0  # cierre: el flyer con la música sonando
 VEL = 2.2  # con 2,2× y congelados de 1,0 s el reel queda en 28,8 s (meta: ≤ 30 s)
 # clip: (segundo del congelado en el clip, tapa). El DJ tiene que estar a la vista en ese cuadro.
 INTROS = {"v5/1b": (3.4, "miss-venezuela"), "v4/2": (1.2, "warapo"), "v5/3a": (2.6, "giulio"),
@@ -91,6 +92,13 @@ for k, ent, fin, trans, fundido in ORDEN:
                    (a, t, fin - t, VEL, trans, fundido)]
     else:
         piezas.append((a, ent, fin - ent, VEL, trans, fundido))
+# Flyer (4:5) centrado sobre sí mismo desenfocado, 0,2 s de sobra como el congelado
+flyer = os.path.join(tmp, "flyer.mp4")
+subprocess.run(["ffmpeg", "-v", "error", "-y", "-loop", "1", "-framerate", str(FPS), "-t", f"{FLYER_DUR + 0.2}", "-i", FLYER,
+                "-filter_complex", f"[0:v]split[a][b];[a]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+                f"boxblur=30[f];[b]scale={W}:-2[g];[f][g]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
+                "-r", str(FPS), "-c:v", "libx264", "-crf", "16", "-preset", "fast", flyer], check=True)
+piezas.append((flyer, 0, FLYER_DUR, 1.0, None, 0))
 
 entradas, filtros = [], []
 for i, (a, ent, largo, vel, _, _) in enumerate(piezas):
@@ -107,7 +115,7 @@ for i, (_, _, _, _, trans, fundido) in enumerate(piezas[:-1]):
     inicios.append(acumulado - fundido)
     acumulado += siguiente - fundido
     previo = salida
-assert acumulado <= 30, f"el reel dura {acumulado:.2f} s; la meta es ≤ 30 s"
+assert acumulado <= 30 + FLYER_DUR, f"el reel dura {acumulado:.2f} s; la meta es ≤ 30 s más el flyer"
 i = next(i for i, p in enumerate(piezas) if p[0].endswith(TANQUE[0] + ".mp4"))
 tanque = inicios[i] + (TANQUE[1] - piezas[i][1]) / piezas[i][3]
 MUSICA_INICIO = DROP - tanque
