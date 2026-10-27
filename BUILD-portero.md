@@ -1,8 +1,8 @@
 # BUILD: check-in del portero
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 02
-- Último verde: 01 · commit (ver git log) · 2026-10-26
+- Ticket actual: 03
+- Último verde: 02 · commit (ver git log; 01 = c123180) · 2026-10-26
 - Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: —
 - Rama de trabajo: `worktree-agent-a04ac3b55edd7ecf4` (worktree `.claude/worktrees/agent-a04ac3b55edd7ecf4`, creado por el harness; `ticketera` mergeada encima)
@@ -60,7 +60,7 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 ## Tickets
 
 - [x] 01 · Check-in por código de respaldo, de punta a punta · Bloqueado por: — · → .scratch/portero/issues/01-checkin-por-codigo.md · evidencia: `OK ticketera.sql` · `OK portero: orden #10, 4 ingresadas de 8 aprobadas` · `OK ux.mjs` (10 casos) · deno `7 passed` · `OK flujo` · 401 · smoke 200 · /security-review sin hallazgos
-- [ ] 02 · Escaneo con la cámara · Bloqueado por: 01 · → .scratch/portero/issues/02-camara.md
+- [x] 02 · Escaneo con la cámara · Bloqueado por: 01 · → .scratch/portero/issues/02-camara.md · evidencia: `OK portero-camara.mjs` (1 checkin en 5 s; "Sin cámara" con permiso denegado) · `OK ux.mjs` · jsQR con 0 URLs
 - [ ] 03 · Sin señal e imprimir · Bloqueado por: 01 · → .scratch/portero/issues/03-sin-senal.md
 - [ ] 04 · Producción y prueba real · Bloqueado por: 02, 03 · → .scratch/portero/issues/04-produccion.md
 

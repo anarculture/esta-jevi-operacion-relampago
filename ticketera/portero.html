@@ -8,6 +8,7 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="t.css">
 <script src="comun.js" defer></script>
+<script src="jsQR.min.js" defer></script>
 </head>
 <body class="puerta">
 <main>
@@ -18,7 +19,9 @@
     <button class="full">Entrar</button>
   </form>
   <div id="panel" hidden>
+    <video class="camara" id="video" playsinline muted hidden></video>
     <p class="contador" id="contador" role="status"></p>
+    <p class="aviso" id="sin-camara" hidden>Sin cámara: usa el código de respaldo.</p>
     <form id="manual" autocomplete="off">
       <label for="codigo">Código de respaldo</label>
       <input id="codigo" type="text" autocapitalize="off" spellcheck="false" maxlength="8" placeholder="Los 8 caracteres bajo el QR" required>
@@ -70,7 +73,51 @@ addEventListener("DOMContentLoaded", () => {
     catch (e) { if (e.status === 401) return; fallo(e.message); }
     guardar(K_CLAVE, clave);
     $("login").hidden = true; $("panel").hidden = false;
+    encender();
   }
+
+  // Cámara trasera: BarcodeDetector nativo si lee QR (Chrome Android); si no, jsQR vendido (Safari iOS).
+  let flujo = null, lector, lienzo, leyendo = false;
+  async function encender() {
+    if (flujo || document.hidden || $("panel").hidden) return;
+    try {
+      flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+    } catch {
+      $("sin-camara").hidden = false;
+      return;
+    }
+    $("sin-camara").hidden = true;
+    $("video").srcObject = flujo;
+    $("video").hidden = false;
+    $("video").play().catch(() => {});
+  }
+  function apagar() {
+    flujo?.getTracks().forEach((t) => t.stop());
+    flujo = null;
+    $("video").hidden = true;
+  }
+  async function leerQR(v) {
+    if (lector === undefined) {
+      try { lector = "BarcodeDetector" in window && (await BarcodeDetector.getSupportedFormats()).includes("qr_code") ? new BarcodeDetector({ formats: ["qr_code"] }) : null; }
+      catch { lector = null; }
+    }
+    if (lector) return (await lector.detect(v))[0]?.rawValue;
+    lienzo ??= document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+    const w = v.videoWidth, h = v.videoHeight;
+    if (lienzo.canvas.width !== w || lienzo.canvas.height !== h) { lienzo.canvas.width = w; lienzo.canvas.height = h; }
+    lienzo.drawImage(v, 0, 0, w, h);
+    return jsQR(lienzo.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: "dontInvert" })?.data;
+  }
+  // ponytail: jsQR lee el cuadro a resolución completa; si un iPhone viejo va lento, reducir el canvas a ~640 px de ancho.
+  setInterval(async () => { // 10 fps; un cuadro a la vez
+    const v = $("video");
+    if (!flujo || leyendo || v.readyState < 2 || !v.videoWidth) return;
+    leyendo = true;
+    try { const x = await leerQR(v); if (x) await validar(x); }
+    catch {}
+    finally { leyendo = false; }
+  }, 100);
+  document.addEventListener("visibilitychange", () => (document.hidden ? apagar() : encender()));
 
   function cerrar() { clearTimeout(cierre); $("resultado").hidden = true; }
 
@@ -96,7 +143,9 @@ addEventListener("DOMContentLoaded", () => {
 
   async function validar(entrada) {
     const x = String(entrada).trim().toLowerCase();
-    if (!x || (x === ultimo.x && Date.now() - ultimo.t < 3000)) return;
+    if (!x) return;
+    // Mientras el mismo QR siga en el encuadre, cada lectura renueva los 3 s de silencio.
+    if (x === ultimo.x && Date.now() - ultimo.t < 3000) { ultimo.t = Date.now(); return; }
     ultimo = { x, t: Date.now() };
     fallo(""); aviso("");
     let r;
@@ -126,7 +175,7 @@ addEventListener("DOMContentLoaded", () => {
     $("deshacer").disabled = false;
   });
   $("login").addEventListener("submit", (ev) => { ev.preventDefault(); clave = $("clave").value; entrar(); });
-  $("salir").addEventListener("click", () => { try { localStorage.removeItem(K_CLAVE); } catch {} location.reload(); });
+  $("salir").addEventListener("click", () => { apagar(); try { localStorage.removeItem(K_CLAVE); } catch {} location.reload(); });
 
   if (clave) entrar(); else $("login").hidden = false;
 });
