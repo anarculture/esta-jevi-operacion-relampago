@@ -5,7 +5,7 @@ const API = LOCAL ? "http://127.0.0.1:54321" : "https://ptbzdepejxxlavqfyepw.sup
 const KEY = LOCAL ? "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH" : "sb_publishable_iN1zfxf9SYEg42123alZHQ_4c3UYh_D";
 
 // Datos de la fiesta y contacto humano (WhatsApp del organizador). Un solo lugar para las tres páginas.
-const FIESTA = { nombre: "Sindicato Baba", dj: "DJ BABATR", fecha: "jueves 29 de octubre", hora: "21:00", lugar: "CC Chacaíto" };
+const FIESTA = { nombre: "Sindicato Baba", dj: "DJ BABATR", fecha: "jueves 29 de octubre", hora: "21:00", lugar: "CC Chacaíto", mapa: "https://maps.app.goo.gl/D9tyCVLa8ppZVfDE6" };
 const CONTACTO_WA = "584145287337";
 const waContacto = (texto) => `https://wa.me/${CONTACTO_WA}?text=${encodeURIComponent(texto)}`;
 

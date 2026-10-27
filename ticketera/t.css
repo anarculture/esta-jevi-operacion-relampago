@@ -124,3 +124,24 @@ input[aria-invalid="true"] { border-color: var(--rojo); }
 .check { display: flex; align-items: center; gap: 12px; min-height: var(--hit); margin: var(--s3) 0 var(--s1); color: var(--papel); font: inherit; letter-spacing: 0; }
 .check input { width: 20px; height: 20px; margin: 0; flex: none; }
 .check[hidden] { display: none; }
+/* Entrada (entrada.html): boleto blanco con muescas, mismo trazo que el pase de cortesía. */
+.boleto { background: #fff; color: var(--negro); border-radius: 24px; padding: 14px 14px var(--s4); margin-top: var(--s3); overflow: hidden; }
+.boleto-banner { position: relative; }
+.boleto-banner img { display: block; width: 100%; height: auto; border-radius: var(--r-card); }
+.cinta { position: absolute; left: 10px; top: 10px; padding: 7px 10px; border-radius: 999px; background: var(--verde); color: var(--negro); font: 600 11px/1 Oswald, Impact, "Arial Narrow", sans-serif; letter-spacing: 0.1em; text-transform: uppercase; }
+.boleto h1 { text-align: center; margin: var(--s3) 0 var(--s1); }
+.boleto .sub { text-align: center; font: var(--label); letter-spacing: 0.16em; text-transform: uppercase; margin: 0; }
+.corte { position: relative; border-top: 2px dashed rgb(15 15 15 / 0.3); margin: 18px 4px; }
+.corte::before, .corte::after { content: ""; position: absolute; top: -15px; width: 28px; height: 28px; border-radius: 50%; background: var(--negro); }
+.corte::before { left: -36px; }
+.corte::after { right: -36px; }
+.boleto .qr p { margin: var(--s1) 0 0; }
+.boleto-datos { display: grid; grid-template-columns: 1fr auto; gap: 14px 12px; margin: 0; padding: 0 6px; }
+.boleto-datos dt { color: #56615a; font-size: 14px; }
+.boleto-datos dd { margin: 2px 0 0; font-weight: 700; }
+.boleto-datos dd::first-letter { text-transform: uppercase; }
+.boleto-datos > :nth-child(even) { text-align: right; }
+.boleto a { color: var(--verde-tinta); }
+.apoyo { text-align: center; color: #56615a; font: var(--label); letter-spacing: 0.02em; margin: 0 0 var(--s2); }
+.patrocinio { display: flex; align-items: center; justify-content: space-evenly; gap: var(--s3); }
+.patrocinio img { display: block; }
