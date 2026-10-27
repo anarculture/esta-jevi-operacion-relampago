@@ -23,7 +23,8 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
   o WhatsApp. Paga a un desconocido y necesita confianza y una salida humana.
 - **Organizador (Mau)**: una sola persona, en su teléfono, concilia pagos entre otras tareas y
   avisa por WhatsApp.
-- **Portero** *(pendiente)*: valida QR en la puerta, a veces sin señal.
+- **Portero**: valida QR en la puerta con `portero.html` y clave propia, también sin señal (lista
+  descargada, cola local y reenvío); deshacer en 5 min; la lista no muestra datos personales.
 - **Vendedor / referido** *(pendiente)*: vende con enlace propio y gana consumo.
 
 ## Platform
@@ -60,6 +61,6 @@ lector de pantalla, nada transmitido solo por color. El QR se mantiene negro sob
 
 ## Open decisions
 
-- Check-in del portero y tarifa de puerta (historias 7 y 11 de `docs/user-stories.md`).
+- Tarifa de puerta (historia 11 de `docs/user-stories.md`); el check-in (7) ya está hecho.
 - Referidos y vendedores (8 a 11c): % y forma de pago sin decidir.
 - Si la plataforma de PM adopta la misma identidad visual o se queda sobria *(inferido: se queda)*.
