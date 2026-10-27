@@ -11,8 +11,9 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
 - **Ticketera** (`ticketera/`): venta de entradas sin pasarela. El comprador paga por transferencia
   a la cuenta personal del organizador, sube la captura, y recibe entradas con QR cuando el
   organizador concilia a mano contra su banco, con un dictamen de IA como apoyo.
-- **Plataforma de PM** (`index.html`): presupuesto, caja, tareas y operación del evento, local al
-  navegador del organizador.
+- **Plataforma de PM** (`index.html`, publicada en `pm/`): presupuesto, caja, tareas y operación del
+  evento. Su estado vive en Supabase detrás de la Edge Function `pm` (clave `PM_CLAVE`); Claude Code y
+  vytas lo leen y actualizan por HTTP. Sin clave, el navegador guarda solo en local.
 
 ## Users
 
