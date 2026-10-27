@@ -64,6 +64,13 @@ Deno.test("referencia tipeada de 5 caracteres: dudoso aunque cuadre", () => {
   assertEquals(dictaminar({ ...orden, referencia: "12283" }, { ...ok, reference: "000012283" }, destino).dictamen, "dudoso");
 });
 
+Deno.test("orden de noche en Venezuela (ya es mañana en UTC): la fecha local del comprobante coincide", () => {
+  // 21:30 del 25 en Caracas = 01:30Z del 26; el banco imprime 2026-10-25.
+  const noche = { ...orden, creada_en: "2026-10-26T01:30:00Z" };
+  assertEquals(dictaminar(noche, { ...ok, transactionDate: "2026-10-25" }, destino).dictamen, "coincide");
+  assertEquals(dictaminar(noche, { ...ok, transactionDate: "2026-10-24" }, destino).dictamen, "dudoso");
+});
+
 Deno.test("captura anterior a la orden: dudoso; un día después: coincide; dos días después: dudoso", () => {
   assertEquals(dictaminar(orden, { ...ok, transactionDate: "2026-10-24" }, destino).dictamen, "dudoso");
   assertEquals(dictaminar(orden, { ...ok, transactionDate: "2026-10-26" }, destino).dictamen, "coincide");

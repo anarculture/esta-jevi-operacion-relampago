@@ -58,7 +58,9 @@ export function dictaminar(o: Orden, x: Ocr, destino: Destino): Dictamen {
   // Ventana: del día de la orden a 1 día después (rec. 4). Una captura anterior puede ser un pago real reciclado.
   if (!x.transactionDate) dudas.push("no se lee la fecha");
   else {
-    const dias = (Date.parse(x.transactionDate) - Date.parse(o.creada_en.slice(0, 10))) / 864e5;
+    // El comprobante trae la fecha local de Venezuela (UTC-4, sin horario de verano); creada_en viene en UTC.
+    const diaOrden = new Date(Date.parse(o.creada_en) - 4 * 3600e3).toISOString().slice(0, 10);
+    const dias = (Date.parse(x.transactionDate) - Date.parse(diaOrden)) / 864e5;
     if (dias < 0) dudas.push(`captura del ${x.transactionDate}, anterior a la orden`);
     else if (dias > 1) dudas.push(`fecha ${x.transactionDate} lejos de la orden`);
   }

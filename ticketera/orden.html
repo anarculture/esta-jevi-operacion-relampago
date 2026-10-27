@@ -90,8 +90,9 @@ addEventListener("DOMContentLoaded", async () => {
       return;
     }
     // El propio comprador se manda el enlace: wa.me con su número lleva a su chat "Tú".
-    o.telefono_wa = (leer("ticketera-borrador")?.telefono ?? "").replace(/\D/g, "").replace(/^0/, "58");
-    guardar("ticketera-orden", { token, numero: o.numero });
+    const previa = leer("ticketera-orden");
+    o.telefono_wa = (previa?.token === token && previa.telefono) || normalizarWhatsapp(leer("ticketera-borrador")?.telefono) || "";
+    guardar("ticketera-orden", { token, numero: o.numero, telefono: o.telefono_wa || undefined });
     if (o.estado === "aprobada") guardar(CACHE, o);
     pintar(o, false);
     if (o.estado === "en_revision") setTimeout(cargar, 30000);

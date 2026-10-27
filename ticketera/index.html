@@ -232,7 +232,7 @@ addEventListener("DOMContentLoaded", async () => {
         p_whatsapps: whatsapps().map(normalizarWhatsapp),
       });
       funcion("revisar", { token: o.token }).catch(() => {}); // el dictamen no bloquea al comprador
-      guardar("ticketera-orden", { token: o.token, numero: o.numero });
+      guardar("ticketera-orden", { token: o.token, numero: o.numero, telefono: normalizarWhatsapp(f.telefono.value) });
       try { localStorage.removeItem("ticketera-borrador"); } catch {}
       location.href = `orden.html?t=${o.token}`;
     } catch (e) {

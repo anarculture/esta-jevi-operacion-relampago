@@ -238,6 +238,9 @@ addEventListener("DOMContentLoaded", () => {
     ultimo = { x, t: Date.now() };
     mostrar(r, local);
     if (local) return contarLocal();
+    // Lo que el servidor confirmó queda marcado aquí: si se va la señal, la lista descargada (vieja) no la
+    // dará por nueva. El deshacer online borra la marca.
+    if (r.token && r.checked_in_at) { const m = leer(K_MARCAS) ?? {}; m[r.token] = r.checked_in_at; guardar(K_MARCAS, m); }
     if (r.resultado === "valida") contar().catch(() => {});
     reenviar(); // hay red: sube lo que quedó en cola
   }
