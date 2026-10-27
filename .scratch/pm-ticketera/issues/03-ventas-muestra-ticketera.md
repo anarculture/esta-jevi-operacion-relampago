@@ -42,9 +42,22 @@ Decisiones congeladas:
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `supabase db reset && node supabase/tests/pm-navegador.mjs` sale 0 con los casos nuevos: con clave y dos órdenes aprobadas (2 entradas pago móvil + 1 Zelle) y `real.sold = 3` sembrado, Ventas muestra "3 entradas" en Ticketera, "6 entradas" en Vendidas, el cobrado de la ticketera ($30.00), los Bs de pago móvil, "Ticketera al HH:MM" y la caja real de Finanzas incluye los $30; tras aprobar una tercera orden y pulsar "Actualizar", Ticketera muestra "4 entradas" sin recargar; sin clave y sin lectura previa, Ventas muestra "Sin conexión con la ticketera" y Vendidas = `real.sold`.
-- [ ] En el mismo smoke: tras una lectura con clave, simular red caída (el test apaga su respuesta de `leer` o cambia `PM_URL` a un puerto cerrado) y recargar → la columna Ticketera conserva las cifras y la línea dice "puede estar vieja".
-- [ ] `rg -n "no procesa pagos|Entradas pagadas vendidas|Cobrado por entradas \(USD\)" index.html` no encuentra nada, y `rg -n "Sin conexión con la ticketera|puede estar vieja|fuera de la ticketera" app.js index.html` encuentra los tres textos.
-- [ ] `node supabase/tests/pm-modelo.mjs`, `node supabase/tests/pm.mjs`, `node supabase/tests/pm-ticketera.mjs`, `cmp app.js supabase/functions/_shared/app.js` y `deno test supabase/functions/` salen 0.
+- [x] `supabase db reset && node supabase/tests/pm-navegador.mjs` sale 0 con los casos nuevos: con clave y dos órdenes aprobadas (2 entradas pago móvil + 1 Zelle) y `real.sold = 3` sembrado, Ventas muestra "3 entradas" en Ticketera, "6 entradas" en Vendidas, el cobrado de la ticketera ($30.00), los Bs de pago móvil, "Ticketera al HH:MM" y la caja real de Finanzas incluye los $30; tras aprobar una tercera orden y pulsar "Actualizar", Ticketera muestra "4 entradas" sin recargar; sin clave y sin lectura previa, Ventas muestra "Sin conexión con la ticketera" y Vendidas = `real.sold`.
+- [x] En el mismo smoke: tras una lectura con clave, simular red caída (el test apaga su respuesta de `leer` o cambia `PM_URL` a un puerto cerrado) y recargar → la columna Ticketera conserva las cifras y la línea dice "puede estar vieja".
+- [x] `rg -n "no procesa pagos|Entradas pagadas vendidas|Cobrado por entradas \(USD\)" index.html` no encuentra nada, y `rg -n "Sin conexión con la ticketera|puede estar vieja|fuera de la ticketera" app.js index.html` encuentra los tres textos.
+- [x] `node supabase/tests/pm-modelo.mjs`, `node supabase/tests/pm.mjs`, `node supabase/tests/pm-ticketera.mjs`, `cmp app.js supabase/functions/_shared/app.js` y `deno test supabase/functions/` salen 0.
+
+**Evidencia (stack `pm-ticketera`, `API=http://127.0.0.1:58321`, tras `supabase db reset`):**
+
+- `node supabase/tests/pm-navegador.mjs` → `OK pm-navegador: 10 casos`. Líneas decisivas:
+  `7 ticketera: 3 entradas · $30 · $20 · 2 entradas · Bs 4,000.00 · vendidas 6 entradas pagadas · Ticketera al 01:32 a.m.`,
+  `8 actualizar: 4 entradas sin recargar`, `9 sin red: Ticketera al 01:32 a.m., puede estar vieja`,
+  `10 sin clave: Sin conexión con la ticketera · vendidas 2 entradas pagadas`. El caso 7 compara `cr-income` de Finanzas con lo manual + $30.
+- AC 3: el primer `rg` sale 1 (sin coincidencias); el segundo encuentra `app.js:968` ("Sin conexión con la ticketera", "puede estar vieja") e `index.html:298` ("fuera de la ticketera").
+- AC 4: `OK pm-modelo`, `OK pm: 8 casos`, `OK pm-ticketera: 6 casos`, `cmp` OK, `deno test` → `13 passed | 0 failed`. También verdes: `ticketera.sql`, `avisos.mjs`, `ticketera/tests/ux.mjs` (`OK ux.mjs`), `flujo.mjs` con el recibo sintético (`OK flujo: orden #13 aprobada, 2 entradas`) y el smoke `http.server` (`index.html` 200 con "fuera de la ticketera").
+- Código: `index.html:364` aviso nuevo, `index.html:368` columna Ticketera; `app.js:621` `TK_KEY`; `app.js:769` `cashReal(state, tk)`; `app.js:967` `renderTicketera`; `app.js:1267` `leerRemoto` toma el bloque; `app.js:1277` `tkValida`; `app.js:1294` `actualizarTicketera` (solo bloque); `app.js:1349` olvidar la clave borra la lectura; `app.js:1425` CSV con el bloque.
+- Captura de Ventas (fuera del repo): `CAPTURA_TK=<ruta.png> node supabase/tests/pm-navegador.mjs`.
+- Notas del test: la página llama a `127.0.0.1:54321` fijo, así que con otro `API` el test levanta un proxy en 54321 (`ponytail`/shortcut comentado; no corre si otro stack ocupa 54321). La red caída se simula con CDP `Fetch.failRequest` sobre `/functions/v1/pm`.
+- Autocrítica (no bloquea): (1) con clave y sin lectura previa, mientras la primera lectura está en vuelo, la línea dice "Sin conexión con la ticketera" un instante; (2) los Bs usan el formato `es-419` de la plataforma (`4,000.00`), no el venezolano (`4.000,00`); (3) con campos de Finanzas inválidos, "Vendidas" muestra "—" como el resto de los derivados (antes mostraba solo lo manual).

@@ -1,9 +1,9 @@
 # BUILD: la plataforma del organizador lee las ventas de la ticketera
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 03
-- Último verde: 02 · commit 588743c (01) + commit del 02 · 27-oct-2026
-- Gates: build ✅ · test ✅ (pm, pm-ticketera, pm-modelo, ticketera.sql, avisos, deno) · smoke ⬜
+- Ticket actual: 04
+- Último verde: 03 · commits 588743c (01), 2a233db (02) y el del 03 · 27-oct-2026
+- Gates: build ✅ · test ✅ (pm, pm-ticketera, pm-modelo, ticketera.sql, avisos, flujo, ux, pm-navegador, deno) · smoke ✅
 - Bloqueado: —
 - Rama de trabajo: `worktree-agent-a38d1f2148cd4d058` (desde `ticketera` 02c6117)
 - Servicios: stack propio `pm-ticketera` (config.toml local con skip-worktree): API `http://127.0.0.1:58321`, DB 58322, studio 58323, contenedor `supabase_db_pm-ticketera`; `supabase functions serve` en background
@@ -73,7 +73,7 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 
 - [x] 01 · `leer` trae el bloque `ticketera` · Bloqueado por: — · → .scratch/pm-ticketera/issues/01-leer-trae-ticketera.md · evidencia: `OK pm-ticketera: 6 casos`, `supabase/functions/pm/index.ts:39,42`, `/security-review` sin hallazgos
 - [x] 02 · El modelo puro suma la ticketera · Bloqueado por: — · → .scratch/pm-ticketera/issues/02-modelo-suma-ticketera.md · evidencia: `OK pm-modelo`, `app.js:432,447,513,967`; AC 2 enmendado (el comando literal ya salía 1 en 02c6117 por orden de claves, nota en el ticket)
-- [ ] 03 · Ventas muestra "Ticketera" y "Fuera de la ticketera" · Bloqueado por: 01, 02 · → .scratch/pm-ticketera/issues/03-ventas-muestra-ticketera.md
+- [x] 03 · Ventas muestra "Ticketera" y "Fuera de la ticketera" · Bloqueado por: 01, 02 · → .scratch/pm-ticketera/issues/03-ventas-muestra-ticketera.md · evidencia: `OK pm-navegador: 10 casos` (7 a 10 nuevos), `app.js:967,1277,1294`, `index.html:364,368`
 - [ ] 04 · Producción · Bloqueado por: 03 · → .scratch/pm-ticketera/issues/04-produccion.md
 
 ## BLOQUEADO

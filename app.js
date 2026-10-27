@@ -617,6 +617,11 @@
     let aviso = '';
     let timer = 0;
     let cola = Promise.resolve(); // las llamadas a `pm` van de una en una
+    // Última lectura del bloque `ticketera` (spec #3): fuera del estado, del respaldo y del sync, bajo su propia clave.
+    const TK_KEY = M.STORAGE_KEY + ':ticketera';
+    let tk = null;
+    try { tk = tkValida(JSON.parse(storage && storage.getItem(TK_KEY))); } catch (e) { tk = null; }
+    let tkFresca = false; // leída en esta sesión y la última lectura no falló
 
     // ---------- utilidades DOM (solo textContent / atributos, nunca HTML) ----------
 
@@ -761,7 +766,7 @@
       let d = null;
       if (!finBad) {
         try {
-          d = { r: M.calcScenario(state), eq: M.breakEven(state), cash: M.cashReal(state), tot: M.budgetTotals(state.budget, state.scenario.preset), bar: M.barShare(state.bar) };
+          d = { r: M.calcScenario(state), eq: M.breakEven(state), cash: M.cashReal(state, tk), tot: M.budgetTotals(state.budget, state.scenario.preset), bar: M.barShare(state.bar) };
         } catch (err) {
           d = null;
           setText(fe, 'Datos inconsistentes: ' + err.message + ' Restaura un respaldo o vuelve a la plantilla.');
@@ -959,9 +964,25 @@
       }
     }
 
+    function renderTicketera() {
+      setText($('tk-estado'), tk ? 'Ticketera al ' + hhmm(tk.consultado_en) + (tkFresca ? '' : ', puede estar vieja') : 'Sin conexión con la ticketera');
+      const ids = ['tk-entradas', 'tk-ordenes', 'tk-cobrado', 'tk-pago-movil', 'tk-zelle', 'tk-binance', 'tk-revision'];
+      if (!tk) { for (const id of ids) setText($(id), '—'); return; }
+      const a = tk.aprobadas, pm = tk.por_metodo, rv = tk.en_revision;
+      const entradas = n => plural(n, 'entrada', 'entradas'), metodo = m => fm(m.usd_cents) + ' · ' + entradas(m.entradas);
+      setText($('tk-entradas'), entradas(a.entradas));
+      setText($('tk-ordenes'), plural(a.ordenes, 'orden', 'órdenes'));
+      setText($('tk-cobrado'), fm(a.usd_cents));
+      setText($('tk-pago-movil'), metodo(pm.pago_movil) + ' · Bs ' + NF2.format(pm.pago_movil.bs));
+      setText($('tk-zelle'), metodo(pm.zelle));
+      setText($('tk-binance'), metodo(pm.binance));
+      setText($('tk-revision'), plural(rv.ordenes, 'orden', 'órdenes') + ' · ' + metodo(rv));
+    }
+
     function renderVentas(d) {
       const rl = state.real;
-      setText($('v-sold-out'), plural(rl.sold, 'entrada pagada', 'entradas pagadas') + (rl.courtesies ? ' + ' + plural(rl.courtesies, 'cortesía', 'cortesías') : ''));
+      renderTicketera();
+      setText($('v-sold-out'), d ? plural(d.cash.soldTotal, 'entrada pagada', 'entradas pagadas') + (rl.courtesies ? ' + ' + plural(rl.courtesies, 'cortesía', 'cortesías') : '') : '—');
       setText($('v-sc-out'), plural(state.scenario.tickets, 'entrada', 'entradas') + ' (hipótesis)');
       setText($('v-eq-out'), d ? (d.eq === null ? 'No alcanzable' : plural(d.eq, 'entrada', 'entradas')) : '—');
       setText($('v-missing-out'), d ? (d.eq === null ? '—' : plural(Math.max(0, d.eq - d.cash.soldTotal), 'entrada', 'entradas')) : '—');
@@ -1242,13 +1263,41 @@
       const k = clave;
       const r = await remoto({ accion: 'leer' });
       if (clave !== k) return; // se olvidó o cambió la clave con el pedido en vuelo: la respuesta ya no aplica
-      if (r.status !== 200 || !r.d) return fallo(r);
+      if (r.status !== 200 || !r.d) { if (r.status !== 401) tomarTicketera(null); return fallo(r); }
+      tomarTicketera(r.d.ticketera);
       // Remoto vacío y datos guardados aquí: se suben con base 0.
       if (r.d.version === 0) { if (base !== 0 && state.savedAt) dirty = true; base = 0; }
       else if (r.d.version !== base) return adoptar(r.d);
       if (dirty) return subir();
       sync = { ok: true, version: base };
       renderSave();
+    }
+
+    // El bloque viene de la red o de localStorage: sin la forma de `leer`, se ignora (nunca rompe la caja).
+    function tkValida(b) {
+      const n = v => Number.isSafeInteger(v) && v >= 0;
+      const g = x => !!x && n(x.ordenes) && n(x.entradas) && n(x.usd_cents);
+      const pm = b && b.por_metodo;
+      return b && typeof b.consultado_en === 'string' && !isNaN(Date.parse(b.consultado_en)) && g(b.aprobadas) && g(b.en_revision)
+        && pm && g(pm.pago_movil) && Number.isFinite(pm.pago_movil.bs) && g(pm.zelle) && g(pm.binance) ? b : null;
+    }
+
+    // Sin red, error o `ticketera: null` (falló el cálculo): queda la última lectura, marcada vieja.
+    function tomarTicketera(b) {
+      const v = tkValida(b);
+      tkFresca = !!v;
+      if (v) { tk = v; try { storage.setItem(TK_KEY, JSON.stringify(v)); } catch (e) { /* sin almacenamiento: vale solo en esta pestaña */ } }
+      renderDerived();
+    }
+
+    // "Actualizar" en Ventas: un `leer` que solo toma el bloque; no adopta ni sube estado.
+    async function actualizarTicketera() {
+      if (!clave) return;
+      const k = clave;
+      const r = await remoto({ accion: 'leer' });
+      if (clave !== k) return;
+      if (r.status === 401) return fallo(r);
+      tomarTicketera(r.status === 200 && r.d ? r.d.ticketera : null);
     }
 
     async function subir() {
@@ -1268,7 +1317,7 @@
     const canon = s => { const r = M.validateState(Object.assign({}, s, { savedAt: null })); return r.ok ? M.serializeState(r.state) : ''; };
 
     // Lo remoto reemplaza a lo local; antes, lo local queda como respaldo anterior (salvo que sean iguales).
-    // Del cuerpo de `leer` solo se usan version y estado: claves extra (el futuro bloque `ticketera`) no entran al estado.
+    // Del cuerpo de `leer` solo se usan version y estado: el bloque `ticketera` va aparte (tomarTicketera) y no entra al estado.
     // ponytail: un solo respaldo y `base` solo en memoria: al reabrir gana el remoto y un segundo conflicto pisa el respaldo; si Mau edita a diario aquí, guardar `base` en localStorage y respaldos con historial.
     function adoptar(d) {
       const r = M.validateState(d.estado);
@@ -1290,14 +1339,17 @@
     function renderClave() {
       $('pm-form').hidden = !!clave;
       $('btn-forget').hidden = !clave;
+      $('tk-actualizar').disabled = !clave;
+      $('tk-motivo').hidden = !!clave;
     }
 
     function olvidarClave(msg) {
-      clave = null; base = null; dirty = false; sync = null; aviso = '';
+      clave = null; base = null; dirty = false; sync = null; aviso = ''; tk = null; tkFresca = false;
       win.clearTimeout(timer);
-      try { storage.removeItem(M.CLAVE_KEY); } catch (e) { /* sin almacenamiento: no había clave guardada */ }
+      try { storage.removeItem(M.CLAVE_KEY); storage.removeItem(TK_KEY); } catch (e) { /* sin almacenamiento: no había clave guardada */ }
       renderClave();
       renderSave();
+      renderDerived();
       dataMsg(msg);
     }
 
@@ -1365,11 +1417,12 @@
       else if (a === 'reset-all') resetAll();
       else if (a === 'restore-backup') restoreBackup();
       else if (a === 'forget-key') olvidarClave('Clave olvidada: desde ahora se guarda solo en este navegador.');
+      else if (a === 'tk-actualizar') enCola(actualizarTicketera);
       else if (a === 'import-json') $('import-file').click();
       else if (a === 'export-json') { download(M.serializeState(state), 'sindicato-baba-respaldo-' + stamp() + '.json', 'application/json'); dataMsg('Respaldo exportado. Guárdalo en un lugar privado: incluye todo lo que anotaste.'); }
       else if (a === 'export-csv') {
         if (Array.from(invalid.values()).some(v => v.fin)) { setText($('csv-msg'), 'Corrige los campos marcados antes de exportar.'); return; }
-        download(M.toCSV(state), 'sindicato-baba-escenario-' + stamp() + '.csv', 'text/csv;charset=utf-8');
+        download(M.toCSV(state, tk), 'sindicato-baba-escenario-' + stamp() + '.csv', 'text/csv;charset=utf-8');
         setText($('csv-msg'), 'CSV exportado.');
       }
     }

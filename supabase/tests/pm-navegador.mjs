@@ -1,9 +1,12 @@
 // Smoke del navegador contra `pm` local, manejando Chrome headless por CDP (sin dependencias):
 //   supabase db reset && node supabase/tests/pm-navegador.mjs
-// Requiere `supabase functions serve --env-file supabase/functions/.env`. Supone la tabla vacía.
+//   Otro stack: API=http://127.0.0.1:58321 DB_CONTAINER=supabase_db_pm-ticketera node supabase/tests/pm-navegador.mjs
+// Requiere `supabase functions serve --env-file supabase/functions/.env` con PM_CLAVE y ADMIN_CLAVE.
+// Supone `pm_versiones` y `ordenes` vacías. Las órdenes de la ticketera (casos 7 a 10) nacen con
+// `crear_orden` y se aprueban con `admin`, como en pm-ticketera.mjs; la config entra por SQL y se restaura.
 import { createServer } from "node:http";
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
 import { tmpdir } from "node:os";
 import { join, extname } from "node:path";
@@ -12,10 +15,46 @@ import assert from "node:assert/strict";
 
 const M = createRequire(import.meta.url)("../../app.js");
 const ROOT = new URL("../../", import.meta.url).pathname;
-const PM = "http://127.0.0.1:54321/functions/v1/pm";
+const API = process.env.API ?? "http://127.0.0.1:54321";
+const DB = process.env.DB_CONTAINER ?? "supabase_db_sindicato-baba-ticketera";
+const PM = API + "/functions/v1/pm";
 const KEY = "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
-const CLAVE = readFileSync(new URL("../functions/.env", import.meta.url), "utf8").match(/PM_CLAVE=(.*)/)[1];
+const ENV = readFileSync(new URL("../functions/.env", import.meta.url), "utf8");
+const CLAVE = ENV.match(/PM_CLAVE=(.*)/)[1];
+const ADMIN = ENV.match(/ADMIN_CLAVE=(.*)/)[1];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sql = (q) => execFileSync("docker", ["exec", "-i", DB, "psql", "-U", "postgres", "-tA", "-v", "ON_ERROR_STOP=1"], { input: q, encoding: "utf8" }).trim();
+async function pedir(path, body) {
+  const r = await fetch(API + path, { method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return r.json().catch(() => null);
+}
+// Orden aprobada por el panel, como en pm-ticketera.mjs.
+let nOrden = 0;
+async function aprobada(metodo, cantidad) {
+  const o = await pedir("/rest/v1/rpc/crear_orden", { p_nombre: "Prueba Navegador", p_cedula: "12345678", p_telefono: "",
+    p_cantidad: cantidad, p_metodo: metodo, p_referencia: `PMNAVEGADOR${Date.now()}${nOrden++}`,
+    p_captura: `${crypto.randomUUID()}.png`, p_whatsapps: Array(cantidad).fill("04141234567") });
+  assert.ok(o?.token, `crear_orden: ${JSON.stringify(o)}`);
+  const id = (await pedir("/functions/v1/admin", { clave: ADMIN, accion: "cola" })).find((x) => x.token === o.token).id;
+  assert.equal((await pedir("/functions/v1/admin", { clave: ADMIN, accion: "resolver", id, aprobar: true }))?.estado, "aprobada");
+  return pedir("/rest/v1/rpc/ver_orden", { p_token: o.token });
+}
+
+// La página llama a `pm` en 127.0.0.1:54321 fijo (app.js); con otro stack, un proxy en ese puerto reenvía a API.
+// shortcut: si otro stack ocupa 54321, este test corre solo contra ese (sin API) o con ese stack apagado.
+const proxy = new URL(API).port === "54321" ? null : createServer(async (req, res) => {
+  const partes = [];
+  for await (const p of req) partes.push(p);
+  const headers = { ...req.headers };
+  for (const h of ["host", "connection", "content-length"]) delete headers[h];
+  const r = await fetch(API + req.url, { method: req.method, headers, body: partes.length ? Buffer.concat(partes) : undefined }).catch(() => null);
+  if (!r) return res.writeHead(502).end();
+  const out = Object.fromEntries(r.headers);
+  for (const h of ["content-encoding", "content-length", "transfer-encoding", "connection"]) delete out[h];
+  res.writeHead(r.status, out).end(Buffer.from(await r.arrayBuffer()));
+}).listen(54321, "127.0.0.1");
+if (proxy) await once(proxy, "listening");
+const antes = sql("select row_to_json(c) from config c");
 
 async function pm(body) {
   const r = await fetch(PM, { method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify({ clave: CLAVE, ...body }) });
@@ -56,9 +95,11 @@ try {
   const pend = new Map();
   const llamadasPm = [];
   const consola = [];
+  let cortadas = 0; // pedidos a `pm` que el caso de red caída hizo fallar
   ws.onmessage = ({ data }) => {
     const m = JSON.parse(data);
     if (pend.has(m.id)) { const [ok, ko] = pend.get(m.id); pend.delete(m.id); m.error ? ko(new Error(m.error.message)) : ok(m.result); }
+    else if (m.method === "Fetch.requestPaused") { cortadas++; cdp("Fetch.failRequest", { requestId: m.params.requestId, errorReason: "InternetDisconnected" }); }
     else if (m.method === "Runtime.exceptionThrown") consola.push(m.params.exceptionDetails.exception?.description ?? m.params.exceptionDetails.text);
     else if (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") consola.push(m.params.args.map((x) => x.value ?? x.description).join(" "));
     else if (m.method === "Network.requestWillBeSent" && m.params.request.url.includes("/functions/v1/pm")) llamadasPm.push(m.params.request.url);
@@ -143,10 +184,80 @@ try {
   await hasta(`localStorage.getItem(${S(M.CLAVE_KEY)}) === null`);
   console.log("6 clave mala: olvidada");
 
+  // 7. Ticketera (spec #3): dos órdenes aprobadas (2 pago móvil + 1 Zelle) y 3 vendidas fuera, sembradas.
+  sql(`update config set tasa_eur = 200, tasa_consultada_en = now(), metodos = metodos
+    || jsonb_build_object('pago_movil_bnc', coalesce(metodos -> 'pago_movil_bnc', '{}') || '{"activo": true}')
+    || jsonb_build_object('zelle', coalesce(metodos -> 'zelle', '{}') || '{"activo": true}')
+    || jsonb_build_object('binance', coalesce(metodos -> 'binance', '{}') || '{"activo": true}')`);
+  const movil = await aprobada("pago_movil_bnc", 2);
+  await aprobada("zelle", 1);
+  await sembrar(await vigente(), 3, "claude");
+  const manual = (await leer()).estado.real;
+  await ev(`localStorage.setItem(${S(M.CLAVE_KEY)}, ${S(CLAVE)})`);
+  await abrir();
+  await hasta(`document.getElementById('tk-entradas').textContent === '3 entradas'`);
+  await hasta(`document.getElementById('v-sold-out').textContent.startsWith('6 entradas')`);
+  assert.equal(await texto("tk-cobrado"), M.fmtMoney(3000));
+  const bs = new Intl.NumberFormat("es-419", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(movil.monto_bs);
+  assert.ok((await texto("tk-pago-movil")).endsWith("Bs " + bs), `Bs de pago móvil: ${await texto("tk-pago-movil")}`);
+  assert.match(await texto("tk-estado"), /^Ticketera al \d{1,2}:\d{2}/);
+  assert.ok(!(await texto("tk-estado")).includes("vieja"), await texto("tk-estado"));
+  assert.equal(await texto("cr-income"), M.fmtMoney(manual.ticketsCollectedCents + manual.sponsorCollectedCents + manual.barCollectedCents + 3000), "la caja real no suma la ticketera");
+  console.log("7 ticketera:", await texto("tk-entradas"), "·", await texto("tk-cobrado"), "·", await texto("tk-pago-movil"), "· vendidas", await texto("v-sold-out"), "·", await texto("tk-estado"));
+
+  // 8. Una tercera orden y "Actualizar": cifras nuevas sin recargar ni tocar el estado.
+  await ev("window.__sinRecarga = true");
+  const versionAntes = await vigente();
+  await aprobada("binance", 1);
+  await ev("document.getElementById('tk-actualizar').click()");
+  await hasta(`document.getElementById('tk-entradas').textContent === '4 entradas'`);
+  assert.equal(await ev("window.__sinRecarga"), true, "Actualizar recargó la página");
+  await sleep(2500); // más que el debounce de guardado: si Actualizar tocara el estado, ya habría versión nueva
+  assert.equal(await vigente(), versionAntes, "Actualizar subió estado");
+  assert.ok((await texto("v-sold-out")).startsWith("7 entradas"), await texto("v-sold-out"));
+  if (process.env.CAPTURA_TK) {
+    await ev("location.hash = '#ventas'");
+    await sleep(400);
+    writeFileSync(process.env.CAPTURA_TK, Buffer.from((await cdp("Page.captureScreenshot", { captureBeyondViewport: true })).data, "base64"));
+  }
+  console.log("8 actualizar: 4 entradas sin recargar");
+
+  // 9. Red caída y recarga: quedan las cifras de la última lectura, marcadas viejas.
+  await cdp("Fetch.enable", { patterns: [{ urlPattern: "*/functions/v1/pm*" }] });
+  await abrir();
+  for (let i = 0; i < 100 && cortadas === 0; i++) await sleep(100);
+  assert.ok(cortadas > 0, "la página no intentó leer");
+  await sleep(500);
+  assert.equal(await texto("tk-entradas"), "4 entradas");
+  assert.match(await texto("tk-estado"), /^Ticketera al \d{1,2}:\d{2}.*, puede estar vieja$/);
+  await cdp("Fetch.disable");
+  console.log("9 sin red:", await texto("tk-estado"));
+
+  // 10. Sin clave y sin lectura previa: "Sin conexión con la ticketera" y la caja solo con lo manual.
+  await ev("localStorage.clear()");
+  await abrir();
+  await escribir("v-sold", "2");
+  await hasta(`document.getElementById('v-sold-out').textContent === '2 entradas pagadas'`);
+  assert.equal(await texto("tk-estado"), "Sin conexión con la ticketera");
+  assert.equal(await texto("tk-entradas"), "—");
+  assert.equal(await texto("cr-income"), M.fmtMoney(0));
+  assert.equal(await ev("document.getElementById('tk-actualizar').disabled && !document.getElementById('tk-motivo').hidden"), true, "Actualizar sin motivo");
+  // Un bloque guardado con otra forma se ignora sin romper la caja.
+  const errores = consola.length;
+  await ev(`localStorage.setItem(${S(M.STORAGE_KEY + ":ticketera")}, '{"aprobadas":{"entradas":"x"}}')`);
+  await abrir();
+  await hasta(`document.getElementById('v-sold-out').textContent === '2 entradas pagadas'`);
+  assert.equal(await texto("tk-estado"), "Sin conexión con la ticketera");
+  assert.equal(consola.length, errores, `errores en consola: ${consola.slice(errores).join(" / ")}`);
+  console.log("10 sin clave:", await texto("tk-estado"), "· vendidas", await texto("v-sold-out"));
+
   ws.close();
-  console.log("OK pm-navegador: 6 casos");
+  console.log("OK pm-navegador: 10 casos");
 } finally {
   if (chrome.exitCode === null) { chrome.kill(); await once(chrome, "exit"); }
   server.close();
+  proxy?.close();
+  sql(`update config set (metodos, tasa_eur, tasa_consultada_en) = (select metodos, tasa_eur, tasa_consultada_en
+    from json_populate_record(null::config, '${antes.replace(/'/g, "''")}'))`);
   rmSync(perfil, { recursive: true, force: true, maxRetries: 3 });
 }
