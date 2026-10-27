@@ -168,6 +168,9 @@ await caso("compra: un WhatsApp por entrada, error antes de subir, recarga los c
   await page.click("#enviar");
   await page.waitForURL(/orden\.html\?t=/);
   a.deepEqual(args.p_whatsapps, ["584141234567", "13055550100", "584241112233"], "p_whatsapps sin normalizar");
+  // Misma tabla que ticketera.sql: venezolano sin el 0 y +58 0414… no pueden salir a otro país.
+  a.deepEqual(await page.evaluate(() => ["0414-123.45.67", "414 123 4567", "+58 0414 123 4567", "+1 (305) 555-0100", "12345"].map(normalizarWhatsapp)),
+    ["584141234567", "584141234567", "584141234567", "13055550100", null], "normalizarWhatsapp distinta de SQL");
   await ctx.close();
 });
 

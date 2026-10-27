@@ -64,10 +64,13 @@ const bsPlano = (n) => Number(n).toFixed(2).replace(".", ",");
 const fechaCorta = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : "");
 const fechaHora = (iso) => new Date(iso).toLocaleString("es-VE", { timeZone: "America/Caracas", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const horaCorta = (iso) => new Date(iso).toLocaleTimeString("es-VE", { timeZone: "America/Caracas", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-// Misma regla que normalizar_whatsapp en SQL: 0 + 10 dígitos (Venezuela) → 58…; con código de país, 10 a 15 dígitos.
+// Misma regla que normalizar_whatsapp en SQL: venezolano (04141234567, 4141234567, +58 0414…) → 58…;
+// con código de país, 10 a 15 dígitos tal cual.
 function normalizarWhatsapp(s) {
   const d = String(s ?? "").replace(/\D/g, "");
   if (/^0\d{10}$/.test(d)) return `58${d.slice(1)}`;
+  if (/^580\d{10}$/.test(d)) return `58${d.slice(3)}`;
+  if (/^[24]\d{9}$/.test(d)) return `58${d}`;
   return /^[1-9]\d{9,14}$/.test(d) ? d : null;
 }
 // "Para el ···1234 · pendiente de envío" / "Enviada al ···1234 a las 21:03"; nada si la entrada no tiene WhatsApp.

@@ -8,6 +8,12 @@ do $$
 begin
   assert not exists (select 1 from entradas where whatsapp is null and avisada_en is null),
     'hay entradas sin WhatsApp pendientes de aviso (falta el backfill)';
+  -- Venezolano en sus formas habituales → 58…; extranjero con código de país, tal cual.
+  assert normalizar_whatsapp('0414-123.45.67') = '584141234567', '04… no quedó 58…';
+  assert normalizar_whatsapp('414 123 4567') = '584141234567', 'venezolano sin el 0 no quedó 58… (saldría a Suiza)';
+  assert normalizar_whatsapp('+58 0414 123 4567') = '584141234567', '+58 0414… conservó el 0';
+  assert normalizar_whatsapp('+58 414 123 4567') = '584141234567', '+58 414… cambió';
+  assert normalizar_whatsapp('+1 (305) 555-0100') = '13055550100', 'extranjero cambió';
 end $$;
 
 -- Se activan por concatenación y no con jsonb_set: si la config local perdió una clave, jsonb_set no la crea.
@@ -217,6 +223,18 @@ do $$
 begin
   perform avisos_pendientes();
   assert false, 'anon puede bajar los WhatsApp pendientes de aviso';
+exception when insufficient_privilege then null;
+end $$;
+do $$
+begin
+  perform reenviar_aviso(gen_random_uuid(), '04141234567');
+  assert false, 'anon puede redirigir una entrada a otro WhatsApp';
+exception when insufficient_privilege then null;
+end $$;
+do $$
+begin
+  perform marcar_aviso(gen_random_uuid(), true);
+  assert false, 'anon puede marcar avisos';
 exception when insufficient_privilege then null;
 end $$;
 reset role;
