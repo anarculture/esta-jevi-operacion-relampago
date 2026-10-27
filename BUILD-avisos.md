@@ -1,8 +1,9 @@
 # BUILD: WhatsApp por entrada, aprobación automática y aviso por vytas
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 05 (producción). Antes: integrar `origin/vm/evento-pm-v2` (trae `20261027040000_portero_hora_local.sql`, ya aplicada en producción).
-- Último verde: 04 · commit (ver git log) · 2026-10-26 (01 41ac3bc · 02 dfd31cf · 03 7c1606f; merges de `ticketera` en 46873d1 y bf74878)
+- Ticket actual: 05 (producción), BLOQUEADO. `origin/vm/evento-pm-v2` ya integrada en dc16602.
+- Último verde: 04 · 2026-10-27 (01 41ac3bc+e1d993c · 02 dfd31cf+be11f7c · 03 7c1606f · 04 1c04bbf+921b2d5; merges de `ticketera` en 46873d1 y bf74878)
+- Verificación independiente (01–04): 17 AC PASS, 04.3 N/A (HITL ya confirmado); falsabilidad ROJO en 01, 02 y 03, N/A en los asserts SQL (la base ya tiene las migraciones). Code review: 3 hallazgos de corrección arreglados (e1d993c, be11f7c); los de calidad van al reporte final.
 - Gates: build ✅ (sin build) · test ✅ SQL (en `supabase_db_avisos`; la compartida la recrea otro build), ux, deno, flujo, auto-aprobar, avisos, dry-run del script · smoke ✅ 8790 "Tu WhatsApp"
 - VM: script `~/.hermes/scripts/avisos-entradas.sh`, `AVISOS_URL` en `~/.hermes/.env`, sección en el skill `plataforma-sindicato-baba`, cron `avisos-entradas` (f2e9920487c7) **en pausa**.
 - Bloqueado: 05 (despliegue negado por el hook; comandos en `## BLOQUEADO`)
@@ -69,7 +70,8 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 
 `supabase db push --linked --yes` → "Permission … denied by the Claude Code auto mode classifier. Reason:
 [Production Deploy]". El dry-run sí corrió y empujaría exactamente `20261027120000_avisos.sql`,
-`20261027120100_auto_aprobar.sql` y `20261027120200_avisos_funciones.sql`. `migration list --linked`
+`20261027120100_auto_aprobar.sql`, `20261027120200_avisos_funciones.sql` y
+`20261027120300_whatsapp_sin_cero.sql`. `migration list --linked`
 muestra producción igual al repo hasta `20261027040000` (la del portero, ya integrada en esta rama).
 
 Comandos para Mau, **en este orden y seguidos**. Entre el 1 y el 3 la página publicada vieja no puede
