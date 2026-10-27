@@ -19,6 +19,8 @@ const PORT = 8766;
 const raiz = new URL("..", import.meta.url).pathname;
 const server = spawn("python3", ["-m", "http.server", String(PORT), "--bind", "127.0.0.1", "--directory", raiz], { stdio: "ignore" });
 await new Promise((r) => setTimeout(r, 700));
+// Con el puerto ocupado, http.server muere y el test hablaría con el servidor de otro proceso.
+if (server.exitCode !== null) throw new Error(`puerto ${PORT} ocupado: libéralo antes de correr el test`);
 const URLBASE = `http://127.0.0.1:${PORT}`;
 
 const VENTA = {
