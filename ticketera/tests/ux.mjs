@@ -36,8 +36,8 @@ const ORDEN = {
 };
 const TOKENS = ["aaaaaaaa-0000-4000-8000-000000000001", "aaaaaaaa-0000-4000-8000-000000000002", "aaaaaaaa-0000-4000-8000-000000000003"];
 const COLA = [
-  { id: "o1", numero: 12, token: "t1", creada_en: "2026-10-26T18:00:00Z", nombre: "Ana Pérez", cedula: "V12345678", telefono: "04141234567", cantidad: 3, metodo: "pago_movil_bnc", referencia: "12283", monto_usd_cents: 3000, monto_bs: 29792.65, estado: "en_revision", dictamen: "coincide", dictamen_motivo: "monto, referencia, fecha y destinatario coinciden", rechazo_motivo: null, captura_url: null },
-  { id: "o2", numero: 11, token: "t2", creada_en: "2026-10-26T17:00:00Z", nombre: "Beto Díaz", cedula: "V87654321", telefono: "04241234567", cantidad: 1, metodo: "zelle", referencia: "ZX99", monto_usd_cents: 1000, monto_bs: null, estado: "aprobada", dictamen: "dudoso", dictamen_motivo: "no se lee la fecha", rechazo_motivo: null, captura_url: null },
+  { id: "o1", numero: 12, token: "t1", creada_en: "2026-10-26T18:00:00Z", nombre: "Ana Pérez", cedula: "V12345678", telefono: "04141234567", cantidad: 3, metodo: "pago_movil_bnc", referencia: "12283", monto_usd_cents: 3000, monto_bs: 29792.65, pagador: { banco: "Mercantil", telefono: "584147654321", cedula: "V9876543" }, estado: "en_revision", dictamen: "coincide", dictamen_motivo: "monto, referencia, fecha y destinatario coinciden", rechazo_motivo: null, captura_url: null },
+  { id: "o2", numero: 11, token: "t2", creada_en: "2026-10-26T17:00:00Z", nombre: "Beto Díaz", cedula: "V87654321", telefono: "04241234567", cantidad: 1, metodo: "zelle", referencia: "ZX99", monto_usd_cents: 1000, monto_bs: null, pagador: { titular: "Beto Díaz" }, estado: "aprobada", dictamen: "dudoso", dictamen_motivo: "no se lee la fecha", rechazo_motivo: null, captura_url: null },
   { id: "o3", numero: 10, token: "t3", creada_en: "2026-10-26T16:00:00Z", nombre: "Caro Ruiz", cedula: "V11111111", telefono: "04161234567", cantidad: 2, metodo: "pago_movil_bnc", referencia: "555", monto_usd_cents: 2000, monto_bs: 19861.77, estado: "rechazada", dictamen: "no_coincide", dictamen_motivo: "monto menor", rechazo_motivo: "El monto no coincide", captura_url: null },
 ];
 
@@ -95,6 +95,9 @@ await caso("compra: pasos ocultos, monto en euros a tasa BCV, copiar plano, vali
   await page.click("#ya-pague");
   await page.waitForSelector("#reporte:not([hidden])");
   await page.fill("#referencia", "712283");
+  await page.selectOption("#pagador-banco", "Mercantil");
+  await page.fill("#pagador-telefono", "04147654321");
+  await page.fill("#pagador-cedula", "9876543");
   await page.fill("#nombre", "Ana Pérez");
   await page.fill("#cedula", "12");
   await page.fill("#telefono", "04141234567");
@@ -142,11 +145,12 @@ await caso("compra: un WhatsApp por entrada, error antes de subir, recarga los c
   await page.fill("#cantidad", "3");
   await page.check("input[value=zelle]");
   await page.click("#ya-pague");
-  a.equal(await page.locator("#reporte input[type=tel]").count(), 3, "cantidad 3 sin 3 campos de WhatsApp");
+  a.equal(await page.locator("#telefono, #otros-wa input[type=tel]").count(), 3, "cantidad 3 sin 3 campos de WhatsApp");
   a.equal(await page.textContent("label[for=telefono]"), "Tu WhatsApp");
   a.equal(await page.textContent("label[for=wa-3]"), "WhatsApp de la entrada 3");
   a.ok((await page.textContent("#otros-wa")).includes("Le llegará su QR por WhatsApp"), "sin ayuda en los campos de amigos");
   await page.fill("#referencia", "ZX12345");
+  await page.fill("#pagador-titular", "Ana Pérez");
   await page.fill("#nombre", "Ana Pérez");
   await page.fill("#cedula", "V12345678");
   await page.fill("#telefono", "0414-123.45.67");
@@ -183,6 +187,9 @@ await caso("compra: referencia de 5 caracteres marca error sin subir; con 6 env�
   await page.click("#ya-pague");
   a.ok((await page.getAttribute("#referencia", "placeholder")).includes("últimos 6"), "el hint no pide los últimos 6");
   await page.fill("#referencia", "0-12.283"); // 5 tras normalizar: el cero a la izquierda no cuenta
+  await page.selectOption("#pagador-banco", "BNC");
+  await page.fill("#pagador-telefono", "04147654321");
+  await page.fill("#pagador-cedula", "V9876543");
   await page.fill("#nombre", "Ana Pérez");
   await page.fill("#cedula", "V12345678");
   await page.fill("#telefono", "04141234567");
@@ -197,6 +204,50 @@ await caso("compra: referencia de 5 caracteres marca error sin subir; con 6 env�
   await page.click("#enviar");
   await page.waitForURL(/orden\.html\?t=/);
   a.ok(llamadas.includes("crear_orden"), "con 6 caracteres no registró");
+  await ctx.close();
+});
+
+await caso("compra: pago móvil pide banco, teléfono y cédula del pagador; p_pagador con las tres claves; Zelle solo titular", async () => {
+  let args = null;
+  const ctx = await pagina({ tasa: VENTA, crear_orden: (b) => ((args = b), { numero: 16, token: TOKENS[0] }), storage: { Key: "x" }, revisar: {} });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  for (const id of ["pagador-banco", "pagador-telefono", "pagador-cedula"]) a.equal(await page.isVisible(`#${id}`), true, `sin #${id} en pago móvil`);
+  for (const id of ["pagador-titular", "pagador-id"]) a.equal(await page.isHidden(`#${id}`), true, `#${id} visible en pago móvil`);
+  await page.fill("#referencia", "712283");
+  await page.fill("#nombre", "Ana Pérez");
+  await page.fill("#cedula", "V12345678");
+  await page.fill("#telefono", "04141234567");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  llamadas.length = 0;
+  await page.click("#enviar");
+  await page.waitForSelector("#e-pagador-banco:not([hidden])");
+  a.equal(await page.isVisible("#e-pagador-telefono"), true, "teléfono del pagador vacío sin error");
+  a.equal(await page.isVisible("#e-pagador-cedula"), true, "cédula del pagador vacía sin error");
+  a.ok(!llamadas.includes("storage") && !llamadas.includes("crear_orden"), "subió o registró sin datos del pagador");
+  await page.selectOption("#pagador-banco", "Mercantil");
+  await page.fill("#pagador-telefono", "0414-765.43.21");
+  await page.fill("#pagador-cedula", "v-9.876.543");
+  await page.reload();
+  await page.waitForSelector("#pagador-banco");
+  a.deepEqual([await page.inputValue("#pagador-banco"), await page.inputValue("#pagador-telefono"), await page.inputValue("#pagador-cedula")],
+    ["Mercantil", "0414-765.43.21", "v-9.876.543"], "la recarga no restauró los datos del pagador");
+  await foto(page, "03d-compra-pagador-pago-movil");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await page.click("#enviar");
+  await page.waitForURL(/orden\.html\?t=/);
+  a.deepEqual(args.p_pagador, { banco: "Mercantil", telefono: "0414-765.43.21", cedula: "v-9.876.543" }, "p_pagador de pago móvil");
+
+  const z = await ctx.newPage();
+  await z.goto(`${URLBASE}/index.html`);
+  await z.waitForSelector("#metodos input");
+  await z.check("input[value=zelle]");
+  await z.click("#ya-pague");
+  a.equal(await z.isVisible("#pagador-titular"), true, "sin titular en Zelle");
+  for (const id of ["pagador-banco", "pagador-telefono", "pagador-cedula", "pagador-id"]) a.equal(await z.isHidden(`#${id}`), true, `#${id} visible en Zelle`);
   await ctx.close();
 });
 
@@ -350,6 +401,22 @@ await caso("admin: cola, título con pendientes, filtro, rechazo con motivo, Wha
   await page.waitForFunction(() => window.__abiertos.length === 1);
   a.equal(resueltas[1].aprobar, true);
   a.ok((await page.evaluate(() => window.__abiertos[0])).startsWith("https://wa.me/584141234567?text="), "no abrió WhatsApp al aprobar");
+  await ctx.close();
+});
+
+await caso("admin: 'desde' con los datos del pagador; el buscador encuentra por cédula y teléfono del pagador", async () => {
+  const ctx = await pagina({ admin: () => COLA }, { storage: { "ticketera-clave": "clave-buena-de-prueba" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/admin.html`);
+  await page.waitForSelector("#cola .card");
+  a.ok((await page.textContent("#cola .card")).includes("desde 04147654321 · V9876543 · Mercantil"), "sin 'desde' de pago móvil");
+  a.ok((await page.textContent("#hechas")).includes("desde Beto Díaz"), "sin 'desde' de Zelle");
+  await foto(page, "10d-admin-pagador");
+  for (const q of ["9876543", "04147654321"]) {
+    await page.fill("#buscar", q);
+    a.equal(await page.locator("#cola .card").count(), 1, `buscar ${q}: no encontró la orden`);
+    a.equal(await page.locator("#hechas .card").count(), 0, `buscar ${q}: trajo otras`);
+  }
   await ctx.close();
 });
 

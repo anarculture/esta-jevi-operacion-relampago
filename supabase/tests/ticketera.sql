@@ -29,18 +29,43 @@ do $$
 declare r json; err text;
 begin
   r := crear_orden('Ana Pérez', 'v-12.345.678', '0414-123.45.67', 2, 'pago_movil_bnc', '000712283',
-                   '11111111-1111-1111-1111-111111111111.jpg', array['0414-123.45.67', '0424 111 2233']);
+                   '11111111-1111-1111-1111-111111111111.jpg', array['0414-123.45.67', '0424 111 2233'],
+                   '{"banco": " Mercantil ", "telefono": "0414-765.43.21", "cedula": "v-9.876.543", "extra": "se descarta"}');
   assert (r ->> 'numero') is not null, 'crear_orden no devolvió número';
   assert (ver_orden((r ->> 'token')::uuid) ->> 'estado') = 'en_revision', 'estado inicial';
   assert (ver_orden((r ->> 'token')::uuid) -> 'entradas')::text = 'null', 'QR antes de aprobar';
   assert (ver_orden((r ->> 'token')::uuid) ->> 'monto_bs')::numeric = 4000, 'monto Bs = 2 x 10 EUR x 200 (tasa euro, no dólar)';
   assert (datos_venta() ->> 'tasa_eur')::numeric = 200, 'datos_venta sin tasa_eur';
   assert (ver_orden((r ->> 'token')::uuid) ->> 'cedula') = 'V12345678', 'cédula normalizada';
+  -- Datos del pagador (issue #6, punto 2): solo el panel los ve.
+  assert ver_orden((r ->> 'token')::uuid)::text not like '%pagador%' and ver_orden((r ->> 'token')::uuid)::text not like '%9876543%'
+     and ver_orden((r ->> 'token')::uuid)::text not like '%7654321%', 'ver_orden expone al pagador';
+  foreach err in array array['pm sin cédula', 'pm teléfono extranjero', 'pm sin banco', 'zelle sin titular', 'sin pagador', 'pagador no objeto'] loop
+    begin
+      case err
+        when 'pm sin cédula' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
+          '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "04247654321"}');
+        when 'pm teléfono extranjero' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
+          '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "+1 305 555 0100", "cedula": "9876543"}');
+        when 'pm sin banco' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
+          '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": " ", "telefono": "04247654321", "cedula": "9876543"}');
+        when 'zelle sin titular' then perform crear_orden('Beto', '87654321', '', 1, 'zelle', 'PAGMAL1',
+          '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"cedula": "9876543"}');
+        when 'sin pagador' then perform crear_orden('Beto', '87654321', '', 1, 'zelle', 'PAGMAL1',
+          '22222222-2222-2222-2222-222222222222.png', array['04241234567']);
+        when 'pagador no objeto' then perform crear_orden('Beto', '87654321', '', 1, 'zelle', 'PAGMAL1',
+          '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '"Beto Díaz"');
+      end case;
+      assert false, 'pagador inválido aceptado: ' || err;
+    exception when raise_exception then
+      assert sqlerrm = 'pagador_invalido', err || ': error esperado pagador_invalido, vino ' || sqlerrm;
+    end;
+  end loop;
 
   -- Misma referencia con otro formato y por la otra cuenta de pago móvil.
   begin
     perform crear_orden('Beto', '87654321', '04241234567', 1, 'pago_movil_ubii', '712-283',
-                        '22222222-2222-2222-2222-222222222222.png', array['04241234567']);
+                        '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "04247654321", "cedula": "9876543"}');
     assert false, 'referencia repetida aceptada';
   exception when others then err := sqlerrm;
   end;
@@ -49,7 +74,7 @@ begin
   -- Unicidad por sufijo (issue #6): otra referencia con la misma terminación de 6 es la misma captura.
   begin
     perform crear_orden('Beto', '87654321', '04241234567', 1, 'pago_movil_ubii', 'AB712283',
-                        '22222222-2222-2222-2222-222222222222.png', array['04241234567']);
+                        '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "04247654321", "cedula": "9876543"}');
     assert false, 'misma terminación en el mismo tipo aceptada';
   exception when others then err := sqlerrm;
   end;
@@ -58,7 +83,7 @@ begin
   -- Menos de 6 caracteres tras normalizar no identifican el pago.
   begin
     perform crear_orden('Beto', '87654321', '04241234567', 1, 'pago_movil_ubii', '0-99.999',
-                        '22222222-2222-2222-2222-222222222222.png', array['04241234567']);
+                        '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "04247654321", "cedula": "9876543"}');
     assert false, 'referencia de 5 caracteres aceptada';
   exception when others then err := sqlerrm;
   end;
@@ -66,13 +91,13 @@ begin
 
   -- La misma cifra (y la misma terminación) en otro método es otra referencia.
   r := crear_orden('Beto', '87654321', '04241234567', 1, 'zelle', '712283',
-                   '33333333-3333-3333-3333-333333333333.png', array['04241234567']);
+                   '33333333-3333-3333-3333-333333333333.png', array['04241234567'], '{"titular": " Beto Díaz "}');
   assert (r ->> 'numero') is not null, 'misma terminación en otro tipo rechazada';
   assert (ver_orden((r ->> 'token')::uuid) ->> 'monto_usd_cents')::int = 1500, 'zelle no cobra precio_usd_cents';
 
   begin
     perform crear_orden('Beto', '87654321', '04241234567', 1, 'binance', '999999',
-                        '44444444-4444-4444-4444-444444444444.png', array['04241234567']);
+                        '44444444-4444-4444-4444-444444444444.png', array['04241234567'], '{"id": "beto123"}');
     assert false, 'método inactivo aceptado';
   exception when others then err := sqlerrm;
   end;
@@ -80,7 +105,8 @@ begin
 
   -- Un WhatsApp por entrada (issue #5): venezolano y extranjeros con código de país.
   r := crear_orden('Caro Ruiz', '11111111', '', 3, 'zelle', 'WA3OKA',
-                   '55555555-5555-5555-5555-555555555555.png', array['04141234567', '+1 (305) 555-0100', '+44 20 7946 0958']);
+                   '55555555-5555-5555-5555-555555555555.png', array['04141234567', '+1 (305) 555-0100', '+44 20 7946 0958'],
+                   '{"titular": "Caro Ruiz"}');
   assert (r ->> 'numero') is not null, '3 WhatsApps válidos no crearon la orden';
   foreach err in array array['dos para tres', 'sin parámetro', 'corto', 'cero no venezolano', 'largo'] loop
     begin
@@ -116,6 +142,9 @@ begin
   assert ver_entrada(gen_random_uuid()) is null, 'ver_entrada con token inexistente';
   -- Sufijo generado; la terminación leída por la IA no sale por las RPC anónimas.
   assert o.sufijo = '712283', 'sufijo generado: ' || coalesce(o.sufijo, 'null');
+  assert o.pagador = '{"banco": "Mercantil", "telefono": "584147654321", "cedula": "V9876543"}'::jsonb,
+    'pagador de pago móvil sin normalizar o con claves de más: ' || o.pagador::text;
+  assert z.pagador = '{"titular": "Beto Díaz"}'::jsonb, 'pagador de Zelle: ' || coalesce(z.pagador::text, 'null');
   update ordenes set ocr_sufijo = 'ZZ9999' where id = o.id;
   execute 'set local role anon';
   assert ver_orden(o.token)::text not like '%ocr_sufijo%' and ver_orden(o.token)::text not like '%ZZ9999%', 'ver_orden expone ocr_sufijo';
@@ -125,7 +154,8 @@ begin
   assert json_array_length(ver_orden(o.token) -> 'entradas') = 2, 'ver_orden no muestra QR aprobada';
   e := ver_entrada((ver_orden(o.token) -> 'entradas' -> 1 ->> 'token')::uuid);
   assert (e ->> 'posicion') = '2' and (e ->> 'total') = '2' and (e ->> 'numero') = o.numero::text, 'ver_entrada posición: ' || e::text;
-  assert e::text not like '%Ana%' and e::text not like '%V12345678%' and e::text not like '%ZZ9999%', 'ver_entrada expone datos personales';
+  assert e::text not like '%Ana%' and e::text not like '%V12345678%' and e::text not like '%ZZ9999%'
+     and e::text not like '%9876543%' and e::text not like '%Mercantil%', 'ver_entrada expone datos personales';
 
   -- WhatsApp por entrada (issue #5): normalizado, el primero también en telefono, por posición al aprobar.
   assert o.whatsapps = array['584141234567', '584241112233'] and o.telefono = '584141234567',
@@ -221,7 +251,8 @@ begin
   l := lista_portero();
   assert (l ->> 'generada_en') is not null and l::text like '%' || t1 || '%' and l::text like '%' || t2 || '%', 'lista sin las entradas aprobadas';
   assert l::text not like '%' || tr || '%' and l::text not like '%abcdef12%', 'lista con entradas no aprobadas';
-  assert l::text not like '%Ana%' and l::text not like '%V12345678%' and l::text not like '%04141234567%' and l::text not like '%ZZ9999%', 'lista expone datos personales';
+  assert l::text not like '%Ana%' and l::text not like '%V12345678%' and l::text not like '%04141234567%' and l::text not like '%ZZ9999%'
+     and l::text not like '%9876543%' and l::text not like '%Mercantil%', 'lista expone datos personales';
   assert (resumen_portero() ->> 'aprobadas') = (r0 ->> 'aprobadas')
      and (resumen_portero() ->> 'ingresadas')::int = (r0 ->> 'ingresadas')::int + 1, 'resumen: ' || resumen_portero()::text;
 end $$;

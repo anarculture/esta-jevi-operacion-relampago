@@ -34,9 +34,20 @@ Decisiones congeladas:
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done (27-oct-2026, rama `cotejo`, stack local `supabase_db_cotejo` en 57321)
 
-- [ ] `docker exec -i <DB_CONTAINER> psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 con los asserts: pago móvil sin cédula del pagador → `pagador_invalido`; pago móvil completo guarda `pagador->>'telefono'` como `58…`; Zelle con `titular` pasa; `ver_orden` como anon no trae `pagador`.
-- [ ] `deno test supabase/functions/` sale 0 con dos casos nuevos en `dictamen.test.ts`: pagador leído distinto del declarado → `dudoso` con "el pagador leído"; sin lectura del emisor → sin esa duda.
-- [ ] `node ticketera/tests/ux.mjs` sale 0 con los casos: al elegir pago móvil aparecen banco, teléfono y cédula del pagador y `crear_orden` recibe `p_pagador` con las tres claves; al elegir Zelle solo aparece titular; el panel muestra "desde" con los datos y el buscador encuentra la orden por la cédula del pagador.
-- [ ] `node supabase/tests/flujo.mjs <imagen.png>`, `auto-aprobar.mjs`, `avisos.mjs`, `portero.mjs` siguen saliendo 0 (sus llamadas a `crear_orden` pasan `p_pagador` válido).
+- [x] `docker exec -i <DB_CONTAINER> psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 con los asserts: pago móvil sin cédula del pagador → `pagador_invalido`; pago móvil completo guarda `pagador->>'telefono'` como `58…`; Zelle con `titular` pasa; `ver_orden` como anon no trae `pagador`. Evidencia: `OK ticketera.sql: 29 órdenes creadas`. Falibilidad: `crear_orden` sin el chequeo de cédula del pagador → `ERROR: pagador inválido aceptado: pm sin cédula`. También: teléfono extranjero, banco vacío, Zelle sin titular, sin `p_pagador` y `p_pagador` no objeto → `pagador_invalido`; claves de más se descartan; `ver_entrada` y `lista_portero` no traen la cédula ni el banco del pagador.
+- [x] `deno test supabase/functions/` sale 0 con dos casos nuevos en `dictamen.test.ts`: pagador leído distinto del declarado → `dudoso` con "el pagador leído"; sin lectura del emisor → sin esa duda. Evidencia: `ok | 14 passed | 0 failed | 1 ignored`. Falibilidad: sin el `dudas.push` del pagador → `FAILED | 13 passed | 1 failed`.
+- [x] `node ticketera/tests/ux.mjs` sale 0 con los casos: al elegir pago móvil aparecen banco, teléfono y cédula del pagador y `crear_orden` recibe `p_pagador` con las tres claves; al elegir Zelle solo aparece titular; el panel muestra "desde" con los datos y el buscador encuentra la orden por la cédula del pagador. Evidencia: `ok  compra: pago móvil pide banco, teléfono y cédula del pagador; p_pagador con las tres claves; Zelle solo titular` · `ok  admin: 'desde' con los datos del pagador; el buscador encuentra por cédula y teléfono del pagador` · `OK ux.mjs`.
+- [x] `node supabase/tests/flujo.mjs <imagen.png>`, `auto-aprobar.mjs`, `avisos.mjs`, `portero.mjs` siguen saliendo 0 (sus llamadas a `crear_orden` pasan `p_pagador` válido). Evidencia: `OK flujo: orden #59 aprobada, 2 entradas` (el `ocr` guardado trae `senderName`, `senderPhone`, `senderId`, `senderBank` y `pagador` quedó `{"banco": "Mercantil", "cedula": "V9876543", "telefono": "584147654321"}`) · `OK auto-aprobar.mjs` · `OK avisos.mjs · orden #55` · `OK portero: orden #57, 8 ingresadas de 36 aprobadas`. `avisos.mjs` y `portero.mjs` crean sus órdenes por SQL, no por `crear_orden`.
+
+Decisiones de implementación: los campos del pagador van en el paso 3 ("Reporta tu pago"), debajo
+de la captura, y cambian con el método elegido; preguntar desde dónde pagó antes de pagar no
+tiene sentido. El panel muestra el teléfono del pagador completo en formato local (04147654321),
+no enmascarado: es la llave con la que Mau busca el pago, y el panel ya muestra completo el del
+comprador.
+
+Autocrítica: `p_pagador` es obligatorio. Entre `db push` y la publicación de Pages, la página vieja
+no lo manda y toda compra falla con `pagador_invalido` (va al ticket 04, ventana acordada con Mau).
+El cotejo del emisor solo compara lecturas completas: un teléfono enmascarado en el comprobante
+no genera duda.

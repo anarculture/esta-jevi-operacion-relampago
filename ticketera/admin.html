@@ -20,7 +20,7 @@
   <div id="panel" hidden>
     <p class="muted" id="resumen" role="status"></p>
     <div class="fila"><button class="sec" id="recargar">Recargar</button><button class="sec" id="salir">Salir</button></div>
-    <label for="buscar">Buscar por nombre, cédula o referencia</label>
+    <label for="buscar">Buscar por nombre, cédula, teléfono o referencia</label>
     <input id="buscar" type="search" autocomplete="off" placeholder="Ana, 12345678, 00123…">
     <h2>Por revisar</h2>
     <div id="cola"></div>
@@ -64,13 +64,17 @@ addEventListener("DOMContentLoaded", () => {
     </div>`;
   }).join("");
 
+  // Datos del pagador (issue #6): teléfono en formato local, como lo busca Mau en la app del banco.
+  const telLocal = (t) => (/^58\d{10}$/.test(t ?? "") ? `0${t.slice(2)}` : t);
+  const desde = (p) => (p ? [telLocal(p.telefono), p.cedula, p.banco, p.titular, p.id].filter(Boolean).join(" · ") : "");
+
   function tarjeta(o) {
     const monto = o.monto_bs ? bs(o.monto_bs) : usd(o.monto_usd_cents);
     return `<div class="card">
       <p><strong>#${o.numero} · ${esc(o.nombre)}</strong> · ${esc(o.cedula)} · ${esc(o.telefono)}</p>
       <p class="monto">${monto}</p>
       <p class="banco">${METODO[o.metodo] ?? esc(o.metodo)}</p>
-      <p>${o.cantidad} ${o.cantidad === 1 ? "entrada" : "entradas"} · ref. <strong>${esc(o.referencia)}</strong> · ${fechaHora(o.creada_en)}</p>
+      <p>${o.cantidad} ${o.cantidad === 1 ? "entrada" : "entradas"} · ref. <strong>${esc(o.referencia)}</strong>${desde(o.pagador) ? ` <span class="desde">desde ${esc(desde(o.pagador))}</span>` : ""} · ${fechaHora(o.creada_en)}</p>
       <p><span class="estado ${o.dictamen ?? ""}">${o.dictamen ? DICTAMEN[o.dictamen] : "IA: pendiente"}</span> <span class="muted">${esc(o.dictamen_motivo ?? "")}</span></p>
       ${o.captura_url ? `<a href="${esc(o.captura_url)}" target="_blank" rel="noopener"><img class="captura" loading="lazy" src="${esc(o.captura_url)}" alt="Captura de la orden ${o.numero}"></a>` : ""}
       ${o.estado === "en_revision"
@@ -83,7 +87,7 @@ addEventListener("DOMContentLoaded", () => {
 
   function pintar() {
     const q = norm($("buscar").value);
-    const visibles = q ? ordenes.filter((o) => [o.nombre, o.cedula, o.referencia, o.telefono, o.numero].some((v) => norm(v).includes(q))) : ordenes;
+    const visibles = q ? ordenes.filter((o) => [o.nombre, o.cedula, o.referencia, o.telefono, o.numero, o.pagador?.cedula, o.pagador?.telefono, telLocal(o.pagador?.telefono)].some((v) => norm(v).includes(q))) : ordenes;
     const pend = visibles.filter((o) => o.estado === "en_revision").reverse(); // la más vieja primero
     const hechas = visibles.filter((o) => o.estado !== "en_revision");
     const aprobadas = ordenes.filter((o) => o.estado === "aprobada");

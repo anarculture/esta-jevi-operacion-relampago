@@ -24,11 +24,13 @@ Extraction rules:
 4. recipientName: the beneficiary / destination name as printed.
 5. recipientPhone: the beneficiary / destination phone (near "Para", "Destino", "Beneficiario", "Teléfono destino"). Not the sender's.
 6. recipientId: the beneficiary's cédula/RIF, Binance ID / Pay ID, or Zelle email — whichever identifies the destination.
-7. editSignals: visible signs the image was edited (mismatched fonts or alignment in amount/reference/date, pixelation around a single field, inconsistent totals). "" if none. Do not speculate beyond what is visible.
-8. confidence: "high" sharp and unambiguous; "medium" minor inference; "low" blurry, cropped or unreadable fields.
-9. For any field you cannot read, return "". Never hallucinate.`;
+7. senderName, senderPhone, senderId, senderBank: the payer / origin of the transfer (near "Desde", "Origen", "Ordenante", "De", "From", "Sent by"): name, phone, cédula/RIF or Binance ID / nickname or Zelle email, and the bank of origin. Not the beneficiary's. "" if not printed.
+8. editSignals: visible signs the image was edited (mismatched fonts or alignment in amount/reference/date, pixelation around a single field, inconsistent totals). "" if none. Do not speculate beyond what is visible.
+9. confidence: "high" sharp and unambiguous; "medium" minor inference; "low" blurry, cropped or unreadable fields.
+10. For any field you cannot read, return "". Never hallucinate.`;
 
-const FIELDS = ["documentType", "amount", "reference", "transactionDate", "recipientName", "recipientPhone", "recipientId", "editSignals", "confidence"];
+const FIELDS = ["documentType", "amount", "reference", "transactionDate", "recipientName", "recipientPhone", "recipientId",
+  "senderName", "senderPhone", "senderId", "senderBank", "editSignals", "confidence"];
 const SCHEMA = {
   type: "object",
   additionalProperties: false,

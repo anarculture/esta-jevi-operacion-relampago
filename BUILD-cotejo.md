@@ -1,8 +1,8 @@
 # BUILD: cotejo duro de comprobantes y lectura al subir la captura (issues #6 y #7)
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 02
-- Último verde: 01 · commit (ver `git log --oneline -1`) · 27-oct-2026
+- Ticket actual: 03
+- Último verde: 02 · commit (ver `git log --oneline -1`) · 27-oct-2026
 - Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: —
 - Rama de trabajo: `cotejo` (worktree `.claude/worktrees/alfa`, base 39b1b46 de `ticketera`)
@@ -76,7 +76,7 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 ## Tickets
 
 - [x] 01 · Unicidad por sufijo de la referencia · Bloqueado por: — · → .scratch/cotejo/issues/01-unicidad-por-sufijo.md
-- [ ] 02 · Datos del pagador · Bloqueado por: 01 · → .scratch/cotejo/issues/02-datos-del-pagador.md
+- [x] 02 · Datos del pagador · Bloqueado por: 01 · → .scratch/cotejo/issues/02-datos-del-pagador.md
 - [ ] 03 · El OCR precarga la referencia al subir la captura (y lee la hora) · Bloqueado por: 02 · → .scratch/cotejo/issues/03-ocr-precarga-referencia.md
 - [ ] 04 · Producción · Bloqueado por: 03 · → .scratch/cotejo/issues/04-produccion.md
 

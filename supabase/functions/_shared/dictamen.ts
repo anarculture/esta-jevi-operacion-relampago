@@ -11,7 +11,14 @@ export type Ocr = {
   recipientId: string;
   editSignals: string;
   confidence: "high" | "medium" | "low";
+  senderName: string;
+  senderPhone: string;
+  senderId: string;
+  senderBank: string;
 };
+
+// Lo que declaró el comprador (crear_orden): pago móvil { banco, telefono, cedula }, Zelle { titular }, Binance { id }.
+export type Pagador = { banco?: string; telefono?: string; cedula?: string; titular?: string; id?: string };
 
 export type Orden = {
   metodo: string;
@@ -19,6 +26,7 @@ export type Orden = {
   monto_usd_cents: number;
   monto_bs: number | null;
   creada_en: string;
+  pagador?: Pagador | null;
 };
 
 export type Destino = Record<string, string | boolean>;
@@ -70,6 +78,21 @@ export function dictaminar(o: Orden, x: Ocr, destino: Destino): Dictamen {
   if (leidos.some((s) => nuestros.includes(s)) || porNombre) { /* destinatario nuestro */ }
   else if (leidos.length) malos.push("el destinatario no es nuestra cuenta");
   else dudas.push("no se lee el destinatario");
+
+  // Emisor (issue #6, punto 2): solo duda, nunca malos. Se compara lo que se leyó completo contra lo
+  // declarado; un teléfono enmascarado (0414***567) o una lectura vacía no se compara.
+  // Si nada de lo comparable coincide, duda.
+  const p = o.pagador ?? {};
+  const cotejos: boolean[] = [];
+  const tel = [last10(x.senderPhone), last10(p.telefono ?? "")];
+  if (tel[0].length === 10 && tel[1].length === 10) cotejos.push(tel[0] === tel[1]);
+  const ced = [digits(x.senderId), digits(p.cedula ?? "")];
+  if (ced[0].length >= 5 && ced[1].length >= 5) cotejos.push(ced[0] === ced[1]);
+  const id = [plain(x.senderId), plain(p.id ?? "")];
+  if (id[0] && id[1]) cotejos.push(id[0] === id[1]);
+  const nombre = plain(p.titular ?? "").split(" ")[0];
+  if (nombre && plain(x.senderName)) cotejos.push(plain(x.senderName).includes(nombre));
+  if (cotejos.length && !cotejos.some(Boolean)) dudas.push("el pagador leído no es el declarado");
 
   if (x.editSignals.trim()) dudas.push(`posible edición: ${x.editSignals.trim()}`);
   if (x.confidence === "low") dudas.push("captura poco legible");

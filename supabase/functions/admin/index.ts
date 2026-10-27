@@ -9,7 +9,7 @@ serve(async ({ clave, accion, id, aprobar, motivo, whatsapp }) => {
 
   if (accion === "cola") {
     const { data, error } = await db.from("ordenes")
-      .select("id, numero, token, creada_en, nombre, cedula, telefono, cantidad, metodo, referencia, captura, monto_usd_cents, tasa, monto_bs, estado, dictamen, dictamen_motivo, rechazo_motivo, resuelta_en, aprobada_por, entradas(id, whatsapp, avisada_en, aviso_error, aviso_intentos)")
+      .select("id, numero, token, creada_en, nombre, cedula, telefono, cantidad, metodo, referencia, captura, monto_usd_cents, tasa, monto_bs, pagador, estado, dictamen, dictamen_motivo, rechazo_motivo, resuelta_en, aprobada_por, entradas(id, whatsapp, avisada_en, aviso_error, aviso_intentos)")
       .order("creada_en", { ascending: false }).order("id", { referencedTable: "entradas" }).limit(300);
     if (error) throw error;
     const { data: urls } = await db.storage.from("capturas").createSignedUrls(data.map((o) => o.captura), 3600);

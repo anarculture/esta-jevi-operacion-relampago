@@ -55,6 +55,34 @@
       <input id="captura" name="captura" type="file" accept="image/jpeg,image/png,image/webp" required>
       <img id="preview" class="preview" alt="Vista previa de la captura elegida" hidden>
       <p class="campo-error" id="e-captura" hidden></p>
+      <!-- Desde dónde pagó: cambia con el método. Con estos datos Mau encuentra el pago en su banco. -->
+      <div id="pagador">
+        <div data-tipo="pago_movil" hidden>
+          <label for="pagador-banco">Banco desde el que pagaste</label>
+          <select id="pagador-banco">
+            <option value="">Elige tu banco</option>
+            <option>BNC</option><option>Mercantil</option><option>Banesco</option><option>Provincial</option>
+            <option>Venezuela</option><option>BFC</option><option>Bancamiga</option><option>Banplus</option><option>Otro</option>
+          </select>
+          <p class="campo-error" id="e-pagador-banco" hidden></p>
+          <label for="pagador-telefono">Teléfono con el que pagaste</label>
+          <input id="pagador-telefono" type="tel" autocomplete="off" placeholder="04141234567">
+          <p class="campo-error" id="e-pagador-telefono" hidden></p>
+          <label for="pagador-cedula">Cédula con la que pagaste</label>
+          <input id="pagador-cedula" type="text" inputmode="numeric" placeholder="V12345678">
+          <p class="campo-error" id="e-pagador-cedula" hidden></p>
+        </div>
+        <div data-tipo="zelle" hidden>
+          <label for="pagador-titular">Titular de la cuenta que envió el Zelle</label>
+          <input id="pagador-titular" type="text" autocomplete="off" placeholder="Como aparece en el banco">
+          <p class="campo-error" id="e-pagador-titular" hidden></p>
+        </div>
+        <div data-tipo="binance" hidden>
+          <label for="pagador-id">Tu Binance ID o nickname</label>
+          <input id="pagador-id" type="text" autocomplete="off">
+          <p class="campo-error" id="e-pagador-id" hidden></p>
+        </div>
+      </div>
       <label for="nombre">Nombre y apellido</label>
       <input id="nombre" name="nombre" type="text" autocomplete="name" required>
       <p class="campo-error" id="e-nombre" hidden></p>
@@ -107,7 +135,8 @@ addEventListener("DOMContentLoaded", async () => {
     : `<p class="aviso">La venta aún no abre.</p>`;
 
   // El formulario sobrevive a que el navegador recargue la pestaña al volver de la app del banco.
-  const CAMPOS = ["cantidad", "metodo", "referencia", "nombre", "cedula", "telefono"];
+  const CAMPOS = ["cantidad", "metodo", "referencia", "nombre", "cedula", "telefono",
+    "pagador-banco", "pagador-telefono", "pagador-cedula", "pagador-titular", "pagador-id"];
   const borrador = leer("ticketera-borrador") ?? {};
   for (const c of CAMPOS) if (borrador[c] && f[c]) f[c].value = borrador[c];
   // Un WhatsApp por entrada: el 1 es "Tu WhatsApp" (#telefono); los demás se generan según la cantidad.
@@ -146,6 +175,7 @@ addEventListener("DOMContentLoaded", async () => {
     const metodo = f.metodo?.value;
     const cant = cantidad();
     camposWa();
+    for (const g of document.querySelectorAll("#pagador [data-tipo]")) g.hidden = !metodo || g.dataset.tipo !== tipo(metodo);
     $("precio").textContent = metodo && tipo(metodo) === "pago_movil" ? eur(venta.precio_pm_eur_cents) : usd(venta.precio_usd_cents);
     if (!metodo || !cant) return;
     const m = venta.metodos[metodo];
@@ -191,12 +221,28 @@ addEventListener("DOMContentLoaded", async () => {
     $("preview").src = urlPreview;
   });
 
+  const valor = (id) => $(id).value.trim();
+  // Lo que va en p_pagador: solo las claves del método elegido; crear_orden normaliza.
+  const pagador = (m) => ({
+    pago_movil: { banco: valor("pagador-banco"), telefono: valor("pagador-telefono"), cedula: valor("pagador-cedula") },
+    zelle: { titular: valor("pagador-titular") },
+    binance: { id: valor("pagador-id") },
+  })[tipo(m)];
+
   // Mismas reglas que crear_orden en SQL, para no subir la captura y recién ahí fallar.
   function validar() {
     const errores = [];
     const chk = (id, ok, msg) => { campoError(id, ok ? "" : msg); if (!ok) errores.push(id); };
     chk("referencia", f.referencia.value.replace(/[^A-Za-z0-9]/g, "").replace(/^0+/, "").length >= 6, ERRORES.referencia_invalida);
     chk("captura", Boolean(f.captura.files[0]), "Falta la captura del comprobante.");
+    const t = f.metodo?.value ? tipo(f.metodo.value) : null;
+    const largo = (id) => valor(id).length >= 2 && valor(id).length <= 80;
+    if (t === "pago_movil") {
+      chk("pagador-banco", largo("pagador-banco"), "Elige el banco desde el que pagaste.");
+      chk("pagador-telefono", /^58\d{10}$/.test(normalizarWhatsapp(valor("pagador-telefono")) ?? ""), "Revisa el teléfono con el que pagaste: 11 dígitos, por ejemplo 04141234567.");
+      chk("pagador-cedula", /^[VE]?\d{5,9}$/.test(valor("pagador-cedula").toUpperCase().replace(/[^VE0-9]/g, "")), ERRORES.cedula_invalida);
+    } else if (t === "zelle") chk("pagador-titular", largo("pagador-titular"), "Escribe el nombre del titular de la cuenta que envió el Zelle.");
+    else if (t === "binance") chk("pagador-id", largo("pagador-id"), "Escribe tu Binance ID o nickname.");
     chk("nombre", f.nombre.value.trim().length >= 2 && f.nombre.value.trim().length <= 80, ERRORES.nombre_invalido);
     chk("cedula", /^[VE]?\d{5,9}$/.test(f.cedula.value.toUpperCase().replace(/[^VE0-9]/g, "")), ERRORES.cedula_invalida);
     whatsapps().forEach((v, i) => chk(i ? `wa-${i + 1}` : "telefono", Boolean(normalizarWhatsapp(v)), ERRORES.whatsapp_invalido));
@@ -229,7 +275,7 @@ addEventListener("DOMContentLoaded", async () => {
         p_nombre: f.nombre.value, p_cedula: f.cedula.value, p_telefono: f.telefono.value,
         p_cantidad: cantidad(), p_metodo: f.metodo.value,
         p_referencia: f.referencia.value, p_captura: subida.path,
-        p_whatsapps: whatsapps().map(normalizarWhatsapp),
+        p_whatsapps: whatsapps().map(normalizarWhatsapp), p_pagador: pagador(f.metodo.value),
       });
       funcion("revisar", { token: o.token }).catch(() => {}); // el dictamen no bloquea al comprador
       guardar("ticketera-orden", { token: o.token, numero: o.numero });

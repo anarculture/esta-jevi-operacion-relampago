@@ -19,6 +19,7 @@ const ERRORES = {
   metodo_invalido: "Elige un método de pago.",
   referencia_invalida: "Escribe al menos los últimos 6 caracteres de la referencia.",
   captura_invalida: "Sube la captura como JPG, PNG o WEBP.",
+  pagador_invalido: "Revisa los datos de la cuenta desde la que pagaste.",
   sin_conexion: "Sin conexión. Revisa tu señal y vuelve a intentar.",
 };
 

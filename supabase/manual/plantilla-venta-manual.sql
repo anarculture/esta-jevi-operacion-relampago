@@ -3,7 +3,7 @@
 -- con una entrada por WhatsApp de `v_whatsapps` (por posición, igual que resolver_orden), y
 -- vytas le avisa a cada número. Un null en el arreglo = esa entrada nace avisada y no recibe
 -- mensaje. Idempotente: si la referencia ya existe para ese tipo de pago, no inserta nada.
--- Los tokens salen como NOTICE (orden, entrada, token, WhatsApp).
+-- Los tokens salen como NOTICE (orden, entrada, token, WhatsApp). Sin datos del pagador (pagador null).
 do $$
 declare
   v_nombre text := 'Nombre (Instagram)';
@@ -26,9 +26,9 @@ begin
       end if;
     end loop;
     insert into ordenes (nombre, cedula, telefono, whatsapps, cantidad, metodo, referencia, captura,
-                         monto_usd_cents, estado, resuelta_en, aprobada_por, dictamen_motivo)
+                         monto_usd_cents, estado, resuelta_en, aprobada_por, dictamen_motivo, pagador)
     values (v_nombre, 'V0', coalesce(v_was[1], '0'), v_was, array_length(v_whatsapps, 1), v_metodo, v_ref,
-            'manual.jpg', v_monto_usd_cents, 'aprobada', now(), 'admin', 'venta manual, emitida por Mau')
+            'manual.jpg', v_monto_usd_cents, 'aprobada', now(), 'admin', 'venta manual, emitida por Mau', null)
     returning id into v_id;
     insert into entradas (id, orden_id, whatsapp, avisada_en)
     select id, v_id, v_was[k], case when v_was[k] is null then now() end

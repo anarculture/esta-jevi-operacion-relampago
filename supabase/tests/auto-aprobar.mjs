@@ -60,7 +60,7 @@ async function comprar(ref, esperarAprobada, refRecibo = ref) {
   const path = `${crypto.randomUUID()}.png`;
   assert.equal((await pedir(`/storage/v1/object/capturas/${path}`, await recibo(refRecibo), "image/png")).status, 200, "subida de captura");
   const o = (await pedir("/rest/v1/rpc/crear_orden", { p_nombre: "Prueba Auto", p_cedula: "12345678", p_telefono: "",
-    p_cantidad: 1, p_metodo: "zelle", p_referencia: ref, p_captura: path, p_whatsapps: ["04141234567"] })).d;
+    p_cantidad: 1, p_metodo: "zelle", p_referencia: ref, p_captura: path, p_whatsapps: ["04141234567"], p_pagador: { titular: "Prueba Auto" } })).d;
   assert.ok(o?.token, `orden creada: ${JSON.stringify(o)}`);
   const t0 = Date.now();
   const rev = (await pedir("/functions/v1/revisar", { token: o.token })).d;
@@ -91,11 +91,11 @@ try {
   assert.equal(otra.vista.estado, "en_revision", "la misma captura con otra referencia se aprobó sola");
   // "1"+REF tipeado termina igual que REF: unique (tipo, sufijo) lo para antes de subir nada.
   const prefijo = await pedir("/rest/v1/rpc/crear_orden", { p_nombre: "Prueba Auto", p_cedula: "12345678", p_telefono: "",
-    p_cantidad: 1, p_metodo: "zelle", p_referencia: `19${base}1`, p_captura: `${crypto.randomUUID()}.png`, p_whatsapps: ["04141234567"] });
+    p_cantidad: 1, p_metodo: "zelle", p_referencia: `19${base}1`, p_captura: `${crypto.randomUUID()}.png`, p_whatsapps: ["04141234567"], p_pagador: { titular: "Prueba Auto" } });
   assert.equal(prefijo.d?.message, "referencia_usada", `prefijo: ${JSON.stringify(prefijo.d)}`);
   // Menos de 6 caracteres tipeados: la RPC no crea la orden.
   const corta = await pedir("/rest/v1/rpc/crear_orden", { p_nombre: "Prueba Auto", p_cedula: "12345678", p_telefono: "",
-    p_cantidad: 1, p_metodo: "zelle", p_referencia: `9${base}3`.slice(-5), p_captura: `${crypto.randomUUID()}.png`, p_whatsapps: ["04141234567"] });
+    p_cantidad: 1, p_metodo: "zelle", p_referencia: `9${base}3`.slice(-5), p_captura: `${crypto.randomUUID()}.png`, p_whatsapps: ["04141234567"], p_pagador: { titular: "Prueba Auto" } });
   assert.equal(corta.d?.message, "referencia_invalida", `corta: ${JSON.stringify(corta.d)}`);
   console.log("ok  la misma captura no produce una segunda orden (sufijo tipeado ni leído)");
 
