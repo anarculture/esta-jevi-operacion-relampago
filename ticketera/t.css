@@ -91,6 +91,17 @@ input[aria-invalid="true"] { border-color: var(--rojo); }
 .puerta .contador, .puerta #manual { background: rgb(15 15 15 / 0.82); border-radius: var(--r-card); padding: var(--s2) var(--s3); margin: 0; }
 .puerta #manual { margin-top: auto; }
 .puerta #manual label { margin-top: 0; }
+#r-red { text-transform: uppercase; }
+.lista-impresa { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 15px; }
+.lista-impresa th { font: var(--label); color: var(--gris); text-align: left; }
+.lista-impresa th, .lista-impresa td { padding: 6px 4px; border-bottom: 1px solid var(--linea); text-align: left; }
+/* Papel de respaldo: negro sobre blanco, sin cámara ni botones. */
+@media print {
+  body.puerta { background: #fff; color: #000; }
+  .puerta .camara, .puerta button, .puerta .resultado, .puerta #panel, .puerta .error, .puerta h1 { display: none !important; }
+  .puerta .muted, .puerta .lista-impresa th, .puerta .lista-impresa td { color: #000; border-color: #000; }
+  .puerta main { max-width: none; padding: 0; }
+}
 .resultado { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s3); padding: var(--s4); text-align: center; cursor: pointer; }
 .resultado.valida { background: var(--verde); color: var(--negro); }
 .resultado.ya_usada { background: var(--amarillo); color: var(--negro); }

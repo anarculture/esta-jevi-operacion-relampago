@@ -51,7 +51,7 @@ async function pagina(fixtures, { offline = false, storage = {} } = {}) {
     const nombre = u.pathname.split("/").slice(-1)[0];
     const clave = u.pathname.includes("/storage/") ? "storage" : nombre;
     llamadas.push(clave);
-    if (offline) return route.abort("internetdisconnected");
+    if (typeof offline === "function" ? offline() : offline) return route.abort("internetdisconnected"); // función: red que se corta y vuelve
     const fx = fixtures[clave];
     if (fx === undefined) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ message: `sin fixture: ${clave}` }) });
     const body = typeof fx === "function" ? fx(route.request().postDataJSON?.() ?? {}) : fx;
@@ -358,6 +358,84 @@ await caso("portero: válida verde con vibración y deshacer, vuelve sola; ya us
   await page.waitForSelector("#aviso:not([hidden])");
   a.deepEqual(ll.filter((b) => b.accion === "deshacer").map((b) => b.token), [PT.eeeeeeee], "deshacer no mandó el token de la última válida");
   a.equal(await page.isHidden("#deshacer"), true);
+  await ctx.close();
+});
+
+await caso("portero sin señal: lista descargada, validación local en cola, reenvío con aviso, lista ordenada e imprimible", async () => {
+  const A = "a1a1a1a1-0000-4000-8000-000000000001", B = "f0f0f0f0-0000-4000-8000-000000000009";
+  const LISTA = { generada_en: "2026-10-30T00:35:00Z", entradas: [ // desordenada a propósito
+    { token: B, numero: 14, posicion: 1, total: 1, checked_in_at: null },
+    { token: A, numero: 12, posicion: 1, total: 2, checked_in_at: null },
+    { token: "a2a2a2a2-0000-4000-8000-000000000002", numero: 12, posicion: 2, total: 2, checked_in_at: "2026-10-30T01:50:00Z" },
+  ] };
+  const ll = [];
+  let sinRedPt = false, claveMala = false;
+  const ctx = await pagina({ portero: (b) => {
+    ll.push(b);
+    if (claveMala) return { __status: 401, error: "clave_invalida" };
+    if (b.accion === "lista") return LISTA;
+    if (b.accion === "resumen") return { aprobadas: 3, ingresadas: 1 };
+    if (b.token === B) return { resultado: "ya_usada", token: B, numero: 14, posicion: 1, total: 1, checked_in_at: "2026-10-30T01:00:00Z" };
+    return { resultado: "valida", token: b.token, numero: 12, posicion: 1, total: 2, checked_in_at: "2026-10-30T02:00:00Z" };
+  } }, { offline: () => sinRedPt, storage: { "ticketera-portero-clave": JSON.stringify(CLAVE_PT) } });
+  const page = await ctx.newPage();
+  const ls = (k) => page.evaluate((k) => JSON.parse(localStorage.getItem(k)), k);
+  const checkins = () => ll.filter((b) => b.accion === "checkin").map((b) => b.token);
+  async function resultado(codigo) {
+    await teclear(page, codigo);
+    await page.waitForSelector("#resultado:not([hidden])");
+    const r = { estado: await page.getAttribute("#resultado", "data-estado"), texto: await page.innerText("#resultado") };
+    await page.click("#resultado");
+    return r;
+  }
+  await page.goto(`${URLBASE}/portero.html`);
+  await page.waitForSelector("#panel:not([hidden])");
+  await page.click("#descargar");
+  await page.waitForSelector("#lista-info:not([hidden])");
+  a.equal(await page.textContent("#lista-info"), "Lista de las 20:35 · 3 entradas");
+  a.equal((await ls("ticketera-portero-lista")).entradas.length, 3, "no guardó la lista");
+
+  sinRedPt = true;
+  const v = await resultado("a1a1a1a1");
+  a.equal(v.estado, "valida");
+  a.ok(/sin conexión/i.test(v.texto), "válida local sin la etiqueta 'sin conexión'");
+  a.deepEqual(await ls("ticketera-portero-cola"), [A], "no quedó en cola");
+  a.ok((await page.textContent("#contador")).startsWith("2 ingresaron de 3"), "contador sin red no sale de la lista local");
+  await page.waitForTimeout(3100); // pasa el anti-rebote del mismo código
+  a.equal((await resultado("a1a1a1a1")).estado, "ya_usada", "el mismo código sin red no sale ya usada");
+  a.equal((await resultado("99999999")).estado, "invalida", "código fuera de la lista no sale inválido");
+  a.equal((await resultado("f0f0f0f0")).estado, "valida");
+  a.deepEqual(checkins(), [], "con la red cortada llegó algo al servidor");
+
+  sinRedPt = false;
+  await page.evaluate(() => dispatchEvent(new Event("online")));
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("ticketera-portero-cola")).length === 0);
+  a.deepEqual(checkins(), [A, B], "el servidor no recibió los tokens encolados");
+  await page.waitForSelector("#aviso:not([hidden])");
+  a.ok((await page.textContent("#aviso")).includes("orden #14"), "sin aviso de la válida local que ya había entrado");
+  await foto(page, "17-portero-aviso");
+
+  await page.click("#ver-lista");
+  a.deepEqual(await page.$$eval("#filas tr td:first-child", (tds) => tds.map((t) => t.textContent)), ["a1a1a1a1", "a2a2a2a2", "f0f0f0f0"], "lista no ordenada por código");
+  a.ok((await page.textContent("#filas")).includes("#12") && (await page.textContent("#filas")).includes("2 de 2"));
+  await foto(page, "18-portero-lista");
+  await page.emulateMedia({ media: "print" });
+  a.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(255, 255, 255)", "impresión sin fondo blanco");
+  a.equal(await page.isHidden("#imprimir"), true, "botones en la impresión");
+  await foto(page, "19-portero-impresion");
+  await page.emulateMedia({ media: "screen" });
+
+  // Una clave mala borra la clave guardada, no la lista ni la cola.
+  await page.click("#volver");
+  sinRedPt = true;
+  await resultado("a2a2a2a2"); // ya usada en la lista: no encola
+  await resultado("a1a1a1a1"); // ya marcada: no encola
+  await page.evaluate((t) => localStorage.setItem("ticketera-portero-cola", JSON.stringify([t])), A);
+  sinRedPt = false; claveMala = true;
+  await page.click("#descargar");
+  await page.waitForSelector("#login:not([hidden])");
+  a.equal(await ls("ticketera-portero-clave"), null, "la clave mala quedó guardada");
+  a.ok((await ls("ticketera-portero-lista")) && (await ls("ticketera-portero-cola")).length === 1, "la clave mala borró la lista o la cola");
   await ctx.close();
 });
 

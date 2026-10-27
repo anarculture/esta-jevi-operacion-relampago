@@ -26,8 +26,24 @@ Decisiones congeladas:
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `node ticketera/tests/ux.mjs` sale 0 con casos nuevos: "Descargar lista" guarda la lista y muestra su hora y cantidad; con `offline: true` un código de la lista → "valida" con "sin conexión" y queda en cola (`localStorage`); el mismo código otra vez sin red → "ya_usada"; un código fuera de la lista sin red → "invalida"; al volver la red (fixture de `checkin` activo) la cola se vacía y el fixture recibió los tokens encolados; un fixture que responde `ya_usada` a un token local válido deja la línea de aviso con "orden #"; "Lista" muestra los códigos ordenados.
-- [ ] Captura de la vista de impresión (`page.emulateMedia({ media: "print" })`) en `evidencia/` con fondo blanco: el test comprueba que el color de fondo computado del `body` es blanco en modo print.
-- [ ] `node supabase/tests/portero.mjs` sigue saliendo 0.
+- [x] `node ticketera/tests/ux.mjs` sale 0 con casos nuevos: "Descargar lista" guarda la lista y muestra su hora y cantidad; con `offline: true` un código de la lista → "valida" con "sin conexión" y queda en cola (`localStorage`); el mismo código otra vez sin red → "ya_usada"; un código fuera de la lista sin red → "invalida"; al volver la red (fixture de `checkin` activo) la cola se vacía y el fixture recibió los tokens encolados; un fixture que responde `ya_usada` a un token local válido deja la línea de aviso con "orden #"; "Lista" muestra los códigos ordenados.
+- [x] Captura de la vista de impresión (`page.emulateMedia({ media: "print" })`) en `evidencia/` con fondo blanco: el test comprueba que el color de fondo computado del `body` es blanco en modo print.
+- [x] `node supabase/tests/portero.mjs` sigue saliendo 0.
+
+## Cierre (2026-10-26)
+
+Evidencia:
+- `node ticketera/tests/ux.mjs` → `OK ux.mjs` con `portero sin señal: lista descargada, validación local en cola, reenvío
+  con aviso, lista ordenada e imprimible`. El mismo test contra `portero.html`/`t.css` de 619f62b da rojo.
+- Impresión: `getComputedStyle(body).backgroundColor` = `rgb(255, 255, 255)`; captura `evidencia/19-portero-impresion.png`.
+- `node supabase/tests/portero.mjs` → `OK portero`; `node ticketera/tests/portero-camara.mjs` → `OK`.
+- Extra cubierto: un 401 borra la clave y deja la lista y la cola.
+
+Decisiones y debilidades:
+- El helper `pagina` de `ux.mjs` acepta `offline` como función para cortar y devolver la red en el mismo contexto.
+- Una válida local que aún no subió se deshace en el teléfono (sale de la cola y de las marcas).
+- Las marcas locales quedan en el teléfono tras subir: si Mau deshace un ingreso por SQL, ese teléfono sin red lo seguirá
+  viendo usado hasta que se borre el almacenamiento.
+- La cola sube en orden y se detiene en el primer error que no es de red (solo un 401 en la práctica); se reintenta en el siguiente evento.
