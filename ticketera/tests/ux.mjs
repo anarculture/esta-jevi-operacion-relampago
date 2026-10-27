@@ -96,6 +96,8 @@ await caso("compra: pasos ocultos, monto en euros a tasa BCV, copiar plano, vali
   await page.fill("#nombre", "Ana Pérez");
   await page.fill("#cedula", "12");
   await page.fill("#telefono", "04141234567");
+  await page.fill("#wa-2", "04241234567");
+  await page.fill("#wa-3", "04161234567");
   const png = join(tmpdir(), "captura-test.png");
   writeFileSync(png, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64"));
   await page.setInputFiles("#captura", png);
@@ -129,6 +131,44 @@ await caso("compra: cantidad fuera de rango avisa en vez de recortar; zelle en d
   await ctx.close();
 });
 
+await caso("compra: un WhatsApp por entrada, error antes de subir, recarga los conserva, p_whatsapps normalizados", async () => {
+  let args = null;
+  const ctx = await pagina({ tasa: VENTA, crear_orden: (b) => ((args = b), { numero: 14, token: TOKENS[1] }), storage: { Key: "x" }, revisar: {} });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.fill("#cantidad", "3");
+  await page.check("input[value=zelle]");
+  await page.click("#ya-pague");
+  a.equal(await page.locator("#reporte input[type=tel]").count(), 3, "cantidad 3 sin 3 campos de WhatsApp");
+  a.equal(await page.textContent("label[for=telefono]"), "Tu WhatsApp");
+  a.equal(await page.textContent("label[for=wa-3]"), "WhatsApp de la entrada 3");
+  a.ok((await page.textContent("#otros-wa")).includes("Le llegará su QR por WhatsApp"), "sin ayuda en los campos de amigos");
+  await page.fill("#referencia", "ZX12345");
+  await page.fill("#nombre", "Ana Pérez");
+  await page.fill("#cedula", "V12345678");
+  await page.fill("#telefono", "0414-123.45.67");
+  await page.fill("#wa-2", "+1 305 555 0100");
+  await page.fill("#wa-3", "12345");
+  await page.reload();
+  await page.waitForSelector("#wa-3");
+  a.deepEqual([await page.inputValue("#telefono"), await page.inputValue("#wa-2"), await page.inputValue("#wa-3")],
+    ["0414-123.45.67", "+1 305 555 0100", "12345"], "la recarga no restauró los 3 WhatsApps");
+  const png = join(tmpdir(), "captura-test.png");
+  await page.setInputFiles("#captura", png);
+  llamadas.length = 0;
+  await page.click("#enviar");
+  await page.waitForSelector("#e-wa-3:not([hidden])");
+  a.ok(!llamadas.includes("storage") && !llamadas.includes("crear_orden"), "subió o registró con un WhatsApp de 5 dígitos");
+  a.equal(await page.isHidden("#e-wa-2"), true, "marcó un número extranjero válido");
+  await foto(page, "03b-compra-whatsapp-invalido");
+  await page.fill("#wa-3", "04241112233");
+  await page.click("#enviar");
+  await page.waitForURL(/orden\.html\?t=/);
+  a.deepEqual(args.p_whatsapps, ["584141234567", "13055550100", "584241112233"], "p_whatsapps sin normalizar");
+  await ctx.close();
+});
+
 await caso("compra: 'Ver mi orden' si ya compró; borrador restaurado tras recarga", async () => {
   const ctx = await pagina({ tasa: VENTA }, { storage: { "ticketera-orden": JSON.stringify({ token: TOKENS[0], numero: 13 }), "ticketera-borrador": JSON.stringify({ cantidad: "2", metodo: "zelle", nombre: "Ana" }) } });
   const page = await ctx.newPage();
@@ -158,12 +198,17 @@ await caso("orden en revisión: espera neutra con contacto, guardar enlace", asy
 });
 
 await caso("orden aprobada: QR por entrada, enviar a un amigo, consejo de captura, copia offline", async () => {
-  const aprobada = { ...ORDEN, estado: "aprobada", entradas: TOKENS };
+  const MASCARAS = ["4567", "2233", "0100"];
+  const aprobada = { ...ORDEN, estado: "aprobada", entradas: TOKENS.map((token, i) => ({
+    token, whatsapp_mascara: MASCARAS[i], avisada_en: i === 1 ? "2026-10-30T01:03:00Z" : null })) };
   const ctx = await pagina({ ver_orden: aprobada });
   const page = await ctx.newPage();
   await page.goto(`${URLBASE}/orden.html?t=${TOKENS[0]}`);
   await page.waitForSelector(".qr svg");
   a.equal(await page.locator(".qr svg").count(), 3, "no hay 3 QR");
+  a.deepEqual(await page.$$eval(".qr .envio", (ps) => ps.map((p) => p.textContent)),
+    ["Para el ···4567 · pendiente de envío", "Enviada al ···2233 a las 21:03", "Para el ···0100 · pendiente de envío"], "tarjeta sin WhatsApp o estado de envío");
+  a.ok(!(await page.textContent("main")).includes("584141234567"), "número completo en la orden");
   a.ok((await page.textContent(".aviso")).includes("captura de pantalla"));
   a.equal(await page.locator(".qr a.btn").count(), 3, "sin botón de enviar por entrada");
   a.ok((await page.getAttribute(".qr a.btn", "href")).includes(encodeURIComponent(`entrada.html?e=${TOKENS[0]}`)));
@@ -181,6 +226,15 @@ await caso("orden aprobada: QR por entrada, enviar a un amigo, consejo de captur
   a.ok((await p2.textContent("main")).includes("sin conexión"));
   await foto(p2, "06-orden-sin-red");
   await off.close();
+
+  // Copia guardada antes del issue #5: tokens en texto, sin WhatsApp.
+  const vieja = await pagina({}, { offline: true, storage: { [`ticketera-orden-${TOKENS[0]}`]: JSON.stringify({ ...ORDEN, estado: "aprobada", entradas: TOKENS }) } });
+  const p3 = await vieja.newPage();
+  await p3.goto(`${URLBASE}/orden.html?t=${TOKENS[0]}`);
+  await p3.waitForSelector(".qr svg");
+  a.equal(await p3.locator(".qr svg").count(), 3, "la copia vieja sin red no pintó los QR");
+  a.ok((await p3.textContent(".qr")).includes(`Código de respaldo: ${TOKENS[0].slice(0, 8)}`), "copia vieja sin código de respaldo");
+  await vieja.close();
 });
 
 await caso("orden rechazada con motivo y salida por WhatsApp; sin red y sin copia; no encontrada", async () => {
@@ -211,12 +265,13 @@ await caso("orden rechazada con motivo y salida por WhatsApp; sin red y sin copi
 
 // ---------- entrada ----------
 await caso("entrada individual: QR, posición, sin datos personales; inexistente", async () => {
-  const ctx = await pagina({ ver_entrada: { numero: 12, posicion: 2, total: 3 } });
+  const ctx = await pagina({ ver_entrada: { numero: 12, posicion: 2, total: 3, whatsapp_mascara: "2233" } });
   const page = await ctx.newPage();
   await page.goto(`${URLBASE}/entrada.html?e=${TOKENS[1]}`);
   await page.waitForSelector(".qr svg");
   const txt = await page.textContent("main");
   a.ok(txt.includes("Entrada 2 de 3") && txt.includes("CC Chacaíto") && !txt.includes("Ana"));
+  a.ok(txt.includes("···2233"), "entrada sin el WhatsApp enmascarado");
   await foto(page, "09-entrada");
   await ctx.close();
   const nf = await pagina({ ver_entrada: null });

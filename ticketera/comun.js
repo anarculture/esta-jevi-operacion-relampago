@@ -15,6 +15,7 @@ const ERRORES = {
   nombre_invalido: "Escribe tu nombre y apellido.",
   cedula_invalida: "Revisa la cédula: solo números, con V o E delante si quieres.",
   telefono_invalido: "Revisa el teléfono: 11 dígitos, por ejemplo 04141234567.",
+  whatsapp_invalido: "Revisa el WhatsApp: 11 dígitos como 04141234567, o con código de país si es de fuera (+1…).",
   metodo_invalido: "Elige un método de pago.",
   referencia_invalida: "La referencia debe tener al menos 4 caracteres.",
   captura_invalida: "Sube la captura como JPG, PNG o WEBP.",
@@ -62,6 +63,17 @@ const bs = (n) => `Bs ${Number(n).toLocaleString("es-VE", { minimumFractionDigit
 const bsPlano = (n) => Number(n).toFixed(2).replace(".", ",");
 const fechaCorta = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : "");
 const fechaHora = (iso) => new Date(iso).toLocaleString("es-VE", { timeZone: "America/Caracas", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const horaCorta = (iso) => new Date(iso).toLocaleTimeString("es-VE", { timeZone: "America/Caracas", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+// Misma regla que normalizar_whatsapp en SQL: 0 + 10 dígitos (Venezuela) → 58…; con código de país, 10 a 15 dígitos.
+function normalizarWhatsapp(s) {
+  const d = String(s ?? "").replace(/\D/g, "");
+  if (/^0\d{10}$/.test(d)) return `58${d.slice(1)}`;
+  return /^[1-9]\d{9,14}$/.test(d) ? d : null;
+}
+// "Para el ···1234 · pendiente de envío" / "Enviada al ···1234 a las 21:03"; nada si la entrada no tiene WhatsApp.
+const estadoEnvio = (x) => (!x?.whatsapp_mascara ? ""
+  : x.avisada_en ? `Enviada al ···${x.whatsapp_mascara} a las ${horaCorta(x.avisada_en)}`
+  : `Para el ···${x.whatsapp_mascara} · pendiente de envío`);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 // Botón "Copiar" con feedback dentro del mismo botón; `data-copiar` lleva el valor plano.

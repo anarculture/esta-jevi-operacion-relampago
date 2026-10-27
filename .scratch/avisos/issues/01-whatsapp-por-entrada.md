@@ -39,9 +39,17 @@ Decisiones congeladas (spec, Implementation Decisions):
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `docker exec -i supabase_db_sindicato-baba-ticketera psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 con asserts nuevos: 3 WhatsApps válidos crean la orden; 2 para cantidad 3 → `whatsapp_invalido`; `04141234567` queda `584141234567`; al aprobar, la entrada 2 lleva `whatsapps[2]`; `ver_orden` trae `whatsapp_mascara` de 4 dígitos y no el número completo; una entrada insertada antes del backfill tiene `avisada_en` no nulo.
-- [ ] `node ticketera/tests/ux.mjs` sale 0 con casos nuevos: cantidad 3 → 3 campos de WhatsApp; número de 5 dígitos → error de campo antes de subir y `crear_orden` no se llama; recarga restaura los 3; `crear_orden` recibe `p_whatsapps` con 3 elementos normalizados; orden aprobada muestra "···1234" por tarjeta; `entrada.html` muestra el enmascarado.
-- [ ] `deno test supabase/functions/` sale 0.
-- [ ] `grep -c "whatsapps" supabase/manual/orden-madeidk.sql` imprime 0 (no se reescribe el histórico) y existe `supabase/manual/plantilla-venta-manual.sql` con `whatsapps`.
+- [x] `docker exec -i supabase_db_sindicato-baba-ticketera psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 con asserts nuevos: 3 WhatsApps válidos crean la orden; 2 para cantidad 3 → `whatsapp_invalido`; `04141234567` queda `584141234567`; al aprobar, la entrada 2 lleva `whatsapps[2]`; `ver_orden` trae `whatsapp_mascara` de 4 dígitos y no el número completo; una entrada insertada antes del backfill tiene `avisada_en` no nulo.
+- [x] `node ticketera/tests/ux.mjs` sale 0 con casos nuevos: cantidad 3 → 3 campos de WhatsApp; número de 5 dígitos → error de campo antes de subir y `crear_orden` no se llama; recarga restaura los 3; `crear_orden` recibe `p_whatsapps` con 3 elementos normalizados; orden aprobada muestra "···1234" por tarjeta; `entrada.html` muestra el enmascarado.
+- [x] `deno test supabase/functions/` sale 0.
+- [x] `grep -c "whatsapps" supabase/manual/orden-madeidk.sql` imprime 0 (no se reescribe el histórico) y existe `supabase/manual/plantilla-venta-manual.sql` con `whatsapps`.
+
+**Evidencia (ticket 01):**
+- SQL: `OK ticketera.sql: 5 órdenes creadas` (asserts nuevos en `supabase/tests/ticketera.sql`: backfill, 3 válidos, 5 inválidos → `whatsapp_invalido`, máscara por posición, sin número completo).
+- Página: `OK ux.mjs` con el caso "compra: un WhatsApp por entrada…" (`p_whatsapps` = `["584141234567","13055550100","584241112233"]`), tarjetas "Para el ···4567 · pendiente de envío" / "Enviada al ···2233 a las 21:03", copia offline vieja y `entrada.html` con ···2233.
+- Deno: `ok | 7 passed | 0 failed`.
+- `grep -c whatsapps orden-madeidk.sql` → 0; `plantilla-venta-manual.sql` → 9 (probada en transacción con rollback).
+- Decisión: un número que empieza en 0 y no es el venezolano de 11 dígitos se rechaza (un 0 nunca es código de país); misma regla en SQL y `comun.js`.
+- Debilidad anotada: `orden.html` no se refresca sola tras aprobarse, así que "pendiente de envío" cambia a "Enviada" solo al recargar (fuera de alcance).

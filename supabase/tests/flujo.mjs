@@ -32,7 +32,7 @@ assert.ok(!Array.isArray(lista.d) || lista.d.length === 0, "anon no puede listar
 // REF=71239946 con recibo-sintetico.png prueba un dictamen `coincide` de punta a punta.
 const ref = process.env.REF ?? String(Date.now()).slice(-8);
 const args = { p_nombre: "Ana Pérez", p_cedula: "12345678", p_telefono: "04141234567", p_cantidad: 2,
-  p_metodo: "pago_movil_bnc", p_referencia: ref, p_captura: path };
+  p_metodo: "pago_movil_bnc", p_referencia: ref, p_captura: path, p_whatsapps: ["04141234567", "04241112233"] };
 const o = (await pedir("/rest/v1/rpc/crear_orden", args)).d;
 assert.ok(o.token, `orden creada: ${JSON.stringify(o)}`);
 const dup = await pedir("/rest/v1/rpc/crear_orden", { ...args, p_referencia: "00" + ref });

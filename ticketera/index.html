@@ -61,9 +61,10 @@
       <label for="cedula">Cédula</label>
       <input id="cedula" name="cedula" type="text" inputmode="numeric" placeholder="V12345678" required>
       <p class="campo-error" id="e-cedula" hidden></p>
-      <label for="telefono">Teléfono (WhatsApp)</label>
+      <label for="telefono">Tu WhatsApp</label>
       <input id="telefono" name="telefono" type="tel" autocomplete="tel" placeholder="04141234567" required>
       <p class="campo-error" id="e-telefono" hidden></p>
+      <div id="otros-wa"></div>
       <button class="full" id="enviar">Enviar comprobante</button>
       <div class="error" id="error" role="alert" hidden></div>
     </section>
@@ -109,7 +110,23 @@ addEventListener("DOMContentLoaded", async () => {
   const CAMPOS = ["cantidad", "metodo", "referencia", "nombre", "cedula", "telefono"];
   const borrador = leer("ticketera-borrador") ?? {};
   for (const c of CAMPOS) if (borrador[c] && f[c]) f[c].value = borrador[c];
-  f.addEventListener("input", () => guardar("ticketera-borrador", Object.fromEntries(CAMPOS.map((c) => [c, f[c]?.value ?? ""]))));
+  // Un WhatsApp por entrada: el 1 es "Tu WhatsApp" (#telefono); los demás se generan según la cantidad.
+  const otros = $("otros-wa");
+  const whatsapps = () => [f.telefono.value, ...[...otros.querySelectorAll("input")].map((i) => i.value)];
+  function camposWa(valores = []) {
+    const n = cantidad() ?? otros.children.length + 1; // cantidad inválida: se dejan los campos como están
+    while (otros.children.length > n - 1) otros.lastElementChild.remove();
+    for (let k = otros.children.length + 2; k <= n; k++) {
+      otros.insertAdjacentHTML("beforeend", `<div>
+        <label for="wa-${k}">WhatsApp de la entrada ${k}</label>
+        <input id="wa-${k}" type="tel" autocomplete="off" placeholder="04141234567" aria-describedby="ayuda-wa-${k}">
+        <p class="muted" id="ayuda-wa-${k}">Le llegará su QR por WhatsApp.</p>
+        <p class="campo-error" id="e-wa-${k}" hidden></p></div>`);
+      $(`wa-${k}`).value = valores[k - 1] ?? "";
+    }
+  }
+  camposWa(borrador.whatsapps);
+  f.addEventListener("input", () => guardar("ticketera-borrador", { ...Object.fromEntries(CAMPOS.map((c) => [c, f[c]?.value ?? ""])), whatsapps: whatsapps() }));
 
   function campoError(id, msg) {
     const p = $(`e-${id}`), i = $(id);
@@ -128,6 +145,7 @@ addEventListener("DOMContentLoaded", async () => {
   function pintar() {
     const metodo = f.metodo?.value;
     const cant = cantidad();
+    camposWa();
     $("precio").textContent = metodo && tipo(metodo) === "pago_movil" ? eur(venta.precio_pm_eur_cents) : usd(venta.precio_usd_cents);
     if (!metodo || !cant) return;
     const m = venta.metodos[metodo];
@@ -181,8 +199,7 @@ addEventListener("DOMContentLoaded", async () => {
     chk("captura", Boolean(f.captura.files[0]), "Falta la captura del comprobante.");
     chk("nombre", f.nombre.value.trim().length >= 2 && f.nombre.value.trim().length <= 80, ERRORES.nombre_invalido);
     chk("cedula", /^[VE]?\d{5,9}$/.test(f.cedula.value.toUpperCase().replace(/[^VE0-9]/g, "")), ERRORES.cedula_invalida);
-    const tel = f.telefono.value.replace(/\D/g, "").length;
-    chk("telefono", tel >= 10 && tel <= 13, ERRORES.telefono_invalido);
+    whatsapps().forEach((v, i) => chk(i ? `wa-${i + 1}` : "telefono", Boolean(normalizarWhatsapp(v)), ERRORES.whatsapp_invalido));
     if (!f.metodo?.value) errores.push("metodos");
     if (!cantidad()) errores.push("cantidad");
     return errores;
@@ -212,6 +229,7 @@ addEventListener("DOMContentLoaded", async () => {
         p_nombre: f.nombre.value, p_cedula: f.cedula.value, p_telefono: f.telefono.value,
         p_cantidad: cantidad(), p_metodo: f.metodo.value,
         p_referencia: f.referencia.value, p_captura: subida.path,
+        p_whatsapps: whatsapps().map(normalizarWhatsapp),
       });
       funcion("revisar", { token: o.token }).catch(() => {}); // el dictamen no bloquea al comprador
       guardar("ticketera-orden", { token: o.token, numero: o.numero });

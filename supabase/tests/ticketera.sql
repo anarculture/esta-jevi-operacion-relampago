@@ -2,6 +2,14 @@
 --   docker exec -i supabase_db_sindicato-baba-ticketera psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql
 begin;
 
+-- Backfill de avisos (issue #5): las entradas emitidas antes de la migración quedaron avisadas.
+-- Las que nacen sin WhatsApp por el SQL manual también nacen avisadas (plantilla-venta-manual.sql).
+do $$
+begin
+  assert not exists (select 1 from entradas where whatsapp is null and avisada_en is null),
+    'hay entradas sin WhatsApp pendientes de aviso (falta el backfill)';
+end $$;
+
 -- Se activan por concatenación y no con jsonb_set: si la config local perdió una clave, jsonb_set no la crea.
 update config set tasa = 150, tasa_eur = 200, tasa_consultada_en = now(),
   metodos = metodos
@@ -15,7 +23,7 @@ do $$
 declare r json; err text;
 begin
   r := crear_orden('Ana Pérez', 'v-12.345.678', '0414-123.45.67', 2, 'pago_movil_bnc', '00012283',
-                   '11111111-1111-1111-1111-111111111111.jpg');
+                   '11111111-1111-1111-1111-111111111111.jpg', array['0414-123.45.67', '0424 111 2233']);
   assert (r ->> 'numero') is not null, 'crear_orden no devolvió número';
   assert (ver_orden((r ->> 'token')::uuid) ->> 'estado') = 'en_revision', 'estado inicial';
   assert (ver_orden((r ->> 'token')::uuid) -> 'entradas')::text = 'null', 'QR antes de aprobar';
@@ -26,7 +34,7 @@ begin
   -- Misma referencia con otro formato y por la otra cuenta de pago móvil.
   begin
     perform crear_orden('Beto', '87654321', '04241234567', 1, 'pago_movil_ubii', '12-283',
-                        '22222222-2222-2222-2222-222222222222.png');
+                        '22222222-2222-2222-2222-222222222222.png', array['04241234567']);
     assert false, 'referencia repetida aceptada';
   exception when others then err := sqlerrm;
   end;
@@ -34,15 +42,39 @@ begin
 
   -- La misma cifra en otro método es otra referencia.
   perform crear_orden('Beto', '87654321', '04241234567', 1, 'zelle', '12283',
-                      '33333333-3333-3333-3333-333333333333.png');
+                      '33333333-3333-3333-3333-333333333333.png', array['04241234567']);
 
   begin
     perform crear_orden('Beto', '87654321', '04241234567', 1, 'binance', '999999',
-                        '44444444-4444-4444-4444-444444444444.png');
+                        '44444444-4444-4444-4444-444444444444.png', array['04241234567']);
     assert false, 'método inactivo aceptado';
   exception when others then err := sqlerrm;
   end;
   assert err = 'metodo_invalido', 'error esperado metodo_invalido, vino ' || err;
+
+  -- Un WhatsApp por entrada (issue #5): venezolano y extranjeros con código de país.
+  r := crear_orden('Caro Ruiz', '11111111', '', 3, 'zelle', 'WA3OK',
+                   '55555555-5555-5555-5555-555555555555.png', array['04141234567', '+1 (305) 555-0100', '+44 20 7946 0958']);
+  assert (r ->> 'numero') is not null, '3 WhatsApps válidos no crearon la orden';
+  foreach err in array array['dos para tres', 'sin parámetro', 'corto', 'cero no venezolano', 'largo'] loop
+    begin
+      case err
+        when 'dos para tres' then perform crear_orden('Caro', '11111111', '', 3, 'zelle', 'WA3MAL',
+          '66666666-6666-6666-6666-666666666666.png', array['04141234567', '04241234567']);
+        when 'sin parámetro' then perform crear_orden('Caro', '11111111', '04141234567', 1, 'zelle', 'WA3MAL',
+          '66666666-6666-6666-6666-666666666666.png');
+        when 'corto' then perform crear_orden('Caro', '11111111', '', 1, 'zelle', 'WA3MAL',
+          '66666666-6666-6666-6666-666666666666.png', array['12345']);
+        when 'cero no venezolano' then perform crear_orden('Caro', '11111111', '', 1, 'zelle', 'WA3MAL',
+          '66666666-6666-6666-6666-666666666666.png', array['0414123456']);
+        when 'largo' then perform crear_orden('Caro', '11111111', '', 1, 'zelle', 'WA3MAL',
+          '66666666-6666-6666-6666-666666666666.png', array['5841412345678901']);
+      end case;
+      assert false, 'WhatsApp inválido aceptado: ' || err;
+    exception when raise_exception then
+      assert sqlerrm = 'whatsapp_invalido', err || ': error esperado whatsapp_invalido, vino ' || sqlerrm;
+    end;
+  end loop;
 
   assert (select count(*) from ordenes) = 0, 'anon puede leer ordenes';
   assert (datos_venta() -> 'metodos' -> 'binance') is null, 'datos_venta muestra método inactivo';
@@ -59,9 +91,19 @@ begin
   perform resolver_orden(o.id, true);
   assert (select count(*) from entradas where orden_id = o.id) = 2, 'aprobar no creó 2 entradas';
   assert json_array_length(ver_orden(o.token) -> 'entradas') = 2, 'ver_orden no muestra QR aprobada';
-  e := ver_entrada((ver_orden(o.token) -> 'entradas' ->> 1)::uuid);
+  e := ver_entrada((ver_orden(o.token) -> 'entradas' -> 1 ->> 'token')::uuid);
   assert (e ->> 'posicion') = '2' and (e ->> 'total') = '2' and (e ->> 'numero') = o.numero::text, 'ver_entrada posición: ' || e::text;
   assert e::text not like '%Ana%' and e::text not like '%V12345678%', 'ver_entrada expone datos personales';
+
+  -- WhatsApp por entrada (issue #5): normalizado, el primero también en telefono, por posición al aprobar.
+  assert o.whatsapps = array['584141234567', '584241112233'] and o.telefono = '584141234567',
+    'whatsapps no normalizados: ' || o.whatsapps::text || ' / ' || o.telefono;
+  assert (e ->> 'whatsapp_mascara') = '2233', 'la entrada 2 no lleva whatsapps[2]: ' || e::text;
+  assert ver_orden(o.token) -> 'entradas' -> 0 ->> 'whatsapp_mascara' = '4567'
+     and ver_orden(o.token) -> 'entradas' -> 1 ->> 'whatsapp_mascara' = '2233', 'ver_orden sin máscara por posición';
+  assert (ver_orden(o.token) -> 'entradas' -> 0 -> 'avisada_en')::text = 'null', 'entrada nueva nace avisada';
+  assert ver_orden(o.token)::text not like '%4141234567%' and ver_orden(o.token)::text not like '%4241112233%'
+     and e::text not like '%4241112233%', 'el número completo sale por una RPC anónima';
   perform resolver_orden(z.id, false, '  No llegó el pago  ');
   assert (ver_orden(z.token) ->> 'rechazo_motivo') = 'No llegó el pago', 'rechazo sin motivo';
   assert ver_entrada(gen_random_uuid()) is null, 'ver_entrada de orden no aprobada';
@@ -78,8 +120,8 @@ do $$
 declare o ordenes; t1 uuid; t2 uuid; tr uuid; r0 json; r1 json; r2 json; err text; l json; h timestamptz;
 begin
   select * into o from ordenes where metodo = 'pago_movil_bnc' and referencia = '12283';
-  t1 := ver_orden(o.token) -> 'entradas' ->> 0;
-  t2 := ver_orden(o.token) -> 'entradas' ->> 1;
+  t1 := ver_orden(o.token) -> 'entradas' -> 0 ->> 'token';
+  t2 := ver_orden(o.token) -> 'entradas' -> 1 ->> 'token';
   r0 := resumen_portero();
   r1 := checkin_entrada(t1);
   assert r1 ->> 'resultado' = 'valida', 'primer check-in: ' || r1::text;

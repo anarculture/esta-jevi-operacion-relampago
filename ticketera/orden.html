@@ -33,11 +33,13 @@ addEventListener("DOMContentLoaded", async () => {
   function entradaUrl(t) { return new URL(`entrada.html?e=${t}`, location.href).href; }
 
   function pintar(o, desdeCache) {
-    const qrs = (o.entradas ?? []).map((t, i) => `
+    // Una copia guardada antes del issue #5 trae solo tokens en texto.
+    const qrs = (o.entradas ?? []).map((x) => (typeof x === "string" ? { token: x } : x)).map(({ token: t, ...x }, i) => `
       <div class="card qr">
         <p><strong>Entrada ${i + 1} de ${o.cantidad}</strong></p>
         ${qr(t)}
         <p class="muted">Código de respaldo: ${t.slice(0, 8)}</p>
+        ${estadoEnvio(x) ? `<p class="muted envio">${esc(estadoEnvio(x))}</p>` : ""}
         ${o.cantidad > 1 ? `<a class="btn sec" href="https://wa.me/?text=${encodeURIComponent(`Tu entrada para ${FIESTA.nombre} (${FIESTA.fecha}): ${entradaUrl(t)}`)}" target="_blank" rel="noopener">Enviar esta entrada a un amigo</a>` : ""}
       </div>`).join("");
 

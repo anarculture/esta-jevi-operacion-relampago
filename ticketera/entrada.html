@@ -29,6 +29,7 @@ addEventListener("DOMContentLoaded", async () => {
         <p><strong>Entrada ${e.posicion} de ${e.total}</strong> · orden #${e.numero}</p>
         ${svg}
         <p class="muted">Código de respaldo: ${token.slice(0, 8)}</p>
+        ${e.whatsapp_mascara ? `<p class="muted">Para el WhatsApp ···${esc(e.whatsapp_mascara)}</p>` : ""}
       </div>`;
   }
 
