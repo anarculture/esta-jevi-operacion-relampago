@@ -43,7 +43,9 @@ Evidencia:
 
 Decisiones y debilidades:
 - El helper `pagina` de `ux.mjs` acepta `offline` como función para cortar y devolver la red en el mismo contexto.
-- Una válida local que aún no subió se deshace en el teléfono (sale de la cola y de las marcas).
+- Una válida local que aún no subió se deshace en el teléfono (sale de la cola y de las marcas). Si ya subió, la deshace
+  el servidor y se borra la marca local; si al subir el servidor la tenía de otro teléfono, Deshacer desaparece (4dc23f9,
+  hallazgo de la revisión de cierre).
 - Las marcas locales quedan en el teléfono tras subir: si Mau deshace un ingreso por SQL, ese teléfono sin red lo seguirá
   viendo usado hasta que se borre el almacenamiento.
 - La cola sube en orden y se detiene en el primer error que no es de red (solo un 401 en la práctica); se reintenta en el siguiente evento.
