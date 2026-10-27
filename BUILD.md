@@ -141,8 +141,8 @@ no aplica a ellos: nunca revertir ni re-desplegar producción para verificar.
 Todos `[x]`, build + test verdes, `functions serve` arranca, smoke pasa. Al cerrar:
 
 1. `/f5`.
-2. Fast-forward de la rama local: `git -C /home/acracia/Code/sindicato-baba merge --ff-only <rama de trabajo>`
-   (el push a `origin vm/evento-pm-v2` ya lo hizo el ticket 03).
+2. Pon al día el checkout principal: `git -C /home/acracia/Code/sindicato-baba pull --rebase origin vm/evento-pm-v2`
+   (el push lo hizo el ticket 03; el rebase descarta solo los commits de docs que ya están arriba).
 3. Baja lo que levantaste: detén `functions serve`, `supabase stop` en el worktree.
 4. Reanuda el otro stack: `docker start $(docker ps -aq --filter label=com.supabase.cli.project=esta-jevi-ticketera)`
    y comprueba con `docker ps --filter label=com.supabase.cli.project=esta-jevi-ticketera --format '{{.Names}}' | wc -l` que hay contenedores corriendo.

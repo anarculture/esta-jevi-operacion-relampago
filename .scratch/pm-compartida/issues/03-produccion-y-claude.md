@@ -18,7 +18,10 @@ Decisiones congeladas:
   migraciones existentes ya aplicadas. Si producción no coincide con el repo → BLOQUEADO, no
   forzar.
 - GitHub Pages sirve la rama `vm/evento-pm-v2` desde la raíz: publicar es `git push origin
-  vm/evento-pm-v2` con los commits del build. Solo se publican commits del build.
+  HEAD:vm/evento-pm-v2` con los commits del build. Otra sesión (repintar-ticketera) también
+  publica en esa rama: antes del push, `git fetch origin && git rebase origin/vm/evento-pm-v2`,
+  vuelve a correr build + test, y recién entonces push. Conflicto en el rebase o push rechazado
+  dos veces → BLOQUEADO. Nunca `--force`.
 - **No escribir estado en producción en este ticket.** El primer guardado en producción tiene que
   ser el de Mau desde su navegador (sube lo que ya tenía); eso pasa en el ticket 04.
 
