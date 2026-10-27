@@ -16,6 +16,9 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
 - **Plataforma de PM** (`index.html`, publicada en `pm/`): presupuesto, caja, tareas y operación del
   evento. Su estado vive en Supabase detrás de la Edge Function `pm` (clave `PM_CLAVE`); Claude Code y
   vytas lo leen y actualizan por HTTP. Sin clave, el navegador guarda solo en local.
+  "Ventas y patrocinios" lee las ventas de la ticketera (bloque `ticketera` del `leer` de `pm`, con
+  "Actualizar" y la última lectura en local) y las suma a lo que se anota a mano fuera de ella;
+  la caja real usa el total. Sin conexión ni lectura previa, la caja usa solo lo manual.
 
 ## Users
 
