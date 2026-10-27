@@ -1,0 +1,23 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "roboto",
+        "createdAt": "2026-10-25T03:02:20.065Z",
+        "reason": "claude: fixture que imita la app de un banco (Android usa Roboto) para probar el OCR; no es UI del producto"
+      },
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "ticketera/index.html"
+        ],
+        "createdAt": "2026-10-26T23:48:21.044Z",
+        "reason": "agente: el <img id=preview> nace sin src a propósito; se llena con createObjectURL al elegir la captura"
+      }
+    ]
+  }
+}
