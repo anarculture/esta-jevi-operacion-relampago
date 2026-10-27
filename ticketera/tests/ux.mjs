@@ -74,7 +74,7 @@ await caso("compra: pasos ocultos, monto en euros a tasa BCV, copiar plano, vali
   await page.waitForSelector("#metodos input");
   a.equal(await page.isHidden("#pago"), true, "paso 2 visible antes de elegir método");
   a.equal(await page.isHidden("#reporte"), true, "paso 3 visible antes de pagar");
-  a.ok((await page.textContent("ol.pasos")).includes("Mauricio"), "no dice a quién se paga");
+  a.ok((await page.textContent("ol.pasos")).includes("organizador"), "no dice a quién se paga");
   await foto(page, "01-compra-inicio");
 
   await page.fill("#cantidad", "3");

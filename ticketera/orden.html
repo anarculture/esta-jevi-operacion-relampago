@@ -50,13 +50,13 @@ addEventListener("DOMContentLoaded", async () => {
         <button type="button" class="sec" data-copiar="${esc(enlace)}">Copiar enlace</button>
       </div>
       ${o.estado === "en_revision" ? `<div class="card espera">
-        <p><strong>Mau revisa cada pago a mano en su banco.</strong> Suele tardar menos de una hora; de noche puede ser a la mañana siguiente.</p>
+        <p><strong>Revisamos cada pago a mano en el banco.</strong> Suele tardar menos de una hora; de noche puede ser a la mañana siguiente.</p>
         <p>Guarda este enlace: aquí aparecerán tus entradas con QR cuando se apruebe. La página se actualiza sola.</p>
-        <p class="muted">¿Pasó mucho tiempo? <a href="${waContacto(`Hola Mau, mi orden #${o.numero} sigue en revisión.`)}" target="_blank" rel="noopener">Escríbele a Mau por WhatsApp</a></p>
+        <p class="muted">¿Pasó mucho tiempo? <a href="${waContacto(`Hola, mi orden #${o.numero} sigue en revisión.`)}" target="_blank" rel="noopener">Escríbenos por WhatsApp</a></p>
       </div>` : ""}
       ${o.estado === "rechazada" ? `<div class="error">
         <p><strong>No pudimos confirmar este pago.</strong>${o.rechazo_motivo ? ` Motivo: ${esc(o.rechazo_motivo)}.` : ""}</p>
-        <p><a class="btn mal" href="${waContacto(`Hola Mau, mi orden #${o.numero} de ${FIESTA.nombre} salió rechazada. ¿Qué pasó?`)}" target="_blank" rel="noopener">Resolverlo por WhatsApp</a></p>
+        <p><a class="btn mal" href="${waContacto(`Hola, mi orden #${o.numero} de ${FIESTA.nombre} salió rechazada. ¿Qué pasó?`)}" target="_blank" rel="noopener">Resolverlo por WhatsApp</a></p>
       </div>` : ""}
       ${o.estado === "aprobada" ? `<div class="aviso"><strong>Haz captura de pantalla de tus QR ahora.</strong> En la puerta sube el brillo y muestra un QR por persona.</div>` : ""}
       ${qrs}
@@ -84,7 +84,7 @@ addEventListener("DOMContentLoaded", async () => {
     }
     if (!o) {
       m.innerHTML = `<h1>Orden no encontrada</h1><p class="error" role="alert">Revisa el enlace. Si lo copiaste de WhatsApp, abre el enlace completo.</p>
-        <p><a class="btn sec" href="index.html">Comprar entradas</a> <a class="btn sec" href="${waContacto("Hola Mau, no encuentro mi orden de Sindicato Baba.")}" target="_blank" rel="noopener">Escribir a Mau</a></p>`;
+        <p><a class="btn sec" href="index.html">Comprar entradas</a> <a class="btn sec" href="${waContacto("Hola, no encuentro mi orden de Sindicato Baba.")}" target="_blank" rel="noopener">Escribir por WhatsApp</a></p>`;
       return;
     }
     // El propio comprador se manda el enlace: wa.me con su número lleva a su chat "Tú".
