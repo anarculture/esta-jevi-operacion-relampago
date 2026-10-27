@@ -1,11 +1,28 @@
 # BUILD: check-in del portero
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 01
-- Último verde: — · commit — · —
-- Gates: build ⬜ · test ⬜ · smoke ⬜
+- Ticket actual: — · Done global (2026-10-26)
+- Verificación independiente: 5 gates y todos los AC de 01–04 PASS; falibilidad ROJO-OK en 01 (página, HTTP, SQL),
+  02 y 03; 04 N/A (producción). Hallazgo: los tests de página no fallaban con el puerto ocupado → arreglado en 69acb3b.
+- Revisión de cierre (/code-review, 383010f..HEAD): un hallazgo de corrección en 03 (Deshacer de una válida sin red
+  ya subida no iba al servidor) → reabierto y arreglado en 4dc23f9, con test que da rojo contra el código anterior.
+  Hallazgos de calidad, sin bloquear: Oswald en minúscula en `.contador`/`.r-detalle` y 64 px literal en `.r-titulo`
+  (DESIGN.md); el anti-rebote también ignora el mismo código tecleado durante 3 s; `codigo_ambiguo` mira todas las
+  entradas con red y solo la lista sin red; la cola sube sin la hora local (queda la de subida); la lista muestra la
+  hora sin la fecha; código duplicado (subconsulta de posición en SQL, arranque de servidor entre tests de página);
+  nombres cortos (`x`, `l`, `m`) en `portero.html`; "vídeo" en vez de "video".
+- Último verde: 04 · publicado en 61eca82 (01 = c123180, 02 = 619f62b, 03 = a16b074, merge de `vm/evento-pm-v2` = 0aaac33) · 2026-10-26
+- Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: —
-- Rama de trabajo: — (la anota el setup)
+- Rama de trabajo: `worktree-agent-a04ac3b55edd7ecf4` (worktree `.claude/worktrees/agent-a04ac3b55edd7ecf4`, creado por el harness; `ticketera` mergeada encima)
+- Entorno: el stack local compartido (`sindicato-baba-ticketera`, 54321) lo usa en paralelo el build
+  `pm-compartida` (su `functions serve` y sus `db reset`). Para no pisarnos, este build corre un stack
+  propio con override por entorno, sin tocar `config.toml`:
+  `env SUPABASE_PROJECT_ID=portero SUPABASE_API_PORT=55321 SUPABASE_DB_PORT=55322 SUPABASE_DB_SHADOW_PORT=55320 SUPABASE_DB_POOLER_PORT=55329 SUPABASE_EDGE_RUNTIME_INSPECTOR_PORT=8183 supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,logflare,vector,supavisor`
+  (y el mismo `env` delante de `supabase functions serve --env-file supabase/functions/.env`).
+  Gates equivalentes: contenedor `supabase_db_portero`; `API=http://127.0.0.1:55321 DB_CONTAINER=supabase_db_portero`
+  para `portero.mjs` y `API=…` para `flujo.mjs`; el 8787 lo ocupa un `http.server` del worktree `ticketera`,
+  así que el smoke corre en 8788. En la config local de ese stack se activaron `pago_movil_bnc` y `zelle`.
 
 Spec: https://github.com/anarculture/sindicato-baba/issues/4 (léela completa antes del ticket 01:
 `gh issue view 4 --repo anarculture/sindicato-baba`). Tickets en `.scratch/portero/issues/`.
@@ -51,10 +68,10 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 
 ## Tickets
 
-- [ ] 01 · Check-in por código de respaldo, de punta a punta · Bloqueado por: — · → .scratch/portero/issues/01-checkin-por-codigo.md
-- [ ] 02 · Escaneo con la cámara · Bloqueado por: 01 · → .scratch/portero/issues/02-camara.md
-- [ ] 03 · Sin señal e imprimir · Bloqueado por: 01 · → .scratch/portero/issues/03-sin-senal.md
-- [ ] 04 · Producción y prueba real · Bloqueado por: 02, 03 · → .scratch/portero/issues/04-produccion.md
+- [x] 01 · Check-in por código de respaldo, de punta a punta · Bloqueado por: — · → .scratch/portero/issues/01-checkin-por-codigo.md · evidencia: `OK ticketera.sql` · `OK portero: orden #10, 4 ingresadas de 8 aprobadas` · `OK ux.mjs` (10 casos) · deno `7 passed` · `OK flujo` · 401 · smoke 200 · /security-review sin hallazgos
+- [x] 02 · Escaneo con la cámara · Bloqueado por: 01 · → .scratch/portero/issues/02-camara.md · evidencia: `OK portero-camara.mjs` (1 checkin en 5 s; "Sin cámara" con permiso denegado) · `OK ux.mjs` · jsQR con 0 URLs
+- [x] 03 · Sin señal e imprimir · Bloqueado por: 01 · → .scratch/portero/issues/03-sin-senal.md · evidencia: `OK ux.mjs` (caso sin señal; rojo contra 619f62b) · print `rgb(255, 255, 255)` · `OK portero`
+- [x] 04 · Producción y prueba real · Bloqueado por: 02, 03 · → .scratch/portero/issues/04-produccion.md · evidencia: migración `20261027000000` en remoto · `PORTERO_CLAVE` 1 · clave 600 · prod `resumen` 200, clave mala 401 · `PRUEBAPORTERO1` valida → ya_usada misma hora · `portero.html` 200 (tras 301 al dominio propio) · `git grep` exit 1 · /security-review sin hallazgos
 
 ## Loop por ticket (lazy-fable)
 

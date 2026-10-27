@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Puerta · Sindicato Baba</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="t.css">
+<script src="comun.js" defer></script>
+<script src="jsQR.min.js" defer></script>
+</head>
+<body class="puerta">
+<main>
+  <h1>Puerta</h1>
+  <form id="login" hidden>
+    <label for="clave">Clave del portero</label>
+    <input id="clave" type="password" autocomplete="current-password" required>
+    <button class="full">Entrar</button>
+  </form>
+  <div id="panel" hidden>
+    <video class="camara" id="video" playsinline muted hidden></video>
+    <p class="contador" id="contador" role="status"></p>
+    <p class="muted" id="lista-info" hidden></p>
+    <p class="aviso" id="sin-camara" hidden>Sin cámara: usa el código de respaldo.</p>
+    <form id="manual" autocomplete="off">
+      <label for="codigo">Código de respaldo</label>
+      <input id="codigo" type="text" autocapitalize="off" spellcheck="false" maxlength="8" placeholder="Los 8 caracteres bajo el QR" required>
+      <button class="full">Validar</button>
+    </form>
+    <p class="aviso" id="aviso" role="status" hidden></p>
+    <div class="fila"><button class="mal" id="deshacer" hidden>Deshacer último ingreso</button></div>
+    <div class="fila"><button class="sec" id="descargar">Descargar lista</button><button class="sec" id="ver-lista">Lista</button><button class="sec" id="salir">Salir</button></div>
+  </div>
+  <section id="vista" hidden>
+    <h2>Lista de respaldo</h2>
+    <p class="muted" id="vista-info"></p>
+    <table class="lista-impresa">
+      <thead><tr><th>Código</th><th>Orden</th><th>Entrada</th><th>Ingresó</th></tr></thead>
+      <tbody id="filas"></tbody>
+    </table>
+    <div class="fila"><button id="imprimir">Imprimir</button><button class="sec" id="volver">Volver</button></div>
+  </section>
+  <div class="error" id="error" role="alert" hidden></div>
+</main>
+<div class="resultado" id="resultado" role="alert" hidden><p class="r-titulo" id="r-titulo"></p><p class="r-detalle" id="r-detalle"></p><p class="r-detalle" id="r-red" hidden>sin conexión</p></div>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  const $ = (id) => document.getElementById(id);
+  const K_CLAVE = "ticketera-portero-clave";
+  // Respaldo sin señal: la lista descargada, las marcas locales {token: hora} y la cola por subir.
+  const K_LISTA = "ticketera-portero-lista", K_MARCAS = "ticketera-portero-marcas", K_COLA = "ticketera-portero-cola";
+  const sinRed = (e) => e instanceof ErrorRed || e.status >= 500; // un 401 o un 4xx no activan el modo local
+  let clave = leer(K_CLAVE) ?? "";
+  let ultimo = { x: null, t: 0 }; // anti-rebote: el mismo token o código se ignora 3 s tras su último resultado
+  let cierre, finDeshacer, ultimaValida = null, ultimaLocal = false;
+  const TITULO = { valida: "Válida", ya_usada: "Ya usada", invalida: "Inválida" };
+  const VIBRA = { valida: [80], ya_usada: [80, 80, 80], invalida: [400] };
+  const MOTIVO = { no_existe: "No es una entrada de esta fiesta.", no_aprobada: "Esa orden no está aprobada.", codigo_ambiguo: "Código repetido: escanea el QR." };
+  const hora = (iso) => new Date(iso).toLocaleTimeString("es-VE", { timeZone: "America/Caracas", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+  function fallo(msg) { $("error").textContent = msg; $("error").hidden = !msg; }
+  function aviso(msg) { $("aviso").textContent = msg; $("aviso").hidden = !msg; }
+
+  async function llamar(body) {
+    try {
+      return await funcion("portero", { clave, ...body });
+    } catch (e) {
+      if (e.status === 401) {
+        try { localStorage.removeItem(K_CLAVE); } catch {}
+        clave = "";
+        apagar();
+        $("panel").hidden = true; $("vista").hidden = true; $("login").hidden = false;
+        fallo("Clave incorrecta.");
+      }
+      throw e;
+    }
+  }
+
+  async function contar() {
+    try {
+      const r = await llamar({ accion: "resumen" });
+      $("contador").textContent = `${r.ingresadas} ingresaron de ${r.aprobadas} aprobadas`;
+    } catch (e) {
+      if (!sinRed(e)) throw e;
+      contarLocal();
+    }
+  }
+  function contarLocal() {
+    const l = leer(K_LISTA), m = leer(K_MARCAS) ?? {};
+    if (!l) return;
+    const n = l.entradas.filter((e) => e.checked_in_at || m[e.token]).length;
+    $("contador").textContent = `${n} ingresaron de ${l.entradas.length} aprobadas · sin conexión`;
+  }
+  function pintarLista() {
+    const l = leer(K_LISTA);
+    $("lista-info").hidden = !l;
+    if (l) $("lista-info").textContent = `Lista de las ${hora(l.generada_en)} · ${l.entradas.length} entradas`;
+  }
+
+  // Sin señal: válida si está en la lista sin hora ni marca local; ya usada si la tiene; inválida si no está.
+  function validarLocal(x) {
+    const l = leer(K_LISTA), m = leer(K_MARCAS) ?? {};
+    if (!l) return null;
+    const c = x.length === 36 ? l.entradas.filter((e) => e.token === x)
+      : /^[0-9a-f]{8}$/.test(x) ? l.entradas.filter((e) => e.token.startsWith(x)) : [];
+    if (c.length !== 1) return { resultado: "invalida", motivo: c.length ? "codigo_ambiguo" : "no_existe" };
+    const e = c[0], antes = e.checked_in_at ?? m[e.token];
+    if (antes) return { ...e, resultado: "ya_usada", checked_in_at: antes };
+    m[e.token] = new Date().toISOString();
+    guardar(K_MARCAS, m);
+    guardar(K_COLA, [...(leer(K_COLA) ?? []), e.token]);
+    return { ...e, resultado: "valida", checked_in_at: m[e.token] };
+  }
+
+  // Sube la cola; cada token sale solo cuando el servidor respondió. Un fallo de red la deja como está.
+  let subiendo = false;
+  async function reenviar() {
+    if (subiendo || !clave || !(leer(K_COLA) ?? []).length) return;
+    subiendo = true;
+    const choques = [];
+    try {
+      for (const token of leer(K_COLA) ?? []) {
+        const r = await llamar({ accion: "checkin", token });
+        guardar(K_COLA, (leer(K_COLA) ?? []).filter((t) => t !== token));
+        if (r.resultado === "valida") continue;
+        // El servidor ya la tenía de otro teléfono: deshacer aquí borraría ese ingreso.
+        if (token === ultimaValida) { ultimaValida = null; $("deshacer").hidden = true; }
+        const e = (leer(K_LISTA)?.entradas ?? []).find((x) => x.token === token) ?? {};
+        choques.push(`orden #${r.numero ?? e.numero} (entrada ${r.posicion ?? e.posicion} de ${r.total ?? e.total}) ${r.resultado === "ya_usada" ? `ya había entrado a las ${hora(r.checked_in_at)}` : "no es válida en el servidor"}`);
+      }
+    } catch {}
+    subiendo = false;
+    if (choques.length) aviso(`Ojo, validadas sin conexión: ${choques.join("; ")}.`);
+    contar().catch(() => {});
+  }
+
+  async function entrar() {
+    fallo("");
+    try { await contar(); }
+    catch (e) { if (e.status === 401) return; fallo(e.message); }
+    guardar(K_CLAVE, clave);
+    $("login").hidden = true; $("panel").hidden = false;
+    pintarLista();
+    encender();
+    reenviar();
+  }
+
+  // Cámara trasera: BarcodeDetector nativo si lee QR (Chrome Android); si no, jsQR vendido (Safari iOS).
+  let flujo = null, lector, lienzo, leyendo = false;
+  async function encender() {
+    if (flujo || document.hidden || $("panel").hidden) return;
+    try {
+      flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+    } catch {
+      $("sin-camara").hidden = false;
+      return;
+    }
+    $("sin-camara").hidden = true;
+    $("video").srcObject = flujo;
+    $("video").hidden = false;
+    $("video").play().catch(() => {});
+  }
+  function apagar() {
+    flujo?.getTracks().forEach((t) => t.stop());
+    flujo = null;
+    $("video").hidden = true;
+  }
+  async function leerQR(v) {
+    if (lector === undefined) {
+      try { lector = "BarcodeDetector" in window && (await BarcodeDetector.getSupportedFormats()).includes("qr_code") ? new BarcodeDetector({ formats: ["qr_code"] }) : null; }
+      catch { lector = null; }
+    }
+    if (lector) return (await lector.detect(v))[0]?.rawValue;
+    lienzo ??= document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+    const w = v.videoWidth, h = v.videoHeight;
+    if (lienzo.canvas.width !== w || lienzo.canvas.height !== h) { lienzo.canvas.width = w; lienzo.canvas.height = h; }
+    lienzo.drawImage(v, 0, 0, w, h);
+    return jsQR(lienzo.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: "dontInvert" })?.data;
+  }
+  // ponytail: jsQR lee el cuadro a resolución completa; si un iPhone viejo va lento, reducir el canvas a ~640 px de ancho.
+  setInterval(async () => { // 10 fps; un cuadro a la vez
+    const v = $("video");
+    if (!flujo || leyendo || v.readyState < 2 || !v.videoWidth) return;
+    leyendo = true;
+    try { const x = await leerQR(v); if (x) await validar(x); }
+    catch {}
+    finally { leyendo = false; }
+  }, 100);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return apagar();
+    encender();
+    reenviar();
+  });
+  addEventListener("online", reenviar);
+
+  function cerrar() { clearTimeout(cierre); $("resultado").hidden = true; }
+
+  function mostrar(r, local = false) {
+    const el = $("resultado");
+    $("r-red").hidden = !local;
+    el.className = `resultado ${r.resultado}`;
+    el.dataset.estado = r.resultado;
+    $("r-titulo").textContent = TITULO[r.resultado] ?? "Inválida";
+    $("r-detalle").textContent =
+      r.resultado === "valida" ? `Entrada ${r.posicion} de ${r.total} · orden #${r.numero}`
+      : r.resultado === "ya_usada" ? `A las ${hora(r.checked_in_at)} · entrada ${r.posicion} de ${r.total} · orden #${r.numero}`
+      : MOTIVO[r.motivo] ?? "";
+    el.hidden = false;
+    try { navigator.vibrate?.(VIBRA[r.resultado] ?? VIBRA.invalida); } catch {}
+    clearTimeout(cierre);
+    cierre = setTimeout(cerrar, 2000);
+
+    clearTimeout(finDeshacer);
+    ultimaValida = r.resultado === "valida" ? r.token : null;
+    ultimaLocal = local;
+    $("deshacer").hidden = !ultimaValida;
+    if (ultimaValida) finDeshacer = setTimeout(() => { ultimaValida = null; $("deshacer").hidden = true; }, 5 * 60 * 1000);
+  }
+
+  async function validar(entrada) {
+    const x = String(entrada).trim().toLowerCase();
+    if (!x) return;
+    // Mientras el mismo QR siga en el encuadre, cada lectura renueva los 3 s de silencio.
+    if (x === ultimo.x && Date.now() - ultimo.t < 3000) { ultimo.t = Date.now(); return; }
+    ultimo = { x, t: Date.now() };
+    fallo("");
+    let r, local = false;
+    try {
+      r = await llamar({ accion: "checkin", ...(x.length === 36 ? { token: x } : { codigo: x }) });
+    } catch (e) {
+      if (!sinRed(e)) { if (e.status !== 401) fallo(e.message); return; }
+      r = validarLocal(x);
+      if (!r) { fallo("Sin conexión y sin lista descargada: descárgala cuando vuelva la señal."); return; }
+      local = true;
+    }
+    ultimo = { x, t: Date.now() };
+    mostrar(r, local);
+    if (local) return contarLocal();
+    if (r.resultado === "valida") contar().catch(() => {});
+    reenviar(); // hay red: sube lo que quedó en cola
+  }
+
+  // Una válida sin conexión que aún no subió se deshace en el teléfono; si ya subió, ok:false y va al servidor.
+  function deshacerLocal(token) {
+    const cola = leer(K_COLA) ?? [];
+    if (!cola.includes(token)) return { ok: false };
+    const m = leer(K_MARCAS) ?? {};
+    delete m[token];
+    guardar(K_MARCAS, m);
+    guardar(K_COLA, cola.filter((t) => t !== token));
+    return { ok: true };
+  }
+
+  $("descargar").addEventListener("click", async () => {
+    fallo("");
+    try { guardar(K_LISTA, await llamar({ accion: "lista" })); pintarLista(); }
+    catch (e) { if (e.status !== 401) fallo(e.message); }
+  });
+  $("ver-lista").addEventListener("click", () => {
+    const l = leer(K_LISTA), m = leer(K_MARCAS) ?? {};
+    if (!l) return fallo("Primero toca \"Descargar lista\" con señal.");
+    const filas = [...l.entradas].sort((a, b) => a.token.localeCompare(b.token));
+    $("filas").innerHTML = filas.map((e) => {
+      const h = e.checked_in_at ?? m[e.token];
+      return `<tr><td>${esc(e.token.slice(0, 8))}</td><td>#${esc(e.numero)}</td><td>${esc(e.posicion)} de ${esc(e.total)}</td><td>${h ? hora(h) : ""}</td></tr>`;
+    }).join("");
+    $("vista-info").textContent = $("lista-info").textContent;
+    apagar();
+    $("panel").hidden = true; $("vista").hidden = false;
+  });
+  $("volver").addEventListener("click", () => { $("vista").hidden = true; $("panel").hidden = false; encender(); });
+  $("imprimir").addEventListener("click", () => print());
+  $("resultado").addEventListener("click", cerrar);
+  $("manual").addEventListener("submit", (ev) => { ev.preventDefault(); validar($("codigo").value); $("codigo").value = ""; });
+  $("deshacer").addEventListener("click", async () => {
+    const token = ultimaValida;
+    if (!token) return;
+    $("deshacer").disabled = true;
+    try {
+      // En cola: se deshace en el teléfono. Ya subida (o validada con red): la deshace el servidor.
+      let r = ultimaLocal ? deshacerLocal(token) : { ok: false };
+      if (!r.ok) {
+        r = await llamar({ accion: "deshacer", token });
+        if (r.ok) { const m = leer(K_MARCAS) ?? {}; delete m[token]; guardar(K_MARCAS, m); }
+      }
+      aviso(r.ok ? "Ingreso deshecho." : "Ya pasaron 5 minutos: no se puede deshacer.");
+      ultimaValida = null; $("deshacer").hidden = true;
+      await contar();
+    } catch (e) { if (e.status !== 401) fallo(e.message); }
+    $("deshacer").disabled = false;
+  });
+  $("login").addEventListener("submit", (ev) => { ev.preventDefault(); clave = $("clave").value; entrar(); });
+  $("salir").addEventListener("click", () => { apagar(); try { localStorage.removeItem(K_CLAVE); } catch {} location.reload(); });
+
+  if (clave) entrar(); else $("login").hidden = false;
+});
+</script>
+</body>
+</html>

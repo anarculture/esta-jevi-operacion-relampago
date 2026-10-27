@@ -53,8 +53,8 @@ reset role;
 do $$
 declare o ordenes; z ordenes; err text; e json;
 begin
-  select * into o from ordenes where metodo = 'pago_movil_bnc';
-  select * into z from ordenes where metodo = 'zelle';
+  select * into o from ordenes where metodo = 'pago_movil_bnc' and referencia = '12283';
+  select * into z from ordenes where metodo = 'zelle' and referencia = '12283';
   assert ver_entrada(gen_random_uuid()) is null, 'ver_entrada con token inexistente';
   perform resolver_orden(o.id, true);
   assert (select count(*) from entradas where orden_id = o.id) = 2, 'aprobar no creó 2 entradas';
@@ -73,11 +73,76 @@ begin
   assert err = 'orden_ya_resuelta', 'error esperado orden_ya_resuelta, vino ' || err;
 end $$;
 
+-- Check-in del portero (issue #4).
+do $$
+declare o ordenes; t1 uuid; t2 uuid; tr uuid; r0 json; r1 json; r2 json; err text; l json; h timestamptz;
+begin
+  select * into o from ordenes where metodo = 'pago_movil_bnc' and referencia = '12283';
+  t1 := ver_orden(o.token) -> 'entradas' ->> 0;
+  t2 := ver_orden(o.token) -> 'entradas' ->> 1;
+  r0 := resumen_portero();
+  r1 := checkin_entrada(t1);
+  assert r1 ->> 'resultado' = 'valida', 'primer check-in: ' || r1::text;
+  assert (r1 ->> 'posicion') = '1' and (r1 ->> 'total') = '2' and (r1 ->> 'numero') = o.numero::text, 'posición: ' || r1::text;
+  assert (r1 ->> 'checked_in_at') is not null and (r1 ->> 'token')::uuid = t1, 'válida sin hora o sin token';
+  -- now() es fijo en la transacción: se corre la hora atrás para ver si el segundo check-in la pisa.
+  update entradas set checked_in_at = checked_in_at - interval '1 minute' where token = t1 returning checked_in_at into h;
+  r2 := checkin_entrada(t1);
+  assert r2 ->> 'resultado' = 'ya_usada', 'segundo check-in: ' || r2::text;
+  assert (r2 ->> 'checked_in_at')::timestamptz = h, 'ya_usada cambió la hora del primer ingreso';
+  assert checkin_entrada(gen_random_uuid()) ->> 'motivo' = 'no_existe', 'token inexistente';
+
+  -- Entrada colgada de una orden en revisión (solo posible a mano): inválida.
+  insert into ordenes (nombre, cedula, telefono, cantidad, metodo, referencia, captura, monto_usd_cents)
+  values ('Rev', 'V1', '0', 1, 'zelle', 'PORTEROREV1', 'x.jpg', 1000) returning * into o;
+  insert into entradas (orden_id) values (o.id) returning token into tr;
+  r1 := checkin_entrada(tr);
+  assert r1 ->> 'resultado' = 'invalida' and r1 ->> 'motivo' = 'no_aprobada', 'orden en revisión: ' || r1::text;
+
+  -- Deshacer dentro de la ventana: vuelve a validar. Fuera de la ventana: no deshace.
+  assert (deshacer_checkin(t1) ->> 'ok')::boolean, 'deshacer dentro de 5 min';
+  assert checkin_entrada(t1) ->> 'resultado' = 'valida', 'tras deshacer no vuelve a valida';
+  update entradas set checked_in_at = now() - interval '6 minutes' where token = t1;
+  assert not (deshacer_checkin(t1) ->> 'ok')::boolean, 'deshizo fuera de la ventana';
+  assert checkin_entrada(t1) ->> 'resultado' = 'ya_usada', 'fuera de la ventana quedó sin hora';
+
+  -- Código de respaldo: prefijo del token; dos coincidencias → ambiguo.
+  assert token_por_codigo(upper(left(t2::text, 8))) = t2, 'código de respaldo no resuelve';
+  assert token_por_codigo('zzzzzzzz') is null and token_por_codigo('0000000') is null, 'código mal formado';
+  insert into entradas (orden_id, token) select id, v::uuid from ordenes, unnest(array[
+    'abcdef12-0000-4000-8000-00000000000a', 'abcdef12-0000-4000-8000-00000000000b']) v where referencia = 'PORTEROREV1';
+  begin
+    perform token_por_codigo('abcdef12');
+    assert false, 'código ambiguo aceptado';
+  exception when others then err := sqlerrm;
+  end;
+  assert err = 'codigo_ambiguo', 'error esperado codigo_ambiguo, vino ' || err;
+
+  l := lista_portero();
+  assert (l ->> 'generada_en') is not null and l::text like '%' || t1 || '%' and l::text like '%' || t2 || '%', 'lista sin las entradas aprobadas';
+  assert l::text not like '%' || tr || '%' and l::text not like '%abcdef12%', 'lista con entradas no aprobadas';
+  assert l::text not like '%Ana%' and l::text not like '%V12345678%' and l::text not like '%04141234567%', 'lista expone datos personales';
+  assert (resumen_portero() ->> 'aprobadas') = (r0 ->> 'aprobadas')
+     and (resumen_portero() ->> 'ingresadas')::int = (r0 ->> 'ingresadas')::int + 1, 'resumen: ' || resumen_portero()::text;
+end $$;
+
 set local role anon;
 do $$
 begin
   perform resolver_orden(gen_random_uuid(), true);
   assert false, 'anon puede resolver órdenes';
+exception when insufficient_privilege then null;
+end $$;
+do $$
+begin
+  perform checkin_entrada(gen_random_uuid());
+  assert false, 'anon puede hacer check-in';
+exception when insufficient_privilege then null;
+end $$;
+do $$
+begin
+  perform lista_portero();
+  assert false, 'anon puede bajar la lista del portero';
 exception when insufficient_privilege then null;
 end $$;
 reset role;

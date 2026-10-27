@@ -34,7 +34,7 @@ async function pedir(url, opts) {
   if (!r.ok) {
     const code = d?.message ?? d?.error ?? `HTTP ${r.status}`;
     // Lo no mapeado es un fallo nuestro, no del comprador: se le da una salida humana.
-    throw new Error(ERRORES[code] ?? `Algo falló de nuestro lado (${code}). Escríbenos por WhatsApp y lo resolvemos.`);
+    throw Object.assign(new Error(ERRORES[code] ?? `Algo falló de nuestro lado (${code}). Escríbenos por WhatsApp y lo resolvemos.`), { status: r.status });
   }
   return d;
 }

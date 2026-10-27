@@ -423,3 +423,10 @@ verify_jwt = false
 
 [functions.admin]
 verify_jwt = false
+
+[functions.portero]
+verify_jwt = false
+
+# Plataforma del organizador: la llaman el navegador de Mau y los agentes con PM_CLAVE.
+[functions.pm]
+verify_jwt = false

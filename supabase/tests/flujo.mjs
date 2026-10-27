@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
-const API = "http://127.0.0.1:54321";
+const API = process.env.API ?? "http://127.0.0.1:54321";
 const KEY = "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
 const CLAVE = readFileSync(new URL("../functions/.env", import.meta.url), "utf8").match(/ADMIN_CLAVE=(.*)/)[1];
 
@@ -19,9 +19,9 @@ async function pedir(path, body, type = "application/json") {
 }
 
 const venta = (await pedir("/functions/v1/tasa", {})).d;
-assert.ok(venta.tasa > 0, "tasa BCV cargada");
+assert.ok(venta.tasa_eur > 0, "tasa BCV del euro cargada");
 assert.ok(venta.metodos.pago_movil_bnc, "pago_movil_bnc activo");
-console.log("tasa", venta.tasa, venta.tasa_fecha);
+console.log("tasa_eur", venta.tasa_eur, venta.tasa_eur_fecha);
 
 const path = `${crypto.randomUUID()}.png`;
 const up = await pedir(`/storage/v1/object/capturas/${path}`, readFileSync(process.argv[2]), "image/png");

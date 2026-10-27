@@ -19,6 +19,8 @@ const PORT = 8766;
 const raiz = new URL("..", import.meta.url).pathname;
 const server = spawn("python3", ["-m", "http.server", String(PORT), "--bind", "127.0.0.1", "--directory", raiz], { stdio: "ignore" });
 await new Promise((r) => setTimeout(r, 700));
+// Con el puerto ocupado, http.server muere y el test hablaría con el servidor de otro proceso.
+if (server.exitCode !== null) throw new Error(`puerto ${PORT} ocupado: libéralo antes de correr el test`);
 const URLBASE = `http://127.0.0.1:${PORT}`;
 
 const VENTA = {
@@ -51,7 +53,7 @@ async function pagina(fixtures, { offline = false, storage = {} } = {}) {
     const nombre = u.pathname.split("/").slice(-1)[0];
     const clave = u.pathname.includes("/storage/") ? "storage" : nombre;
     llamadas.push(clave);
-    if (offline) return route.abort("internetdisconnected");
+    if (typeof offline === "function" ? offline() : offline) return route.abort("internetdisconnected"); // función: red que se corta y vuelve
     const fx = fixtures[clave];
     if (fx === undefined) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ message: `sin fixture: ${clave}` }) });
     const body = typeof fx === "function" ? fx(route.request().postDataJSON?.() ?? {}) : fx;
@@ -264,6 +266,193 @@ await caso("admin: cola, título con pendientes, filtro, rechazo con motivo, Wha
   await page.waitForFunction(() => window.__abiertos.length === 1);
   a.equal(resueltas[1].aprobar, true);
   a.ok((await page.evaluate(() => window.__abiertos[0])).startsWith("https://wa.me/584141234567?text="), "no abrió WhatsApp al aprobar");
+  await ctx.close();
+});
+
+// ---------- portero ----------
+const CLAVE_PT = "clave-portero-de-prueba";
+const PT = { bbbbbbbb: "bbbbbbbb-0000-4000-8000-000000000001", cccccccc: "cccccccc-0000-4000-8000-000000000002", eeeeeeee: "eeeeeeee-0000-4000-8000-000000000003" };
+const HORA_PT = "2026-10-30T02:14:00Z"; // 22:14 en Caracas
+function puerta(llamadasPt) {
+  return (b) => {
+    llamadasPt.push(b);
+    if (b.clave !== CLAVE_PT) return { __status: 401, error: "clave_invalida" };
+    if (b.accion === "resumen") return { aprobadas: 112, ingresadas: 37 };
+    if (b.accion === "deshacer") return { ok: true };
+    const c = b.codigo ?? b.token?.slice(0, 8);
+    if (c === "bbbbbbbb" || c === "eeeeeeee") return { resultado: "valida", token: PT[c], numero: 12, posicion: 1, total: 2, checked_in_at: HORA_PT };
+    if (c === "cccccccc") return { resultado: "ya_usada", token: PT[c], numero: 12, posicion: 2, total: 2, checked_in_at: HORA_PT };
+    return { resultado: "invalida", motivo: "no_existe" };
+  };
+}
+const espiarVibracion = () => { window.__vib = []; Object.defineProperty(navigator, "vibrate", { value: (p) => (window.__vib.push(p), true) }); };
+async function teclear(page, codigo) {
+  await page.fill("#codigo", codigo);
+  await page.press("#codigo", "Enter");
+}
+
+await caso("portero: sin clave pide clave; clave mala avisa; buena entra con contador", async () => {
+  const ll = [];
+  const ctx = await pagina({ portero: puerta(ll) });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/portero.html`);
+  await page.waitForSelector("#login:not([hidden])");
+  a.equal(await page.isHidden("#panel"), true, "panel visible sin clave");
+  a.equal(ll.length, 0, "llamó a la función sin clave");
+  await foto(page, "11-portero-clave");
+  await page.fill("#clave", "mala");
+  await page.click("#login button");
+  await page.waitForSelector("#error:not([hidden])");
+  a.equal(await page.textContent("#error"), "Clave incorrecta.");
+  await page.fill("#clave", CLAVE_PT);
+  await page.click("#login button");
+  await page.waitForSelector("#panel:not([hidden])");
+  a.equal(await page.textContent("#contador"), "37 ingresaron de 112 aprobadas");
+  a.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("ticketera-portero-clave"))), CLAVE_PT, "no guardó la clave");
+  await ctx.close();
+});
+
+await caso("portero: válida verde con vibración y deshacer, vuelve sola; ya usada con hora; inválida roja", async () => {
+  const ll = [];
+  const ctx = await pagina({ portero: puerta(ll) }, { storage: { "ticketera-portero-clave": JSON.stringify(CLAVE_PT) } });
+  const page = await ctx.newPage();
+  await page.addInitScript(espiarVibracion);
+  await page.goto(`${URLBASE}/portero.html`);
+  await page.waitForSelector("#panel:not([hidden])");
+
+  await teclear(page, "BBBBBBBB");
+  await page.waitForSelector("#resultado:not([hidden])");
+  a.equal(await page.getAttribute("#resultado", "data-estado"), "valida");
+  a.ok((await page.getAttribute("#resultado", "class")).includes("valida"));
+  a.equal(await page.evaluate(() => getComputedStyle(document.getElementById("resultado")).backgroundColor), "rgb(46, 216, 71)", "válida no es verde neón");
+  a.ok((await page.textContent("#resultado")).includes("Entrada 1 de 2"), "válida sin 'Entrada 1 de 2'");
+  a.deepEqual(await page.evaluate(() => window.__vib), [[80]], "no vibró un pulso corto");
+  a.equal(await page.isVisible("#deshacer"), true, "sin 'Deshacer' tras una válida");
+  a.equal(ll.filter((b) => b.accion === "checkin").at(-1).codigo, "bbbbbbbb", "no mandó el código normalizado");
+  await foto(page, "12-portero-valida");
+
+  await teclear(page, "bbbbbbbb"); // mismo código dentro de los 3 s: se ignora
+  await page.waitForSelector("#resultado", { state: "hidden", timeout: 3500 });
+  a.equal(ll.filter((b) => b.accion === "checkin").length, 1, "reenvió el mismo código antes de 3 s");
+
+  await teclear(page, "cccccccc");
+  await page.waitForSelector("#resultado:not([hidden])");
+  a.equal(await page.getAttribute("#resultado", "data-estado"), "ya_usada");
+  a.ok((await page.textContent("#resultado")).includes("22:14"), "ya usada sin la hora del primer ingreso");
+  a.equal(await page.evaluate(() => getComputedStyle(document.getElementById("resultado")).backgroundColor), "rgb(255, 214, 10)", "ya usada no es amarillo marcador");
+  await foto(page, "13-portero-ya-usada");
+  await page.click("#resultado"); // un toque lo cierra antes
+  a.equal(await page.isHidden("#resultado"), true, "el toque no cerró el resultado");
+
+  await teclear(page, "dddddddd");
+  await page.waitForSelector("#resultado:not([hidden])");
+  a.equal(await page.getAttribute("#resultado", "data-estado"), "invalida");
+  a.ok((await page.textContent("#r-titulo")).includes("Inválida"));
+  a.equal(await page.isHidden("#deshacer"), true, "'Deshacer' visible tras una inválida");
+  a.deepEqual((await page.evaluate(() => window.__vib)).at(-1), [400], "inválida no vibró largo");
+  await foto(page, "14-portero-invalida");
+  await page.click("#resultado");
+
+  await teclear(page, "eeeeeeee");
+  await page.waitForSelector("#resultado:not([hidden])");
+  await page.click("#resultado");
+  await page.click("#deshacer");
+  await page.waitForSelector("#aviso:not([hidden])");
+  a.deepEqual(ll.filter((b) => b.accion === "deshacer").map((b) => b.token), [PT.eeeeeeee], "deshacer no mandó el token de la última válida");
+  a.equal(await page.isHidden("#deshacer"), true);
+  await ctx.close();
+});
+
+await caso("portero sin señal: lista descargada, validación local en cola, reenvío con aviso, lista ordenada e imprimible", async () => {
+  const A = "a1a1a1a1-0000-4000-8000-000000000001", B = "f0f0f0f0-0000-4000-8000-000000000009";
+  const LISTA = { generada_en: "2026-10-30T00:35:00Z", entradas: [ // desordenada a propósito
+    { token: B, numero: 14, posicion: 1, total: 1, checked_in_at: null },
+    { token: A, numero: 12, posicion: 1, total: 2, checked_in_at: null },
+    { token: "a2a2a2a2-0000-4000-8000-000000000002", numero: 12, posicion: 2, total: 2, checked_in_at: "2026-10-30T01:50:00Z" },
+  ] };
+  const ll = [];
+  let sinRedPt = false, claveMala = false;
+  const ctx = await pagina({ portero: (b) => {
+    ll.push(b);
+    if (claveMala) return { __status: 401, error: "clave_invalida" };
+    if (b.accion === "lista") return LISTA;
+    if (b.accion === "resumen") return { aprobadas: 3, ingresadas: 1 };
+    if (b.accion === "deshacer") return { ok: true };
+    if (b.token === B) return { resultado: "ya_usada", token: B, numero: 14, posicion: 1, total: 1, checked_in_at: "2026-10-30T01:00:00Z" };
+    return { resultado: "valida", token: b.token, numero: 12, posicion: 1, total: 2, checked_in_at: "2026-10-30T02:00:00Z" };
+  } }, { offline: () => sinRedPt, storage: { "ticketera-portero-clave": JSON.stringify(CLAVE_PT) } });
+  const page = await ctx.newPage();
+  const ls = (k) => page.evaluate((k) => JSON.parse(localStorage.getItem(k)), k);
+  const checkins = () => ll.filter((b) => b.accion === "checkin").map((b) => b.token);
+  async function resultado(codigo) {
+    await teclear(page, codigo);
+    await page.waitForSelector("#resultado:not([hidden])");
+    const r = { estado: await page.getAttribute("#resultado", "data-estado"), texto: await page.innerText("#resultado") };
+    await page.click("#resultado");
+    return r;
+  }
+  await page.goto(`${URLBASE}/portero.html`);
+  await page.waitForSelector("#panel:not([hidden])");
+  await page.click("#descargar");
+  await page.waitForSelector("#lista-info:not([hidden])");
+  a.equal(await page.textContent("#lista-info"), "Lista de las 20:35 · 3 entradas");
+  a.equal((await ls("ticketera-portero-lista")).entradas.length, 3, "no guardó la lista");
+
+  sinRedPt = true;
+  const v = await resultado("f0f0f0f0");
+  a.equal(v.estado, "valida");
+  a.ok(/sin conexión/i.test(v.texto), "válida local sin la etiqueta 'sin conexión'");
+  a.deepEqual(await ls("ticketera-portero-cola"), [B], "no quedó en cola");
+  a.ok((await page.textContent("#contador")).startsWith("2 ingresaron de 3"), "contador sin red no sale de la lista local");
+  await page.waitForTimeout(3100); // pasa el anti-rebote del mismo código
+  a.equal((await resultado("f0f0f0f0")).estado, "ya_usada", "el mismo código sin red no sale ya usada");
+  a.equal((await resultado("99999999")).estado, "invalida", "código fuera de la lista no sale inválido");
+  a.equal((await resultado("a1a1a1a1")).estado, "valida");
+  a.deepEqual(checkins(), [], "con la red cortada llegó algo al servidor");
+
+  sinRedPt = false;
+  await page.evaluate(() => dispatchEvent(new Event("online")));
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("ticketera-portero-cola")).length === 0);
+  a.deepEqual(checkins(), [B, A], "el servidor no recibió los tokens encolados");
+  await page.waitForSelector("#aviso:not([hidden])");
+  a.ok((await page.textContent("#aviso")).includes("orden #14"), "sin aviso de la válida local que ya había entrado");
+  await foto(page, "17-portero-aviso");
+
+  // La última válida sin red (A) ya subió: Deshacer va al servidor y borra la marca local.
+  a.equal(await page.isVisible("#deshacer"), true, "sin 'Deshacer' para la válida que subió");
+  await page.click("#deshacer");
+  await page.waitForFunction(() => document.getElementById("deshacer").hidden);
+  a.deepEqual(ll.filter((b) => b.accion === "deshacer").map((b) => b.token), [A], "deshacer de una válida ya subida no llamó al servidor");
+  a.equal((await ls("ticketera-portero-marcas"))[A], undefined, "deshacer dejó la marca local");
+  a.equal(await page.textContent("#aviso"), "Ingreso deshecho.");
+
+  // Si al subir el servidor ya la tenía de otro teléfono, Deshacer desaparece (borraría ese ingreso).
+  sinRedPt = true;
+  await page.evaluate(() => { const m = JSON.parse(localStorage.getItem("ticketera-portero-marcas")); delete m["f0f0f0f0-0000-4000-8000-000000000009"]; localStorage.setItem("ticketera-portero-marcas", JSON.stringify(m)); });
+  a.equal((await resultado("f0f0f0f0")).estado, "valida");
+  sinRedPt = false;
+  await page.evaluate(() => dispatchEvent(new Event("online")));
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("ticketera-portero-cola")).length === 0);
+  a.equal(await page.isHidden("#deshacer"), true, "'Deshacer' visible para una válida que el servidor ya tenía");
+
+  await page.click("#ver-lista");
+  a.deepEqual(await page.$$eval("#filas tr td:first-child", (tds) => tds.map((t) => t.textContent)), ["a1a1a1a1", "a2a2a2a2", "f0f0f0f0"], "lista no ordenada por código");
+  a.ok((await page.textContent("#filas")).includes("#12") && (await page.textContent("#filas")).includes("2 de 2"));
+  await foto(page, "18-portero-lista");
+  await page.emulateMedia({ media: "print" });
+  a.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(255, 255, 255)", "impresión sin fondo blanco");
+  a.equal(await page.isHidden("#imprimir"), true, "botones en la impresión");
+  await foto(page, "19-portero-impresion");
+  await page.emulateMedia({ media: "screen" });
+
+  // Una clave mala borra la clave guardada, no la lista ni la cola.
+  await page.click("#volver");
+  await page.evaluate((t) => localStorage.setItem("ticketera-portero-cola", JSON.stringify([t])), A);
+  claveMala = true;
+  await page.click("#descargar");
+  await page.waitForSelector("#login:not([hidden])");
+  a.equal(await ls("ticketera-portero-clave"), null, "la clave mala quedó guardada");
+  a.ok((await ls("ticketera-portero-lista")) && (await ls("ticketera-portero-cola")).length === 1, "la clave mala borró la lista o la cola");
   await ctx.close();
 });
 

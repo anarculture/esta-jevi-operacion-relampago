@@ -43,11 +43,29 @@ Decisiones congeladas (del spec, sección Implementation Decisions):
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `docker exec -i supabase_db_sindicato-baba-ticketera psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 e incluye asserts nuevos: válida, ya usada con la misma hora, token inexistente, orden en revisión, deshacer dentro de la ventana, deshacer fuera de la ventana no deshace.
-- [ ] `node supabase/tests/portero.mjs` sale 0 (requiere `supabase functions serve --env-file supabase/functions/.env`): 401 con clave mala en las 4 acciones; `checkin` por `token` y por `codigo` coinciden; `codigo` ambiguo → `invalida`/`codigo_ambiguo`; `lista` sin `nombre`/`cedula`/`telefono`; `resumen` cuadra tras un check-in; dos `checkin` del mismo token en `Promise.all` → exactamente una `valida`.
-- [ ] `node ticketera/tests/ux.mjs` sale 0 con casos nuevos de portero: sin clave pide clave; código válido → pantalla con clase/estado "valida", texto "Entrada 1 de 2" y `navigator.vibrate` llamado; ya usada → "22:14" (hora del fixture); inválida → "Inválida"; vuelve a escaneo sola; "Deshacer" visible tras una válida y oculto tras una inválida.
-- [ ] `deno test supabase/functions/` sale 0 (los tests del dictamen siguen verdes).
-- [ ] `grep -c "functions.portero" supabase/config.toml` imprime 1.
-- [ ] `curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:54321/functions/v1/portero -H 'Content-Type: application/json' -d '{"clave":"mala","accion":"resumen"}'` imprime `401`.
+- [x] `docker exec -i supabase_db_sindicato-baba-ticketera psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 e incluye asserts nuevos: válida, ya usada con la misma hora, token inexistente, orden en revisión, deshacer dentro de la ventana, deshacer fuera de la ventana no deshace.
+- [x] `node supabase/tests/portero.mjs` sale 0 (requiere `supabase functions serve --env-file supabase/functions/.env`): 401 con clave mala en las 4 acciones; `checkin` por `token` y por `codigo` coinciden; `codigo` ambiguo → `invalida`/`codigo_ambiguo`; `lista` sin `nombre`/`cedula`/`telefono`; `resumen` cuadra tras un check-in; dos `checkin` del mismo token en `Promise.all` → exactamente una `valida`.
+- [x] `node ticketera/tests/ux.mjs` sale 0 con casos nuevos de portero: sin clave pide clave; código válido → pantalla con clase/estado "valida", texto "Entrada 1 de 2" y `navigator.vibrate` llamado; ya usada → "22:14" (hora del fixture); inválida → "Inválida"; vuelve a escaneo sola; "Deshacer" visible tras una válida y oculto tras una inválida.
+- [x] `deno test supabase/functions/` sale 0 (los tests del dictamen siguen verdes).
+- [x] `grep -c "functions.portero" supabase/config.toml` imprime 1.
+- [x] `curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:54321/functions/v1/portero -H 'Content-Type: application/json' -d '{"clave":"mala","accion":"resumen"}'` imprime `401`.
+
+## Cierre (2026-10-26)
+
+Evidencia (stack aislado `portero`, ver `## Estado` en BUILD-portero.md):
+- SQL: `OK ticketera.sql` (exit 0); sin la migración da rojo (`function resumen_portero() does not exist`).
+- HTTP: `OK portero: orden #10, 4 ingresadas de 8 aprobadas`; `OK flujo: orden #12 aprobada, 2 entradas`; clave mala → `401`.
+- Página: `OK ux.mjs` con `portero: sin clave pide clave…` y `portero: válida verde con vibración…`; capturas 11–14 en `evidencia/`.
+- Deno: `7 passed | 0 failed`. Config: `grep -c functions.portero` → 1. Smoke: `portero.html` 200.
+- /security-review: sin hallazgos ≥ 8.
+
+Decisiones y debilidades anotadas:
+- `checkin` también devuelve `token` (lo necesitan Deshacer y el anti-rebote cuando se entra por código).
+- `lista` responde `{ generada_en, entradas: [...] }`: `generada_en` es de la lista, no de cada entrada.
+- Rojo aviso (#ff5a50) con texto papel da ~2,75:1 de contraste, bajo 3:1 aun en texto grande. Lo fija el spec;
+  si en la puerta no se lee, pasar el texto de la inválida a tóner negro.
+- `flujo.mjs` estaba rojo desde la tanda 1 (`venta.tasa` ya no existe en `datos_venta`): se cambió el assert a `tasa_eur`.
+- `ticketera.sql` elegía la orden de prueba con `where metodo = …` y tomaba una cualquiera si la base tenía datos previos;
+  ahora la fija por referencia.
