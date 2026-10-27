@@ -4,7 +4,7 @@
 - Ticket actual: 03
 - Último verde: 02 · commit 816b004 · 2026-10-26
 - Gates: build ✅ · test ✅ · smoke ✅
-- Bloqueado: 03 (y 04 por herencia) espera permiso para escribir en producción: `supabase db push --linked` lo denegó el clasificador de permisos del harness dos veces (la segunda con la autorización de Mau ya relayada; motivo: `[Production Deploy]`). No es un fallo de código; nada se escribió en producción. Falta una regla de permiso en settings o que Mau corra los 4 comandos.
+- Bloqueado: —  (03: Mau corrió los 3 comandos de Supabase tras dos denegaciones `[Production Deploy]` del harness; verificado con lecturas)
 - Rama de trabajo: `pm-compartida` (worktree en `.claude/worktrees/pm-compartida`, creado a mano con git: la herramienta del harness no se permite desde un subagente con cwd fijo)
 
 Spec: https://github.com/anarculture/sindicato-baba/issues/2 (léela completa antes del ticket 01:

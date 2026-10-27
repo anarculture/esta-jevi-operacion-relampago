@@ -29,10 +29,10 @@ Decisiones congeladas:
 
 **Status:** ready-for-agent
 
-- [ ] `supabase migration list --linked` (con `--project-ref ptbzdepejxxlavqfyepw` o tras `supabase link`) muestra la migración nueva aplicada en remoto.
+- [x] `supabase migration list --linked` (con `--project-ref ptbzdepejxxlavqfyepw` o tras `supabase link`) muestra la migración nueva aplicada en remoto. · `('20261026120000', '20261026120000')`
 - [x] `test -s ~/.config/sindicato-baba/pm_clave && stat -c %a ~/.config/sindicato-baba/pm_clave` imprime `600`. · `600` (44 caracteres, `openssl rand -base64 33`)
-- [ ] `supabase secrets list --project-ref ptbzdepejxxlavqfyepw | grep -c PM_CLAVE` imprime `1`.
-- [ ] Con la clave del archivo, `leer` contra `https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm` responde 200 y JSON con `version`; con clave mala responde 401.
+- [x] `supabase secrets list --project-ref ptbzdepejxxlavqfyepw | grep -c PM_CLAVE` imprime `1`. · `secrets_PM_CLAVE=1`
+- [x] Con la clave del archivo, `leer` contra `https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm` responde 200 y JSON con `version`; con clave mala responde 401. · `http=200 {'version': 0, 'guardado_en': None, 'autor': None, 'estado': 'null'}` · `leer_mala=401`
 - [ ] `curl -s https://anarculture.github.io/sindicato-baba/app.js | grep -c 'functions/v1/pm'` imprime 1 o más (reintentar hasta 5 min tras el push; Pages tarda).
 - [x] `git grep -n "$(cat ~/.config/sindicato-baba/pm_clave)"` no encuentra nada (sale 1). · `git_grep_exit=1` (re-verificar tras el push)
 
@@ -47,5 +47,9 @@ Notas del agente:
 - `supabase migration list --linked` antes de aplicar: `20261024000000` y `20261026000000` aplicadas
   en remoto, `20261026120000` pendiente; `db push --dry-run` aplicaría solo
   `20261026120000_pm_compartida.sql`.
-- **Espera permiso:** `supabase db push --linked` fue denegado por el clasificador de permisos del
-  harness (escritura en producción). No se hizo ninguna escritura en producción.
+- El clasificador de permisos del harness denegó dos veces `supabase db push --linked` (motivo
+  `[Production Deploy]`). Mau corrió él mismo, desde el worktree, `supabase db push --linked --yes`
+  (aplicó solo `20261026120000_pm_compartida.sql`), `supabase secrets set PM_CLAVE="$(cat
+  ~/.config/sindicato-baba/pm_clave)"` (el `--env-file <(...)` falló con NotFound en
+  `/proc/self/fd`; la clave no quedó escrita en el historial, solo el `$(cat ...)`) y
+  `supabase functions deploy pm`. El agente verificó después solo con lecturas.
