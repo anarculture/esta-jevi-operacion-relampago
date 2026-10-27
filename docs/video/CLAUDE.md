@@ -60,10 +60,10 @@ tiene que incluirlas, el `montaje_v5.py` actual todavía no. Spec: issue #8 de `
 https://claude.ai/artifact/4nHQF2MCthoEVWexi75dwy.
 - Estilos finales: miss venezuela = spray punk magenta · warapo = fuego · giulio = rubber hose años 30 · lis the producer
   = pixel arcade · amesty = onomatopeya de manga · DJ BABATR = 3D multicolor en arco.
-- Entregables en `/home/acracia/Code/sindicato-baba/.claude/worktrees/tapas-motion/motion/renders/`: `<dj>.mov`
+- Entregables en `motion/renders/` (fuera de git; movidos del worktree `tapas-motion` el 27-oct): `<dj>.mov`
   (ProRes 4444 con alfa, 720×1280, 24 fps, 1,6 s) y `<dj>-vista.mp4` (vista previa de la entrada completa sobre el clip).
   Slugs: `miss-venezuela`, `warapo`, `giulio`, `lis-the-producer`, `amesty`, `dj-babatr`. Los genera el proyecto
-  HyperFrames 0.8.162 + GSAP de `motion/` en ese worktree (rama `worktree-tapas-motion`, sin commit todavía):
+  HyperFrames 0.8.162 + GSAP de `motion/` (commit `b01b333`, ya en `vm/evento-pm-v2`):
   `compositions/<dj>.html`, `assets/tapas/<dj>.png` sin fondo, `render.sh`, `render-todas.sh`.
 - Cómo entra cada DJ: el clip de su escena baja a cámara lenta el último 0,5 s (mitad de velocidad), 2 cuadros de
   destello blanco, cuadro congelado 1,6 s (saturación 0.6, contraste 1.2, brillo -0.08, acercamiento lento) con el `.mov`

@@ -18,7 +18,7 @@ import tempfile
 
 RAIZ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 CLIPS = os.path.join(RAIZ, "elements", "clips")
-TAPAS = "/home/acracia/Code/sindicato-baba/.claude/worktrees/tapas-motion/motion/renders"
+TAPAS = os.path.join(RAIZ, "motion", "renders")
 SALIDA = os.path.join(RAIZ, "elements", "entregas", "reel-hibrido.mp4")
 W, H, FPS = 1080, 1920, 24
 
