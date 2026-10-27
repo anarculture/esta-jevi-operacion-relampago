@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- miss venezuela · escena 1A · 1,6 s. Spray punk magenta: cada fila (tiara / MISS / VENEZUELA / A de anarquía) se
+     pinta de izquierda a derecha como una pasada de aerosol, desenfocada al arrancar, escalonadas; la A cae de golpe
+     como un sello y las chorreaduras se alargan durante la pausa. Sale en 0,15 s. -->
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="stylesheet" href="../assets/tapa.css" />
+    <script src="../assets/gsap.min.js"></script>
+  </head>
+  <body>
+    <div data-composition-id="miss-venezuela" data-start="0" data-duration="1.6" data-width="1080" data-height="1920">
+      <div class="pos clip" data-start="0" data-duration="1.6">
+        <div class="anim" style="transform-origin: 50% 0%">
+          <img class="fila" src="../assets/tapas/miss-venezuela.png" alt="tiara" data-t="0" data-b="76" />
+          <img class="fila" src="../assets/tapas/miss-venezuela.png" alt="MISS" data-t="24" data-b="44" />
+          <img class="fila" src="../assets/tapas/miss-venezuela.png" alt="VENEZUELA" data-t="56" data-b="22" />
+          <img class="fila sello" src="../assets/tapas/miss-venezuela.png" alt="A" data-t="78" data-b="0" style="transform-origin: 72% 88%" />
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const raiz = document.querySelector('[data-composition-id="miss-venezuela"]');
+        const filas = [...raiz.querySelectorAll(".fila")];
+        const anim = raiz.querySelector(".anim");
+        const recorte = (el, derecha) => `inset(${el.dataset.t}% ${derecha}% ${el.dataset.b}% 0%)`;
+        const tl = gsap.timeline({ paused: true });
+        // pasadas de aerosol: tiara, MISS y VENEZUELA, cada una abre su recorte hacia la derecha
+        filas.slice(0, 3).forEach((el, i) =>
+          tl.fromTo(el, { clipPath: recorte(el, 100), filter: "blur(10px)" }, { clipPath: recorte(el, 0), filter: "blur(0px)", duration: 0.24, ease: "power2.inOut" }, i * 0.18),
+        );
+        const sello = filas[3];
+        tl.fromTo(sello, { clipPath: recorte(sello, 0), scale: 1.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.14, ease: "power4.in" }, 0.62)
+          .to(anim, { scaleY: 1.02, duration: 0.8, ease: "sine.out" }, 0.65)
+          .to(anim, { opacity: 0, duration: 0.15, ease: "power2.in" }, 1.45);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["miss-venezuela"] = tl;
+      })();
+    </script>
+  </body>
+</html>
