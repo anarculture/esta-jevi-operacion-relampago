@@ -37,8 +37,27 @@ Decisiones congeladas:
 
 **Status:** ready-for-agent
 
-- [ ] `ssh aios-vm 'set -a; . ~/.hermes/.env; curl -s -o /dev/null -w "%{http_code}" -X POST https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm -H "Content-Type: application/json" -d "{\"clave\":\"$PM_CLAVE\",\"accion\":\"leer\"}"'` imprime `200`.
-- [ ] El skill existe en `~developer/.hermes/skills/` y `ssh aios-vm 'grep -rl "functions/v1/pm" ~/.hermes/skills'` encuentra exactamente un archivo, que contiene `ticketera.aprobadas.entradas`.
+- [x] `ssh aios-vm 'set -a; . ~/.hermes/.env; curl -s -o /dev/null -w "%{http_code}" -X POST https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm -H "Content-Type: application/json" -d "{\"clave\":\"$PM_CLAVE\",\"accion\":\"leer\"}"'` imprime `200`. · `AC1=200`
+- [x] El skill existe en `~developer/.hermes/skills/` y `ssh aios-vm 'grep -rl "functions/v1/pm" ~/.hermes/skills'` encuentra exactamente un archivo, que contiene `ticketera.aprobadas.entradas`. · `1` archivo: `/home/developer/.hermes/skills/plataforma-sindicato-baba/SKILL.md`, con 1 coincidencia de `ticketera.aprobadas.entradas`
 - [ ] `versiones` en producción muestra una versión con autor `navegador` anterior a la primera con autor `vytas`, y ninguna con autor `claude`.
 - [ ] El `estado` de la versión de `vytas` es igual al de la versión anterior (comparación JSON en Node, sale 0).
 - [ ] `ssh aios-vm 'hermes -z "Según la plataforma del organizador de Sindicato Baba, ¿cuántas entradas pagadas llevamos? Responde solo el número."'` imprime el número que da la regla del skill aplicada a `leer`.
+
+Notas del agente:
+
+- Skill `~developer/.hermes/skills/plataforma-sindicato-baba/SKILL.md` (un solo archivo, formato de
+  los demás: carpeta + `SKILL.md` con frontmatter). Primera versión: `pm()` leía la clave del `.env`
+  de Hermes → **falla 1 del AC5**: Hermes tiene una regla de denegación deliberada de Mau
+  (`'*.hermes/.env*'` en `config.yaml`) y vytas respondió "el acceso a la clave está bloqueado". La
+  regla no se tocó. Arreglo: `pm()` usa `$PM_CLAVE` del entorno y el frontmatter la declara en
+  `required_environment_variables` (passthrough nativo de Hermes); diagnóstico con `hermes -z` →
+  `presente`.
+- `PM_CLAVE` se agregó a `~/.hermes/.env` por `ssh` con stdin (nunca en argumentos ni en pantalla);
+  el archivo sigue en 600. Como Hermes carga el `.env` al arrancar, se reinició el gateway con
+  `systemctl --user restart hermes-gateway.service` (arrancaba desde el 22-oct): activo, WhatsApp
+  "Bridge ready (status: connected)".
+- Pausa humana: zenity a las 02:59Z; versión `navegador` a las 03:07:39Z. **Pero esa v1 era la
+  plantilla**: los datos de Mau estaban en el `localStorage` del origen viejo (ver nota del 03). Mi
+  chequeo "no es plantilla" dio falso negativo porque comparaba JSON serializado y jsonb reordena
+  las claves (lo detectó el coordinador). La prueba de escritura de vytas (v2, 03:08:11Z) es igual a
+  la v1. Mau importa el respaldo recuperado desde la página: esa será la v3 o posterior.

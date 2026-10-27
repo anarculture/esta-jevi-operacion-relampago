@@ -1,7 +1,7 @@
 # BUILD: plataforma del organizador compartida (Mau, Claude Code, vytas)
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 03
+- Ticket actual: 04
 - Último verde: 02 · commit fb1ecb8 (tras rebase sobre origin; antes 816b004) · 2026-10-26
 - Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: —  (03: Mau corrió los 3 comandos de Supabase tras dos denegaciones `[Production Deploy]` del harness; verificado con lecturas)
@@ -58,7 +58,7 @@ congeladas (no las reabras):
 
 - [x] 01 · Edge Function `pm` con su tabla y contrato HTTP · Bloqueado por: — · → .scratch/pm-compartida/issues/01-edge-function-pm.md · evidencia: `OK pm: 8 casos del contrato y la carrera de guardados`, `supabase/functions/pm/index.ts:24` (401), smoke `401`
 - [x] 02 · El navegador sincroniza con `pm` · Bloqueado por: 01 · → .scratch/pm-compartida/issues/02-navegador-sincroniza.md · evidencia: `OK pm-navegador: 6 casos`, `index.html:6` (connect-src), `dump_dom=1`
-- [ ] 03 · Producción y acceso de Claude · Bloqueado por: 01, 02 · → .scratch/pm-compartida/issues/03-produccion-y-claude.md
+- [x] 03 · Producción y acceso de Claude · Bloqueado por: 01, 02 · → .scratch/pm-compartida/issues/03-produccion-y-claude.md · evidencia: `('20261026120000', '20261026120000')`, `secrets_PM_CLAVE=1`, `leer` prod `http=200` / mala `401`, `pages_pm_app_js=1`
 - [ ] 04 · vytas usa la plataforma · Bloqueado por: 03 · → .scratch/pm-compartida/issues/04-vytas.md
 
 ## Gates
