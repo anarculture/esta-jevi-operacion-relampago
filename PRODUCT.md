@@ -13,6 +13,8 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
   organizador concilia a mano contra su banco, con un dictamen de IA como apoyo. Cada entrada lleva
   su propio WhatsApp (el primero es el del comprador) y vytas avisa a cada dueño desde su número
   cuando la orden se aprueba (Edge Function `avisos`, clave `PM_CLAVE`; reintento en el panel admin).
+  Al elegir la captura, el formulario la sube y la lee con IA (Edge Function `lectura`) para precargar
+  la referencia; al registrar la orden, `revisar` reutiliza esa lectura en vez de pagarla de nuevo.
 - **Plataforma de PM** (`index.html`, publicada en `pm/`): presupuesto, caja, tareas y operación del
   evento. Su estado vive en Supabase detrás de la Edge Function `pm` (clave `PM_CLAVE`); Claude Code y
   vytas lo leen y actualizan por HTTP. Sin clave, el navegador guarda solo en local.
@@ -39,9 +41,18 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
 
 - Métodos de pago: pago móvil (Bs, se cobra €10 a tasa BCV del euro), Zelle y Binance ($10).
   En puerta $15. Todo cae a cuentas personales del organizador; nada se verifica contra API bancaria.
-- Solo un dictamen `coincide` aprueba sin Mau (interruptor `config.auto_aprobar`, activo por defecto),
-  y únicamente si la referencia leída es exactamente la tipeada y ninguna otra orden del mismo método
-  comparte su sufijo. `dudoso` y `no_coincide` esperan en el panel: ahí el dictamen orienta y Mau decide.
+- La referencia tiene al menos 6 caracteres y su terminación de 6 (`ordenes.sufijo`) es única por método:
+  una misma captura no se vuelve dos órdenes tipeando un dígito de más. Si la terminación que lee la IA
+  ya está en otra orden del mismo método, el dictamen es `no_coincide`.
+- Cada orden guarda desde dónde pagó el comprador (`ordenes.pagador`): banco, teléfono y cédula en pago
+  móvil, titular en Zelle, ID en Binance. Son las llaves para buscar el pago en la app del banco; solo
+  las ve el panel admin (ni la orden pública, ni la entrada, ni el portero, ni los avisos). Que no
+  coincidan con lo que lee la IA del emisor es una duda, nunca un rechazo. No verifica nada contra el banco.
+- La lectura previa (`lecturas`, por path de la captura) trae datos del pagador de gente que quizá no
+  compre: tope de 10 lecturas por IP y 200 en total por hora, se borra al día, y el comprador solo ve
+  monto, referencia, fecha, hora y nombre del emisor (no los datos del destino ni las señales de edición).
+- Solo un dictamen `coincide` aprueba sin Mau (interruptor `config.auto_aprobar`, activo por defecto).
+  `dudoso` y `no_coincide` esperan en el panel: ahí el dictamen orienta y Mau decide.
 - Los avisos salen del número de vytas, nunca del de Mau. El texto lo arma el servidor y lleva el enlace
   a la entrada, no una imagen. Las entradas anteriores al cambio quedaron como ya avisadas.
 - El comprobante que vale es el que emite la plataforma (QR firmado por token); la captura del

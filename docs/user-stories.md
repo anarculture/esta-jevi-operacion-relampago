@@ -26,15 +26,22 @@ cercano y la fiesta del jueves 29.
 2. **Comprador · reportar pago.** Subo la captura y la referencia, con nombre, cédula y un
    WhatsApp por entrada (el primero es el mío). Recibo un número de orden y el estado «en
    revisión». *Desde el 27-oct: un WhatsApp por entrada (issue #5).*
+   También desde el 27-oct (issues #6 y #7): al elegir la captura se lee sola y precarga la
+   referencia (se puede corregir; si la lectura falla, se teclea); la referencia lleva al menos 6
+   caracteres; y declaro desde dónde pagué (pago móvil: banco, teléfono y cédula; Zelle: titular;
+   Binance: ID), datos que solo ve el administrador.
 3. **Sistema · referencia única.** Una referencia ya usada en el mismo método se
-   rechaza al enviarse, para que un comprobante no pague dos veces.
+   rechaza al enviarse, para que un comprobante no pague dos veces. *Desde el 27-oct (issue #6):
+   la unicidad es por terminación de 6 caracteres, no por la referencia completa.*
 4. **IA · revisar comprobante.** Un modelo de visión lee la captura y extrae método,
    monto, fecha, referencia y destinatario. Los compara con la orden y con los
    parámetros de cada método, marca señales de edición y deja un dictamen: `coincide`,
-   `dudoso` o `no coincide`, con el motivo.
+   `dudoso` o `no coincide`, con el motivo. *Desde el 27-oct: también lee la hora y el emisor
+   (nombre, teléfono, cédula o ID, banco); si el emisor leído no es el declarado, es una duda. La
+   lectura se hace al elegir la captura y la revisión de la orden la reutiliza.*
 5. **Admin · conciliar.** Como Mau, veo la cola de órdenes con el dictamen de la IA y la
    captura al lado. Apruebo o rechazo cada una tras mirarla en mi app del banco. Desde el 27-oct,
-   un dictamen `coincide` aprueba solo (referencia exacta y sin sufijo repetido; interruptor
+   un dictamen `coincide` aprueba solo (una terminación ya vista en otra orden da `no coincide`; interruptor
    `config.auto_aprobar`); `dudoso` y `no coincide` esperan aquí.
 6. **Sistema · emitir entrada.** Al aprobar, cada entrada recibe un QR único firmado y
    el comprador obtiene un enlace a su comprobante con sus QR.
