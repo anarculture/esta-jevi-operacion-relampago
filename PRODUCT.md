@@ -10,7 +10,9 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
 
 - **Ticketera** (`ticketera/`): venta de entradas sin pasarela. El comprador paga por transferencia
   a la cuenta personal del organizador, sube la captura, y recibe entradas con QR cuando el
-  organizador concilia a mano contra su banco, con un dictamen de IA como apoyo.
+  organizador concilia a mano contra su banco, con un dictamen de IA como apoyo. Cada entrada lleva
+  su propio WhatsApp (el primero es el del comprador) y vytas avisa a cada dueño desde su número
+  cuando la orden se aprueba (Edge Function `avisos`, clave `PM_CLAVE`; reintento en el panel admin).
 - **Plataforma de PM** (`index.html`, publicada en `pm/`): presupuesto, caja, tareas y operación del
   evento. Su estado vive en Supabase detrás de la Edge Function `pm` (clave `PM_CLAVE`); Claude Code y
   vytas lo leen y actualizan por HTTP. Sin clave, el navegador guarda solo en local.
@@ -33,7 +35,11 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
 
 - Métodos de pago: pago móvil (Bs, se cobra €10 a tasa BCV del euro), Zelle y Binance ($10).
   En puerta $15. Todo cae a cuentas personales del organizador; nada se verifica contra API bancaria.
-- Nada se aprueba solo: el dictamen de IA orienta, Mau decide.
+- Solo un dictamen `coincide` aprueba sin Mau (interruptor `config.auto_aprobar`, activo por defecto),
+  y únicamente si la referencia leída es exactamente la tipeada y ninguna otra orden del mismo método
+  comparte su sufijo. `dudoso` y `no_coincide` esperan en el panel: ahí el dictamen orienta y Mau decide.
+- Los avisos salen del número de vytas, nunca del de Mau. El texto lo arma el servidor y lleva el enlace
+  a la entrada, no una imagen. Las entradas anteriores al cambio quedaron como ya avisadas.
 - El comprobante que vale es el que emite la plataforma (QR firmado por token); la captura del
   comprador es evidencia.
 - Contacto humano: WhatsApp del organizador, visible en compra, orden y rechazo.
