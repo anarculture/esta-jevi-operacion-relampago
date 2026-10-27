@@ -72,7 +72,7 @@ async function capturaDeUnaSolaOrden(o: { id: string; tipo: string; referencia: 
   const leida = normRef(ocr.reference);
   if (leida !== normRef(o.referencia)) return false;
   const { data, error } = await db.from("ordenes").select("referencia").eq("tipo", o.tipo).neq("id", o.id)
-    .like("referencia", `%${leida.slice(-6)}`);
+    .like("referencia", `%${leida.slice(-4)}`); // 4: la referencia más corta que acepta crear_orden
   if (error) { console.error("auto_aprobar: referencias", error.message); return false; }
   return !data.some((x) => leida.endsWith(x.referencia) || x.referencia.endsWith(leida));
 }

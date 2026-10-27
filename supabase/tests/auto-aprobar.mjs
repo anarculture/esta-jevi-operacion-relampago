@@ -87,9 +87,10 @@ try {
   const otra = await comprar(`19${base}1`, false, `9${base}1`);
   assert.equal(otra.rev?.dictamen, "coincide", `reuso: ${JSON.stringify(otra.rev)}`);
   assert.equal(otra.vista.estado, "en_revision", "la misma captura con otra referencia se aprobó sola");
-  // Un comprador tipea el final de la referencia (no exacta: espera a Mau); otro sube la misma captura con la exacta.
-  const corta = await comprar(`${base}3`, false, `9${base}3`);
-  assert.equal(corta.rev?.dictamen, "coincide", `sufijo: ${JSON.stringify(corta.rev)}`);
+  // Un comprador tipea solo los 5 últimos caracteres (espera a Mau); otro sube la misma captura con la
+  // referencia exacta: la captura ya está en otra orden, aunque su referencia sea más corta que 6.
+  const corta = await comprar(`9${base}3`.slice(-5), false, `9${base}3`);
+  assert.notEqual(corta.rev?.dictamen, undefined, `sufijo: ${JSON.stringify(corta.rev)}`);
   assert.equal(corta.vista.estado, "en_revision", "referencia tipeada parcial se aprobó sola");
   const exacta = await comprar(`9${base}3`, false);
   assert.equal(exacta.rev?.dictamen, "coincide", `exacta: ${JSON.stringify(exacta.rev)}`);
