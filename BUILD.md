@@ -2,7 +2,7 @@
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
 - Ticket actual: — (verificación independiente del Done global)
-- Último verde: 04 (4/5 AC) · 01 `fad50f4`, 02 `fb1ecb8`, 03 `c8a5b70`, arreglo de textos `81d9a73` · 2026-10-27
+- Último verde: 04 `4f23c81` (4/5 AC) · 01 `fad50f4`, 02 `fb1ecb8`, 03 `c8a5b70`, arreglo de textos `81d9a73`, arreglo de la pestaña tras olvidar la clave `d5ac597` · 2026-10-27
 - Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: — · Excepción: AC3 del 04 (v3 de recuperación con autor `claude`), decide Mau
 - Rama de trabajo: `pm-compartida` (worktree en `.claude/worktrees/pm-compartida`, creado a mano con git: la herramienta del harness no se permite desde un subagente con cwd fijo)

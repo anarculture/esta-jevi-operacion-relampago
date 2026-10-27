@@ -35,7 +35,7 @@ Decisiones congeladas:
 
 **Blocked by:** 03
 
-**Status:** 4 de 5 AC en verde; AC3 incumplido por la versión de recuperación (decide Mau)
+**Status:** 4 de 5 AC en verde; AC3 FAIL literal anotado como excepción (versiones de Claude Code pedidas por Mau: uso normal de la plataforma)
 
 - [x] `ssh aios-vm 'set -a; . ~/.hermes/.env; curl -s -o /dev/null -w "%{http_code}" -X POST https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm -H "Content-Type: application/json" -d "{\"clave\":\"$PM_CLAVE\",\"accion\":\"leer\"}"'` imprime `200`. · `AC1=200`
 - [x] El skill existe en `~developer/.hermes/skills/` y `ssh aios-vm 'grep -rl "functions/v1/pm" ~/.hermes/skills'` encuentra exactamente un archivo, que contiene `ticketera.aprobadas.entradas`. · `1` archivo: `/home/developer/.hermes/skills/plataforma-sindicato-baba/SKILL.md`, con 1 coincidencia de `ticketera.aprobadas.entradas`
