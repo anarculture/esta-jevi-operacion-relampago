@@ -5,7 +5,7 @@
 - Último verde: 04 · commit (ver git log) · 2026-10-26 (01 41ac3bc · 02 dfd31cf · 03 7c1606f; merges de `ticketera` en 46873d1 y bf74878)
 - Gates: build ✅ (sin build) · test ✅ SQL (en `supabase_db_avisos`; la compartida la recrea otro build), ux, deno, flujo, auto-aprobar, avisos, dry-run del script · smoke ✅ 8790 "Tu WhatsApp"
 - VM: script `~/.hermes/scripts/avisos-entradas.sh`, `AVISOS_URL` en `~/.hermes/.env`, sección en el skill `plataforma-sindicato-baba`, cron `avisos-entradas` (f2e9920487c7) **en pausa**.
-- Bloqueado: —
+- Bloqueado: 05 (despliegue negado por el hook; comandos en `## BLOQUEADO`)
 - Rama de trabajo: `worktree-agent-af9623a6e11453d53` (worktree `.claude/worktrees/agent-af9623a6e11453d53`; base: rama del portero ya publicada en `origin/vm/evento-pm-v2` + `git merge ticketera`)
 - Servicios: gate SQL en el stack compartido `sindicato-baba-ticketera` (54322; ahí apliqué con `migration up` la del portero y la mía, sin `db reset`, y sembré la orden `PREMIGRACIONAVISOS` antes de la migración para que el assert de backfill muerda; durante el 03 otro build recreó esa base y la siembra se perdió: en base vacía el assert de backfill es vacuo). El hook de permisos no deja parar el `functions serve` de `pm-compartida` en 54321 ni escribir por HTTP en esa base, así que los gates HTTP corren en un stack propio `avisos` (API 56321, DB 56322; `API=http://127.0.0.1:56321`), igual que el portero con el suyo en 55321. Smoke en el puerto 8790 (el 8787 lo ocupa un `http.server` del worktree `ticketera`).
 
@@ -61,7 +61,41 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 - [x] 02 · Aprobación automática con `coincide` · Bloqueado por: 01 · → .scratch/avisos/issues/02-auto-aprobar.md
 - [x] 03 · Función `avisos` y panel · Bloqueado por: 01 · → .scratch/avisos/issues/03-funcion-avisos-y-panel.md
 - [x] 04 · vytas envía · Bloqueado por: 03 · → .scratch/avisos/issues/04-vytas-envia.md
-- [ ] 05 · Producción · Bloqueado por: 02, 04 · → .scratch/avisos/issues/05-produccion.md
+- [ ] 05 · Producción · Bloqueado por: 02, 04 · → .scratch/avisos/issues/05-produccion.md · **BLOQUEADO** (ver abajo)
+
+## BLOQUEADO
+
+### 05 · Producción: el hook de permisos niega el despliegue
+
+`supabase db push --linked --yes` → "Permission … denied by the Claude Code auto mode classifier. Reason:
+[Production Deploy]". El dry-run sí corrió y empujaría exactamente `20261027120000_avisos.sql`,
+`20261027120100_auto_aprobar.sql` y `20261027120200_avisos_funciones.sql`. `migration list --linked`
+muestra producción igual al repo hasta `20261027040000` (la del portero, ya integrada en esta rama).
+
+Comandos para Mau, **en este orden y seguidos**. Entre el 1 y el 3 la página publicada vieja no puede
+comprar, porque `crear_orden` ya pide `p_whatsapps`; Pages tarda 1 a 2 min:
+
+```
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/agent-af9623a6e11453d53 && supabase db push --linked --yes
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/agent-af9623a6e11453d53 && supabase functions deploy revisar admin avisos --project-ref ptbzdepejxxlavqfyepw
+! git -C /home/acracia/Code/sindicato-baba/.claude/worktrees/agent-af9623a6e11453d53 push origin HEAD:vm/evento-pm-v2
+```
+
+El 3 es fast-forward: esta rama ya contiene `origin/vm/evento-pm-v2`. `PM_CLAVE` ya existe como
+secreto en producción (issue #2), así que no hace falta `secrets set`. Después, la prueba real (la
+puede seguir un agente con estos permisos o Mau):
+
+4. `pendientes` en producción con `~/.config/sindicato-baba/pm_clave` → 200 y `[]` (el backfill dejó
+   avisadas las históricas). Si trae algo, **no** reanudes el cron.
+5. En https://postropicalia.com/sindicato-baba/index.html, compra 1 entrada con referencia
+   `PRUEBAAVISO1` y el WhatsApp de Mau (04145287337), y apruébala desde el panel.
+6. `pendientes` → solo esa entrada. Entonces `! ssh aios-vm '~/.local/bin/hermes cron resume f2e9920487c7'`.
+7. En ≤ 2 min la `cola` de `admin` la muestra con `avisada_en`, y Mau confirma el mensaje de vytas.
+8. Borrado: `! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/agent-af9623a6e11453d53 && supabase db query --linked -f supabase/manual/borrar-prueba-aviso.sql` (la última línea imprime 0).
+9. `git grep -n "$(cat ~/.config/sindicato-baba/pm_clave)"` sale 1.
+
+Con `auto_aprobar` encendido por defecto, desde el paso 2 toda orden con `coincide` se aprueba sola.
+Para volver a lo manual: `update config set auto_aprobar = false` (con `supabase db query --linked`).
 
 ## Loop por ticket (lazy-fable)
 
