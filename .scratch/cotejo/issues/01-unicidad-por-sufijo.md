@@ -50,3 +50,8 @@ Decisiones congeladas:
 - [x] `node supabase/tests/flujo.mjs <imagen.png>`, `avisos.mjs`, `portero.mjs` siguen saliendo 0. Evidencia: `OK flujo: orden #7 aprobada, 2 entradas` (con `pruebas-e2e/pago-movil-bnc.png`) · `OK avisos.mjs · orden #13` · `OK portero: orden #20, 2 ingresadas de 12 aprobadas`.
 
 Autocrítica: dos `revisar` simultáneos con la misma captura no aprueban dos órdenes, porque `sufijo` nace en el insert y la segunda orden siempre encuentra a la primera por esa columna; solo quedaría en carrera el caso en que ninguna referencia tipeada coincide con la leída, y ahí `dictaminar` ya da `no_coincide` por referencia distinta. Si la consulta de sufijos falla, el dictamen es `dudoso` (nunca aprueba sola).
+
+Revisión (security-review sin hallazgos; Sonnet `silent-failure-hunter`, `typescript-reviewer`,
+`database-reviewer`): corregidos `crear_orden` cobrando `precio_pm_eur_cents` a Zelle/Binance (assert
+nuevo en `ticketera.sql`, rojo con el error) y el `update` del dictamen sin chequear error en
+`revisar` (ahora lanza y no aprueba).

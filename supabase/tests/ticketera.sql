@@ -17,7 +17,7 @@ begin
 end $$;
 
 -- Se activan por concatenación y no con jsonb_set: si la config local perdió una clave, jsonb_set no la crea.
-update config set tasa = 150, tasa_eur = 200, tasa_consultada_en = now(),
+update config set tasa = 150, tasa_eur = 200, tasa_consultada_en = now(), precio_usd_cents = 1500,
   metodos = metodos
     || jsonb_build_object('pago_movil_bnc', coalesce(metodos -> 'pago_movil_bnc', '{}') || '{"activo": true}')
     || jsonb_build_object('pago_movil_ubii', coalesce(metodos -> 'pago_movil_ubii', '{}') || '{"activo": true}')
@@ -68,6 +68,7 @@ begin
   r := crear_orden('Beto', '87654321', '04241234567', 1, 'zelle', '712283',
                    '33333333-3333-3333-3333-333333333333.png', array['04241234567']);
   assert (r ->> 'numero') is not null, 'misma terminación en otro tipo rechazada';
+  assert (ver_orden((r ->> 'token')::uuid) ->> 'monto_usd_cents')::int = 1500, 'zelle no cobra precio_usd_cents';
 
   begin
     perform crear_orden('Beto', '87654321', '04241234567', 1, 'binance', '999999',

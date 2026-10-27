@@ -52,7 +52,7 @@ begin
 
   insert into ordenes (nombre, cedula, telefono, whatsapps, cantidad, metodo, referencia, captura, monto_usd_cents, tasa, monto_bs)
   values (
-    trim(p_nombre), v_cedula, v_was[1], v_was, p_cantidad, p_metodo, v_ref, p_captura, p_cantidad * c.precio_pm_eur_cents,
+    trim(p_nombre), v_cedula, v_was[1], v_was, p_cantidad, p_metodo, v_ref, p_captura, p_cantidad * c.precio_usd_cents,
     case when v_pm then c.tasa_eur end,
     case when v_pm then round(p_cantidad * c.precio_pm_eur_cents / 100.0 * c.tasa_eur, 2) end
   )

@@ -95,7 +95,9 @@ serve(async ({ token }) => {
     console.error(e);
     d = { dictamen: "dudoso", motivo: "la IA no pudo leer la captura; revisar a mano" };
   }
-  await db.from("ordenes").update({ ocr, ocr_sufijo, dictamen: d.dictamen, dictamen_motivo: d.motivo }).eq("id", o.id);
+  // Sin dictamen guardado no se aprueba: la orden queda en revisión y `revisar` puede volver a correr.
+  const { error: eu } = await db.from("ordenes").update({ ocr, ocr_sufijo, dictamen: d.dictamen, dictamen_motivo: d.motivo }).eq("id", o.id);
+  if (eu) throw eu;
   // Solo `coincide` aprueba sin Mau; `dudoso` y `no_coincide` esperan en el panel. Interruptor: config.auto_aprobar.
   if (d.dictamen === "coincide" && c!.auto_aprobar) {
     const { error: e } = await db.rpc("resolver_orden", { p_id: o.id, p_aprobar: true, p_aprobada_por: "ia" });
