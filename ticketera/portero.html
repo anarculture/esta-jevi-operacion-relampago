@@ -58,6 +58,7 @@ addEventListener("DOMContentLoaded", () => {
   const VIBRA = { valida: [80], ya_usada: [80, 80, 80], invalida: [400] };
   const MOTIVO = { no_existe: "No es una entrada de esta fiesta.", no_aprobada: "Esa orden no está aprobada.", codigo_ambiguo: "Código repetido: escanea el QR." };
   const hora = (iso) => new Date(iso).toLocaleTimeString("es-VE", { timeZone: "America/Caracas", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const fechaHora = (iso) => `${new Date(iso).toLocaleDateString("es-VE", { timeZone: "America/Caracas", day: "2-digit", month: "2-digit" })} ${hora(iso)}`;
 
   function fallo(msg) { $("error").textContent = msg; $("error").hidden = !msg; }
   function aviso(msg) { $("aviso").textContent = msg; $("aviso").hidden = !msg; }
@@ -95,7 +96,7 @@ addEventListener("DOMContentLoaded", () => {
   function pintarLista() {
     const l = leer(K_LISTA);
     $("lista-info").hidden = !l;
-    if (l) $("lista-info").textContent = `Lista de las ${hora(l.generada_en)} · ${l.entradas.length} entradas`;
+    if (l) $("lista-info").textContent = `Lista del ${fechaHora(l.generada_en)} · ${l.entradas.length} entradas`;
   }
 
   // Sin señal: válida si está en la lista sin hora ni marca local; ya usada si la tiene; inválida si no está.
@@ -121,7 +122,7 @@ addEventListener("DOMContentLoaded", () => {
     const choques = [];
     try {
       for (const token of leer(K_COLA) ?? []) {
-        const r = await llamar({ accion: "checkin", token });
+        const r = await llamar({ accion: "checkin", token, hora: (leer(K_MARCAS) ?? {})[token] });
         guardar(K_COLA, (leer(K_COLA) ?? []).filter((t) => t !== token));
         if (r.resultado === "valida") continue;
         // El servidor ya la tenía de otro teléfono: deshacer aquí borraría ese ingreso.
@@ -263,7 +264,7 @@ addEventListener("DOMContentLoaded", () => {
     const filas = [...l.entradas].sort((a, b) => a.token.localeCompare(b.token));
     $("filas").innerHTML = filas.map((e) => {
       const h = e.checked_in_at ?? m[e.token];
-      return `<tr><td>${esc(e.token.slice(0, 8))}</td><td>#${esc(e.numero)}</td><td>${esc(e.posicion)} de ${esc(e.total)}</td><td>${h ? hora(h) : ""}</td></tr>`;
+      return `<tr><td>${esc(e.token.slice(0, 8))}</td><td>#${esc(e.numero)}</td><td>${esc(e.posicion)} de ${esc(e.total)}</td><td>${h ? fechaHora(h) : ""}</td></tr>`;
     }).join("");
     $("vista-info").textContent = $("lista-info").textContent;
     apagar();

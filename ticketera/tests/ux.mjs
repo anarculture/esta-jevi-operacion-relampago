@@ -503,7 +503,7 @@ await caso("portero sin señal: lista descargada, validación local en cola, ree
   await page.waitForSelector("#panel:not([hidden])");
   await page.click("#descargar");
   await page.waitForSelector("#lista-info:not([hidden])");
-  a.equal(await page.textContent("#lista-info"), "Lista de las 20:35 · 3 entradas");
+  a.equal(await page.textContent("#lista-info"), "Lista del 29/10 20:35 · 3 entradas");
   a.equal((await ls("ticketera-portero-lista")).entradas.length, 3, "no guardó la lista");
 
   sinRedPt = true;
