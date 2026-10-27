@@ -427,11 +427,15 @@
     return out;
   }
 
-  function cashReal(state) {
+  // ticketera: bloque `ticketera` de `leer` (spec #3), aparte del estado; null o ausente = solo lo manual.
+  // real.sold y real.ticketsCollectedCents son lo vendido fuera de la ticketera.
+  function cashReal(state, ticketera) {
     const r = state.real;
     for (const k of Object.keys(RULES.real)) if (!check(RULES.real[k], r[k])) throw new RangeError('Caja inválida: ' + k);
     assertBudget(state.budget);
-    const income = r.ticketsCollectedCents + r.sponsorCollectedCents + r.barCollectedCents;
+    const tk = ticketera ? ticketera.aprobadas : { entradas: 0, usd_cents: 0 };
+    if (!(tk && check(RULES.real.sold, tk.entradas) && check(RULES.real.ticketsCollectedCents, tk.usd_cents))) throw new RangeError('Ticketera inválida');
+    const income = r.ticketsCollectedCents + tk.usd_cents + r.sponsorCollectedCents + r.barCollectedCents;
     let paid = 0, due = 0, unknown = 0;
     for (const it of state.budget) {
       paid += it.paidCents;
@@ -440,7 +444,7 @@
     }
     const cash = income + r.ownContributionCents - paid;
     return {
-      incomeCents: income, ownCents: r.ownContributionCents, paidCents: paid, cashCents: cash,
+      incomeCents: income, ticketeraCents: tk.usd_cents, soldTotal: r.sold + tk.entradas, ownCents: r.ownContributionCents, paidCents: paid, cashCents: cash,
       operatingCents: income - paid, advancesDueCents: due, advancesUnknown: unknown, preOpeningCents: cash - due,
     };
   }
@@ -458,6 +462,7 @@
     return (c < 0 ? '−$' : '$') + (a % 100 === 0 ? NF0.format(a / 100) : NF2.format(a / 100));
   }
   const fmtInt = n => NF0.format(n);
+  const hhmm = iso => new Date(iso).toLocaleTimeString('es-419', { hour: '2-digit', minute: '2-digit' });
   const fmtInput = c => (c === null || c === undefined ? '' : c % 100 === 0 ? String(c / 100) : (c / 100).toFixed(2));
 
   // ---------- CSV ----------
@@ -470,9 +475,10 @@
   }
   const dec = c => (c / 100).toFixed(2);
 
-  function toCSV(state) {
+  function toCSV(state, ticketera) {
     const sc = state.scenario, r = calcScenario(state), eq = breakEven(state);
-    const t = budgetTotals(state.budget, sc.preset), g = compareGrid(state), cash = cashReal(state);
+    const t = budgetTotals(state.budget, sc.preset), g = compareGrid(state), cash = cashReal(state, ticketera);
+    const tk = v => (ticketera ? v : 'sin lectura');
     const rows = [
       ['Sindicato Baba · escenario (hipótesis, no garantía)', ''],
       ['Concepto', 'Valor'],
@@ -503,7 +509,11 @@
       rows.push([b.name, dec(b.estimateCents), ENUMS.budget_status[b.status], dec(b.paidCents), dec(Math.max(0, b.estimateCents - b.paidCents)), b.advanceCents === null ? 'Sin dato' : dec(b.advanceCents)]);
     }
     rows.push(['Base declarada', dec(t.declaredCents)], ['Pagado', dec(t.paidCents)], ['Pendiente por pagar', dec(t.pendingCents)], []);
-    rows.push(['Caja real (registrado)', ''], ['Ingresos cobrados', dec(cash.incomeCents)], ['Aporte propio (no es ingreso)', dec(cash.ownCents)],
+    rows.push(['Caja real (registrado)', ''],
+      ['Entradas ticketera', tk(ticketera && ticketera.aprobadas.entradas)], ['Cobrado por ticketera', tk(dec(cash.ticketeraCents))],
+      ['Entradas fuera de la ticketera', state.real.sold], ['Cobrado fuera de la ticketera', dec(state.real.ticketsCollectedCents)],
+      ['Ticketera leída a las', tk(ticketera && hhmm(ticketera.consultado_en))],
+      ['Ingresos cobrados', dec(cash.incomeCents)], ['Aporte propio (no es ingreso)', dec(cash.ownCents)],
       ['Pagado', dec(cash.paidCents)], ['Caja disponible', dec(cash.cashCents)], []);
     rows.push(['Comparación: entradas pagadas a tarifa única (sin probabilidades)'].concat(g.tariffs.map(x => 'Tarifa ' + dec(x))));
     for (const row of g.rows) rows.push([row.n].concat(row.saldos.map(dec)));
@@ -642,7 +652,6 @@
       const p = iso.split('-').map(Number);
       return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('es-419', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     }
-    const hhmm = iso => new Date(iso).toLocaleTimeString('es-419', { hour: '2-digit', minute: '2-digit' });
     const eqText = eq => (eq === null
       ? 'Mínimo para cubrir costos: no alcanzable con estas condiciones (probado hasta 10,000 entradas).'
       : 'Mínimo para cubrir costos: ' + plural(eq, 'entrada pagada', 'entradas pagadas') + ' con la misma mezcla.' + (eq > L.ticketsUI ? ' Supera el rango de 500 de esta interfaz.' : ''));
@@ -955,7 +964,7 @@
       setText($('v-sold-out'), plural(rl.sold, 'entrada pagada', 'entradas pagadas') + (rl.courtesies ? ' + ' + plural(rl.courtesies, 'cortesía', 'cortesías') : ''));
       setText($('v-sc-out'), plural(state.scenario.tickets, 'entrada', 'entradas') + ' (hipótesis)');
       setText($('v-eq-out'), d ? (d.eq === null ? 'No alcanzable' : plural(d.eq, 'entrada', 'entradas')) : '—');
-      setText($('v-missing-out'), d ? (d.eq === null ? '—' : plural(Math.max(0, d.eq - rl.sold), 'entrada', 'entradas')) : '—');
+      setText($('v-missing-out'), d ? (d.eq === null ? '—' : plural(Math.max(0, d.eq - d.cash.soldTotal), 'entrada', 'entradas')) : '—');
       if (!d) { for (const id of ['bar-sales', 'bar-costs', 'bar-share', 'bar-status']) setText($(id), '—'); return; }
       const b = d.bar;
       setText($('bar-sales'), fm(b.salesCents) + (b.missingSales ? ' · ' + plural(b.missingSales, 'producto', 'productos') + ' sin dato' : ''));
