@@ -335,6 +335,46 @@ await caso("admin: chip 'Aprobada por IA' solo en las que aprobó la IA", async 
   await ctx.close();
 });
 
+await caso("admin: estado del aviso por entrada y 'Reenviar' con número corregido", async () => {
+  const entradas = [
+    { id: "e1", posicion: 1, whatsapp_mascara: "4567", avisada_en: "2026-10-30T01:03:00Z", aviso_error: null, aviso_intentos: 0 },
+    { id: "e2", posicion: 2, whatsapp_mascara: "2233", avisada_en: null, aviso_error: null, aviso_intentos: 0 },
+    { id: "e3", posicion: 3, whatsapp_mascara: "0100", avisada_en: null, aviso_error: "número sin WhatsApp", aviso_intentos: 2 },
+    { id: "e4", posicion: 4, whatsapp_mascara: "9999", avisada_en: null, aviso_error: "timeout", aviso_intentos: 5 },
+  ];
+  const pedidas = [];
+  const ctx = await pagina({ admin: (b) => {
+    if (b.accion === "reenviar_aviso") {
+      pedidas.push(b);
+      Object.assign(entradas[3], { whatsapp_mascara: "4321", aviso_error: null, aviso_intentos: 0 });
+      return { id: b.id, whatsapp_mascara: "4321" };
+    }
+    return [{ ...COLA[1], cantidad: 4, entradas }];
+  } }, { storage: { "ticketera-clave": "clave-buena-de-prueba" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/admin.html`);
+  await page.waitForSelector("#hechas .envio");
+  const filas = await page.$$eval("#hechas .envio", (fs) => fs.map((f) => f.textContent.replace(/\s+/g, " ").trim()));
+  a.ok(filas[0].includes("Entrada 1 · ···4567") && filas[0].includes("enviada 21:03"), `enviada: ${filas[0]}`);
+  a.ok(filas[1].includes("···2233") && filas[1].includes("pendiente"), `pendiente: ${filas[1]}`);
+  a.ok(filas[2].includes("error: número sin WhatsApp"), `error: ${filas[2]}`);
+  a.ok(filas[3].includes("intentos agotados"), `agotados: ${filas[3]}`);
+  a.ok(!filas.join(" ").includes("584"), "el panel muestra el número completo");
+  await foto(page, "10c-admin-avisos");
+
+  await page.click('button[data-reenviar="e4"]');
+  await page.fill(".reenvio:not([hidden]) input", "123");
+  await page.click('button[data-confirmar="e4"]');
+  await page.waitForSelector("#error:not([hidden])");
+  a.equal(pedidas.length, 0, "reenvió un número inválido");
+  await page.fill(".reenvio:not([hidden]) input", "0416-765.43.21");
+  await page.click('button[data-confirmar="e4"]');
+  await page.waitForFunction(() => document.querySelectorAll("#hechas .envio")[3]?.textContent.includes("···4321"));
+  a.deepEqual(pedidas.map((b) => [b.accion, b.id, b.whatsapp]), [["reenviar_aviso", "e4", "0416-765.43.21"]], "Reenviar no llamó a admin con el número tecleado");
+  a.ok((await page.$$eval("#hechas .envio", (fs) => fs[3].textContent)).includes("pendiente"), "tras reenviar la fila no quedó pendiente");
+  await ctx.close();
+});
+
 // ---------- portero ----------
 const CLAVE_PT = "clave-portero-de-prueba";
 const PT = { bbbbbbbb: "bbbbbbbb-0000-4000-8000-000000000001", cccccccc: "cccccccc-0000-4000-8000-000000000002", eeeeeeee: "eeeeeeee-0000-4000-8000-000000000003" };

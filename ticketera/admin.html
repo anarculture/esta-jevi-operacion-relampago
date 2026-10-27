@@ -48,6 +48,22 @@ addEventListener("DOMContentLoaded", () => {
   const whatsapp = (o) => `https://wa.me/${waTel(o)}?text=${encodeURIComponent(`Hola ${o.nombre.split(" ")[0]}, tu pago fue aprobado. Tus entradas para ${FIESTA.nombre} (${FIESTA.fecha}): ${enlace(o)}`)}`;
   const whatsappRechazo = (o) => `https://wa.me/${waTel(o)}?text=${encodeURIComponent(`Hola ${o.nombre.split(" ")[0]}, no pude confirmar tu pago de la orden #${o.numero} de ${FIESTA.nombre}${o.rechazo_motivo ? ` (${o.rechazo_motivo.toLowerCase()})` : ""}. Revisa tu comprobante y escríbeme.`)}`;
 
+  // Aviso de vytas por entrada: [clase del chip, texto].
+  const envio = (e) => (!e.whatsapp_mascara ? ["", "sin WhatsApp"]
+    : e.avisada_en ? ["aprobada", `enviada ${horaCorta(e.avisada_en)}`]
+    : e.aviso_intentos >= 5 ? ["rechazada", "intentos agotados"]
+    : e.aviso_error ? ["rechazada", `error: ${e.aviso_error}`]
+    : ["", "pendiente"]);
+  const filasEnvio = (o) => (o.entradas ?? []).map((e) => {
+    const [c, t] = envio(e);
+    return `<div class="fila envio">
+      <span>Entrada ${e.posicion} · ${e.whatsapp_mascara ? `···${esc(e.whatsapp_mascara)}` : "sin número"}</span>
+      <span class="estado ${c}">${esc(t)}</span>
+      <button type="button" class="sec copiar" data-reenviar="${e.id}">Reenviar</button>
+      <span class="reenvio" hidden><input type="tel" placeholder="Número nuevo (opcional)" aria-label="Número nuevo para la entrada ${e.posicion}"><button type="button" data-confirmar="${e.id}">Reenviar ahora</button></span>
+    </div>`;
+  }).join("");
+
   function tarjeta(o) {
     const monto = o.monto_bs ? bs(o.monto_bs) : usd(o.monto_usd_cents);
     return `<div class="card">
@@ -60,7 +76,8 @@ addEventListener("DOMContentLoaded", () => {
       ${o.estado === "en_revision"
         ? `<div class="fila"><button data-id="${o.id}" data-aprobar="1">Aprobar</button><button class="mal" data-id="${o.id}">Rechazar</button></div>`
         : `<p><span class="estado ${o.estado}">${ESTADO[o.estado]}</span>${o.aprobada_por === "ia" ? ` <span class="estado aprobada">Aprobada por IA</span>` : ""}${o.rechazo_motivo ? ` <span class="muted">${esc(o.rechazo_motivo)}</span>` : ""}
-           ${o.estado === "aprobada" ? `<a class="btn sec" href="${whatsapp(o)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>` : `<a class="btn sec" href="${whatsappRechazo(o)}" target="_blank" rel="noopener">Avisar por WhatsApp</a>`}</p>`}
+           ${o.estado === "aprobada" ? `<a class="btn sec" href="${whatsapp(o)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>` : `<a class="btn sec" href="${whatsappRechazo(o)}" target="_blank" rel="noopener">Avisar por WhatsApp</a>`}</p>
+           ${o.estado === "aprobada" ? filasEnvio(o) : ""}`}
     </div>`;
   }
 
@@ -92,6 +109,23 @@ addEventListener("DOMContentLoaded", () => {
   }
 
   $("panel").addEventListener("click", async (ev) => {
+    const r = ev.target.closest("button[data-reenviar]");
+    if (r) {
+      r.hidden = true;
+      r.nextElementSibling.hidden = false;
+      r.nextElementSibling.querySelector("input").focus();
+      return;
+    }
+    const c = ev.target.closest("button[data-confirmar]");
+    if (c) {
+      const w = c.previousElementSibling.value.trim();
+      if (w && !normalizarWhatsapp(w)) return fallo(ERRORES.whatsapp_invalido);
+      c.disabled = true;
+      try {
+        await funcion("admin", { clave, accion: "reenviar_aviso", id: c.dataset.confirmar, ...(w ? { whatsapp: w } : {}) });
+      } catch (e) { c.disabled = false; return fallo(e.message); }
+      return cargar();
+    }
     const b = ev.target.closest("button[data-id]");
     if (!b) return;
     const o = ordenes.find((x) => x.id === b.dataset.id);
@@ -115,7 +149,8 @@ addEventListener("DOMContentLoaded", () => {
   $("login").addEventListener("submit", (ev) => { ev.preventDefault(); clave = $("clave").value; cargar(); });
   $("recargar").addEventListener("click", cargar);
   $("salir").addEventListener("click", () => { try { localStorage.removeItem("ticketera-clave"); } catch {} location.reload(); });
-  setInterval(() => { if (!$("panel").hidden && !$("buscar").value) cargar(); }, 60000);
+  // No recarga con una búsqueda o un reenvío a medio escribir.
+  setInterval(() => { if (!$("panel").hidden && !$("buscar").value && !document.querySelector(".reenvio:not([hidden])")) cargar(); }, 60000);
 
   if (clave) cargar(); else $("login").hidden = false;
 });

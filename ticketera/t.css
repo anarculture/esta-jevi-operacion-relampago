@@ -56,6 +56,11 @@ dl.datos dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
 .qr .muted { color: #56615a; font: var(--label); letter-spacing: 0.02em; }
 .qr svg { display: block; width: min(100%, 280px); height: auto; margin: 0 auto; }
 .fila { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); }
+.envio { align-items: center; margin-top: var(--s2); font: var(--label); letter-spacing: 0.02em; }
+.fila.envio > * { flex: 0 1 auto; }
+.fila.envio > :first-child { flex: 1 1 auto; }
+.reenvio:not([hidden]) { display: flex; gap: var(--s2); width: 100%; }
+.reenvio input { flex: 1; min-width: 0; }
 .captura { display: block; max-width: 100%; max-height: 420px; border-radius: var(--r-card); }
 
 /* Tanda 1 de UX (docs/spec-ux-ticketera.md). */

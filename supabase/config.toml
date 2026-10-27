@@ -430,3 +430,7 @@ verify_jwt = false
 # Plataforma del organizador: la llaman el navegador de Mau y los agentes con PM_CLAVE.
 [functions.pm]
 verify_jwt = false
+
+# Avisos por WhatsApp (issue #5): la llama vytas con PM_CLAVE.
+[functions.avisos]
+verify_jwt = false

@@ -38,9 +38,17 @@ Decisiones congeladas:
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `node supabase/tests/avisos.mjs` sale 0 (funciones sirviendo): clave mala → 401 en `pendientes` y `avisada`; una orden aprobada con 2 WhatsApps → `pendientes` trae 2 con `jid` terminado en `@s.whatsapp.net`, `texto` con "1 de 2" y el enlace `entrada.html?e=`; la posición 1 incluye `orden.html?t=`; `avisada` ok saca la entrada de pendientes y repetirlo no cambia `avisada_en`; `avisada` con error 5 veces la saca de pendientes con `aviso_intentos = 5`; `reenviar_aviso` con número nuevo la devuelve a pendientes con el número normalizado; `pendientes` no incluye entradas con `whatsapp` nulo.
-- [ ] `node ticketera/tests/ux.mjs` sale 0 con el caso: fixture de `cola` con entradas en los cuatro estados → el panel muestra "enviada", "pendiente", "error" e "intentos agotados"; "Reenviar" con número nuevo llama al fixture `admin` con `accion: "reenviar_aviso"` y el `whatsapp` tecleado.
-- [ ] `grep -c "functions.avisos" supabase/config.toml` imprime 1.
-- [ ] `deno test supabase/functions/` sale 0 (la plantilla del texto tiene un test Deno propio: posición 1 lleva el enlace de la orden, las demás no).
+- [x] `node supabase/tests/avisos.mjs` sale 0 (funciones sirviendo): clave mala → 401 en `pendientes` y `avisada`; una orden aprobada con 2 WhatsApps → `pendientes` trae 2 con `jid` terminado en `@s.whatsapp.net`, `texto` con "1 de 2" y el enlace `entrada.html?e=`; la posición 1 incluye `orden.html?t=`; `avisada` ok saca la entrada de pendientes y repetirlo no cambia `avisada_en`; `avisada` con error 5 veces la saca de pendientes con `aviso_intentos = 5`; `reenviar_aviso` con número nuevo la devuelve a pendientes con el número normalizado; `pendientes` no incluye entradas con `whatsapp` nulo.
+- [x] `node ticketera/tests/ux.mjs` sale 0 con el caso: fixture de `cola` con entradas en los cuatro estados → el panel muestra "enviada", "pendiente", "error" e "intentos agotados"; "Reenviar" con número nuevo llama al fixture `admin` con `accion: "reenviar_aviso"` y el `whatsapp` tecleado.
+- [x] `grep -c "functions.avisos" supabase/config.toml` imprime 1.
+- [x] `deno test supabase/functions/` sale 0 (la plantilla del texto tiene un test Deno propio: posición 1 lleva el enlace de la orden, las demás no).
+
+**Evidencia (ticket 03):**
+- HTTP (stack `avisos`): `OK avisos.mjs · orden #10` (401 con clave mala y con ADMIN_CLAVE; 2 pendientes con `jid` y texto "1 de 2"/"2 de 2"; solo la 1 lleva `orden.html?t=`; ok idempotente; 5 errores la sacan; `reenviar_aviso` con número nuevo la devuelve normalizada; sin WhatsApp no aparece; la cola no trae el número completo).
+- Página: `OK ux.mjs` con "admin: estado del aviso por entrada y 'Reenviar' con número corregido" (enviada 21:03 / pendiente / error / intentos agotados; número inválido no llama; el válido llama `reenviar_aviso` con lo tecleado).
+- `grep -c "functions.avisos" supabase/config.toml` → 1.
+- Deno: `ok | 13 passed | 0 failed | 1 ignored`. El ignorado es "mismo contacto que la ticketera" y requiere `--allow-read`; con `deno test --allow-read supabase/functions/avisos/` → `3 passed`.
+- SQL: `ticketera.sql` verde con el assert de que anon no llama `avisos_pendientes`.
+- /security-review (gate HITL): sin hallazgos ≥ 8. Observación: `PM_CLAVE` ahora también da números completos y enlaces de entrada (decisión del spec: vytas reutiliza su clave). Si se filtra del navegador de Mau, filtra eso; una `AVISOS_CLAVE` solo para vytas lo acotaría.

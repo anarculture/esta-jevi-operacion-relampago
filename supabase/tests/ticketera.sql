@@ -202,6 +202,12 @@ begin
   assert false, 'anon puede bajar la lista del portero';
 exception when insufficient_privilege then null;
 end $$;
+do $$
+begin
+  perform avisos_pendientes();
+  assert false, 'anon puede bajar los WhatsApp pendientes de aviso';
+exception when insufficient_privilege then null;
+end $$;
 reset role;
 
 select 'OK ticketera.sql: ' || count(*) || ' órdenes creadas' from ordenes;
