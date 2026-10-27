@@ -83,19 +83,21 @@ try {
   assert.ok(si.segundos < 60, `tardó ${si.segundos} s`);
   console.log(`ok  auto_aprobar = true: orden #${si.o.numero} aprobada en ${si.segundos.toFixed(1)} s`);
 
-  // Una captura, una sola orden aprobada sola. La misma captura con "1"+REF: coincide, pero espera a Mau.
-  const otra = await comprar(`19${base}1`, false, `9${base}1`);
-  assert.equal(otra.rev?.dictamen, "coincide", `reuso: ${JSON.stringify(otra.rev)}`);
+  // Una captura, una sola orden. La misma captura con otra referencia tipeada (issue #6): la terminación
+  // leída ya está en la primera orden → no_coincide, espera a Mau.
+  const otra = await comprar(`7${base}5`, false, `9${base}1`);
+  assert.equal(otra.rev?.dictamen, "no_coincide", `reuso: ${JSON.stringify(otra.rev)}`);
+  assert.match(otra.rev?.motivo ?? "", /ya está en la orden #/, `motivo del reuso: ${JSON.stringify(otra.rev)}`);
   assert.equal(otra.vista.estado, "en_revision", "la misma captura con otra referencia se aprobó sola");
-  // Un comprador tipea solo los 5 últimos caracteres (espera a Mau); otro sube la misma captura con la
-  // referencia exacta: la captura ya está en otra orden, aunque su referencia sea más corta que 6.
-  const corta = await comprar(`9${base}3`.slice(-5), false, `9${base}3`);
-  assert.notEqual(corta.rev?.dictamen, undefined, `sufijo: ${JSON.stringify(corta.rev)}`);
-  assert.equal(corta.vista.estado, "en_revision", "referencia tipeada parcial se aprobó sola");
-  const exacta = await comprar(`9${base}3`, false);
-  assert.equal(exacta.rev?.dictamen, "coincide", `exacta: ${JSON.stringify(exacta.rev)}`);
-  assert.equal(exacta.vista.estado, "en_revision", "una captura ya usada en otra orden se aprobó sola");
-  console.log("ok  la misma captura no aprueba sola una segunda orden (prefijo ni sufijo)");
+  // "1"+REF tipeado termina igual que REF: unique (tipo, sufijo) lo para antes de subir nada.
+  const prefijo = await pedir("/rest/v1/rpc/crear_orden", { p_nombre: "Prueba Auto", p_cedula: "12345678", p_telefono: "",
+    p_cantidad: 1, p_metodo: "zelle", p_referencia: `19${base}1`, p_captura: `${crypto.randomUUID()}.png`, p_whatsapps: ["04141234567"] });
+  assert.equal(prefijo.d?.message, "referencia_usada", `prefijo: ${JSON.stringify(prefijo.d)}`);
+  // Menos de 6 caracteres tipeados: la RPC no crea la orden.
+  const corta = await pedir("/rest/v1/rpc/crear_orden", { p_nombre: "Prueba Auto", p_cedula: "12345678", p_telefono: "",
+    p_cantidad: 1, p_metodo: "zelle", p_referencia: `9${base}3`.slice(-5), p_captura: `${crypto.randomUUID()}.png`, p_whatsapps: ["04141234567"] });
+  assert.equal(corta.d?.message, "referencia_invalida", `corta: ${JSON.stringify(corta.d)}`);
+  console.log("ok  la misma captura no produce una segunda orden (sufijo tipeado ni leído)");
 
   sql("update config set auto_aprobar = false");
   const no = await comprar(`9${base}2`, false);

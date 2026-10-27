@@ -17,7 +17,7 @@ const ERRORES = {
   telefono_invalido: "Revisa el teléfono: 11 dígitos, por ejemplo 04141234567.",
   whatsapp_invalido: "Revisa el WhatsApp: 11 dígitos como 04141234567, o con código de país si es de fuera (+1…).",
   metodo_invalido: "Elige un método de pago.",
-  referencia_invalida: "La referencia debe tener al menos 4 caracteres.",
+  referencia_invalida: "Escribe al menos los últimos 6 caracteres de la referencia.",
   captura_invalida: "Sube la captura como JPG, PNG o WEBP.",
   sin_conexion: "Sin conexión. Revisa tu señal y vuelve a intentar.",
 };

@@ -50,10 +50,6 @@ Deno.test("zelle por 2 centavos menos: no_coincide", () => {
   assertEquals(dictaminar(z, x, { correo: "mau@mail.com" }).dictamen, "no_coincide");
 });
 
-Deno.test("referencia tipeada de 5 caracteres: dudoso aunque cuadre", () => {
-  assertEquals(dictaminar({ ...orden, referencia: "12283" }, { ...ok, reference: "000012283" }, destino).dictamen, "dudoso");
-});
-
 Deno.test("captura anterior a la orden: dudoso; un día después: coincide; dos días después: dudoso", () => {
   assertEquals(dictaminar(orden, { ...ok, transactionDate: "2026-10-24" }, destino).dictamen, "dudoso");
   assertEquals(dictaminar(orden, { ...ok, transactionDate: "2026-10-26" }, destino).dictamen, "coincide");

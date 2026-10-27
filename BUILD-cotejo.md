@@ -1,12 +1,12 @@
 # BUILD: cotejo duro de comprobantes y lectura al subir la captura (issues #6 y #7)
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 01
-- Último verde: — · commit — · —
-- Gates: build ⬜ · test ⬜ · smoke ⬜
+- Ticket actual: 02
+- Último verde: 01 · commit (ver `git log --oneline -1`) · 27-oct-2026
+- Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: —
-- Rama de trabajo: — (anótala en el Setup)
-- Servicios: — (qué stack de Supabase local usas y en qué puertos)
+- Rama de trabajo: `cotejo` (worktree `.claude/worktrees/alfa`, base 39b1b46 de `ticketera`)
+- Servicios: Supabase local `project_id = "cotejo"`, API 57321, DB 57322 (`supabase_db_cotejo`), studio 57323, inbucket 57324, analytics 57327; `functions serve` sobre ese stack; `http.server` en 8793
 
 Specs: https://github.com/anarculture/sindicato-baba/issues/6 (puntos 1, 2 y 5; el 3 "memo
 #N" y el 4 "Binance por API" quedan fuera de este BUILD: el 3 exige reservar número antes de
@@ -75,7 +75,7 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 
 ## Tickets
 
-- [ ] 01 · Unicidad por sufijo de la referencia · Bloqueado por: — · → .scratch/cotejo/issues/01-unicidad-por-sufijo.md
+- [x] 01 · Unicidad por sufijo de la referencia · Bloqueado por: — · → .scratch/cotejo/issues/01-unicidad-por-sufijo.md
 - [ ] 02 · Datos del pagador · Bloqueado por: 01 · → .scratch/cotejo/issues/02-datos-del-pagador.md
 - [ ] 03 · El OCR precarga la referencia al subir la captura (y lee la hora) · Bloqueado por: 02 · → .scratch/cotejo/issues/03-ocr-precarga-referencia.md
 - [ ] 04 · Producción · Bloqueado por: 03 · → .scratch/cotejo/issues/04-produccion.md

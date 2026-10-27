@@ -77,9 +77,9 @@ addEventListener("DOMContentLoaded", async () => {
   const $ = (id) => document.getElementById(id);
   const f = $("f");
   const REF = {
-    pago_movil: ["Referencia del pago móvil", "Los números que muestra tu banco al confirmar"],
-    binance: ["Order ID de Binance Pay", "Está en el detalle del pago"],
-    zelle: ["Número de confirmación de Zelle", "Lo muestra tu banco al enviar"],
+    pago_movil: ["Referencia del pago móvil", "Al menos los últimos 6 números que muestra tu banco"],
+    binance: ["Order ID de Binance Pay", "Al menos los últimos 6 caracteres del detalle del pago"],
+    zelle: ["Número de confirmación de Zelle", "Al menos los últimos 6 caracteres que muestra tu banco"],
   };
   const DATOS = { banco: "Banco", telefono: "Teléfono", cedula: "Cédula", id: "Binance Pay ID", correo: "Correo Zelle", titular: "Titular" };
   const tipo = (m) => (m.startsWith("pago_movil") ? "pago_movil" : m);
@@ -195,7 +195,7 @@ addEventListener("DOMContentLoaded", async () => {
   function validar() {
     const errores = [];
     const chk = (id, ok, msg) => { campoError(id, ok ? "" : msg); if (!ok) errores.push(id); };
-    chk("referencia", f.referencia.value.replace(/[^A-Za-z0-9]/g, "").replace(/^0+/, "").length >= 4, ERRORES.referencia_invalida);
+    chk("referencia", f.referencia.value.replace(/[^A-Za-z0-9]/g, "").replace(/^0+/, "").length >= 6, ERRORES.referencia_invalida);
     chk("captura", Boolean(f.captura.files[0]), "Falta la captura del comprobante.");
     chk("nombre", f.nombre.value.trim().length >= 2 && f.nombre.value.trim().length <= 80, ERRORES.nombre_invalido);
     chk("cedula", /^[VE]?\d{5,9}$/.test(f.cedula.value.toUpperCase().replace(/[^VE0-9]/g, "")), ERRORES.cedula_invalida);

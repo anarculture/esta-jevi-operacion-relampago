@@ -28,7 +28,7 @@ set local role anon;
 do $$
 declare r json; err text;
 begin
-  r := crear_orden('Ana Pérez', 'v-12.345.678', '0414-123.45.67', 2, 'pago_movil_bnc', '00012283',
+  r := crear_orden('Ana Pérez', 'v-12.345.678', '0414-123.45.67', 2, 'pago_movil_bnc', '000712283',
                    '11111111-1111-1111-1111-111111111111.jpg', array['0414-123.45.67', '0424 111 2233']);
   assert (r ->> 'numero') is not null, 'crear_orden no devolvió número';
   assert (ver_orden((r ->> 'token')::uuid) ->> 'estado') = 'en_revision', 'estado inicial';
@@ -39,16 +39,35 @@ begin
 
   -- Misma referencia con otro formato y por la otra cuenta de pago móvil.
   begin
-    perform crear_orden('Beto', '87654321', '04241234567', 1, 'pago_movil_ubii', '12-283',
+    perform crear_orden('Beto', '87654321', '04241234567', 1, 'pago_movil_ubii', '712-283',
                         '22222222-2222-2222-2222-222222222222.png', array['04241234567']);
     assert false, 'referencia repetida aceptada';
   exception when others then err := sqlerrm;
   end;
   assert err = 'referencia_usada', 'error esperado referencia_usada, vino ' || err;
 
-  -- La misma cifra en otro método es otra referencia.
-  perform crear_orden('Beto', '87654321', '04241234567', 1, 'zelle', '12283',
-                      '33333333-3333-3333-3333-333333333333.png', array['04241234567']);
+  -- Unicidad por sufijo (issue #6): otra referencia con la misma terminación de 6 es la misma captura.
+  begin
+    perform crear_orden('Beto', '87654321', '04241234567', 1, 'pago_movil_ubii', 'AB712283',
+                        '22222222-2222-2222-2222-222222222222.png', array['04241234567']);
+    assert false, 'misma terminación en el mismo tipo aceptada';
+  exception when others then err := sqlerrm;
+  end;
+  assert err = 'referencia_usada', 'sufijo repetido: error esperado referencia_usada, vino ' || err;
+
+  -- Menos de 6 caracteres tras normalizar no identifican el pago.
+  begin
+    perform crear_orden('Beto', '87654321', '04241234567', 1, 'pago_movil_ubii', '0-99.999',
+                        '22222222-2222-2222-2222-222222222222.png', array['04241234567']);
+    assert false, 'referencia de 5 caracteres aceptada';
+  exception when others then err := sqlerrm;
+  end;
+  assert err = 'referencia_invalida', 'referencia corta: error esperado referencia_invalida, vino ' || err;
+
+  -- La misma cifra (y la misma terminación) en otro método es otra referencia.
+  r := crear_orden('Beto', '87654321', '04241234567', 1, 'zelle', '712283',
+                   '33333333-3333-3333-3333-333333333333.png', array['04241234567']);
+  assert (r ->> 'numero') is not null, 'misma terminación en otro tipo rechazada';
 
   begin
     perform crear_orden('Beto', '87654321', '04241234567', 1, 'binance', '999999',
@@ -59,7 +78,7 @@ begin
   assert err = 'metodo_invalido', 'error esperado metodo_invalido, vino ' || err;
 
   -- Un WhatsApp por entrada (issue #5): venezolano y extranjeros con código de país.
-  r := crear_orden('Caro Ruiz', '11111111', '', 3, 'zelle', 'WA3OK',
+  r := crear_orden('Caro Ruiz', '11111111', '', 3, 'zelle', 'WA3OKA',
                    '55555555-5555-5555-5555-555555555555.png', array['04141234567', '+1 (305) 555-0100', '+44 20 7946 0958']);
   assert (r ->> 'numero') is not null, '3 WhatsApps válidos no crearon la orden';
   foreach err in array array['dos para tres', 'sin parámetro', 'corto', 'cero no venezolano', 'largo'] loop
@@ -91,15 +110,21 @@ reset role;
 do $$
 declare o ordenes; z ordenes; err text; e json;
 begin
-  select * into o from ordenes where metodo = 'pago_movil_bnc' and referencia = '12283';
-  select * into z from ordenes where metodo = 'zelle' and referencia = '12283';
+  select * into o from ordenes where metodo = 'pago_movil_bnc' and referencia = '712283';
+  select * into z from ordenes where metodo = 'zelle' and referencia = '712283';
   assert ver_entrada(gen_random_uuid()) is null, 'ver_entrada con token inexistente';
+  -- Sufijo generado; la terminación leída por la IA no sale por las RPC anónimas.
+  assert o.sufijo = '712283', 'sufijo generado: ' || coalesce(o.sufijo, 'null');
+  update ordenes set ocr_sufijo = 'ZZ9999' where id = o.id;
+  execute 'set local role anon';
+  assert ver_orden(o.token)::text not like '%ocr_sufijo%' and ver_orden(o.token)::text not like '%ZZ9999%', 'ver_orden expone ocr_sufijo';
+  execute 'reset role';
   perform resolver_orden(o.id, true);
   assert (select count(*) from entradas where orden_id = o.id) = 2, 'aprobar no creó 2 entradas';
   assert json_array_length(ver_orden(o.token) -> 'entradas') = 2, 'ver_orden no muestra QR aprobada';
   e := ver_entrada((ver_orden(o.token) -> 'entradas' -> 1 ->> 'token')::uuid);
   assert (e ->> 'posicion') = '2' and (e ->> 'total') = '2' and (e ->> 'numero') = o.numero::text, 'ver_entrada posición: ' || e::text;
-  assert e::text not like '%Ana%' and e::text not like '%V12345678%', 'ver_entrada expone datos personales';
+  assert e::text not like '%Ana%' and e::text not like '%V12345678%' and e::text not like '%ZZ9999%', 'ver_entrada expone datos personales';
 
   -- WhatsApp por entrada (issue #5): normalizado, el primero también en telefono, por posición al aprobar.
   assert o.whatsapps = array['584141234567', '584241112233'] and o.telefono = '584141234567',
@@ -128,19 +153,19 @@ end $$;
 set local role service_role;
 do $$
 begin
-  perform resolver_orden((select id from ordenes where referencia = 'WA3OK'), true, null, 'ia');
+  perform resolver_orden((select id from ordenes where referencia = 'WA3OKA'), true, null, 'ia');
 end $$;
 reset role;
 do $$
 begin
-  assert (select aprobada_por from ordenes where referencia = 'WA3OK') = 'ia', 'la aprobación de la IA no quedó marcada';
+  assert (select aprobada_por from ordenes where referencia = 'WA3OKA') = 'ia', 'la aprobación de la IA no quedó marcada';
 end $$;
 
 -- Check-in del portero (issue #4).
 do $$
 declare o ordenes; t1 uuid; t2 uuid; tr uuid; r0 json; r1 json; r2 json; err text; l json; h timestamptz;
 begin
-  select * into o from ordenes where metodo = 'pago_movil_bnc' and referencia = '12283';
+  select * into o from ordenes where metodo = 'pago_movil_bnc' and referencia = '712283';
   t1 := ver_orden(o.token) -> 'entradas' -> 0 ->> 'token';
   t2 := ver_orden(o.token) -> 'entradas' -> 1 ->> 'token';
   r0 := resumen_portero();
@@ -195,7 +220,7 @@ begin
   l := lista_portero();
   assert (l ->> 'generada_en') is not null and l::text like '%' || t1 || '%' and l::text like '%' || t2 || '%', 'lista sin las entradas aprobadas';
   assert l::text not like '%' || tr || '%' and l::text not like '%abcdef12%', 'lista con entradas no aprobadas';
-  assert l::text not like '%Ana%' and l::text not like '%V12345678%' and l::text not like '%04141234567%', 'lista expone datos personales';
+  assert l::text not like '%Ana%' and l::text not like '%V12345678%' and l::text not like '%04141234567%' and l::text not like '%ZZ9999%', 'lista expone datos personales';
   assert (resumen_portero() ->> 'aprobadas') = (r0 ->> 'aprobadas')
      and (resumen_portero() ->> 'ingresadas')::int = (r0 ->> 'ingresadas')::int + 1, 'resumen: ' || resumen_portero()::text;
 end $$;

@@ -3,7 +3,7 @@
 // Corre una sola vez por orden (dictamen null), así un token filtrado no gasta IA en bucle.
 import { encodeBase64 } from "jsr:@std/encoding@1/base64";
 import { db, json, serve } from "../_shared/db.ts";
-import { dictaminar, normRef, type Ocr } from "../_shared/dictamen.ts";
+import { type Dictamen, dictaminar, normRef, type Ocr } from "../_shared/dictamen.ts";
 
 // Elección y respaldo (nvidia/nemotron-3.5-super-vl): docs/research/modelo-ocr-open-source.md
 const MODEL = Deno.env.get("OCR_MODEL") ?? "qwen/qwen3.6-27b";
@@ -64,17 +64,14 @@ async function leer(imageUrl: string): Promise<Ocr> {
   return JSON.parse(content.replace(/^```(json)?|```$/g, ""));
 }
 
-// `coincide` tolera referencias por sufijo (el banco imprime la larga, el comprador tipea el final), y
-// unique(tipo, referencia) no ve "1"+REF ni un sufijo como repetidos: una misma captura daría N órdenes.
-// Para aprobar sin Mau, la referencia leída debe ser exactamente la tipeada y no compartir sufijo con
-// otra orden del mismo tipo. Si no, o si la consulta falla, la orden espera en el panel.
-async function capturaDeUnaSolaOrden(o: { id: string; tipo: string; referencia: string }, ocr: Ocr) {
-  const leida = normRef(ocr.reference);
-  if (leida !== normRef(o.referencia)) return false;
-  const { data, error } = await db.from("ordenes").select("referencia").eq("tipo", o.tipo).neq("id", o.id)
-    .like("referencia", `%${leida.slice(-4)}`); // 4: la referencia más corta que acepta crear_orden
-  if (error) { console.error("auto_aprobar: referencias", error.message); return false; }
-  return !data.some((x) => leida.endsWith(x.referencia) || x.referencia.endsWith(leida));
+// La terminación leída por OCR ya está en otra orden del mismo tipo (tipeada o leída): es la misma
+// captura reportada dos veces, aunque el comprador haya tipeado otra cosa. unique (tipo, sufijo) cubre
+// lo tipeado; esto cubre lo leído. Si la consulta falla, la orden espera a Mau como dudosa.
+async function sufijoEnOtraOrden(o: { id: string; tipo: string }, sufijo: string): Promise<Dictamen | null> {
+  const { data, error } = await db.from("ordenes").select("numero").eq("tipo", o.tipo).neq("id", o.id)
+    .or(`sufijo.eq.${sufijo},ocr_sufijo.eq.${sufijo}`).limit(1).maybeSingle(); // sufijo: solo [A-Z0-9], sin comas
+  if (error) { console.error("ocr_sufijo", error.message); return { dictamen: "dudoso", motivo: "no se pudo cotejar la referencia leída con las otras órdenes; revisar a mano" }; }
+  return data ? { dictamen: "no_coincide", motivo: `la referencia leída (…${sufijo}) ya está en la orden #${data.numero}` } : null;
 }
 
 serve(async ({ token }) => {
@@ -88,17 +85,19 @@ serve(async ({ token }) => {
   const { data: c } = await db.from("config").select("metodos, auto_aprobar").single();
 
   let ocr: Ocr | null = null;
-  let d;
+  let ocr_sufijo: string | null = null;
+  let d: Dictamen;
   try {
     ocr = await leer(dataUrl);
-    d = dictaminar(o, ocr, c!.metodos[o.metodo] ?? {});
+    ocr_sufijo = normRef(ocr.reference).slice(-6) || null;
+    d = (ocr_sufijo && await sufijoEnOtraOrden(o, ocr_sufijo)) || dictaminar(o, ocr, c!.metodos[o.metodo] ?? {});
   } catch (e) {
     console.error(e);
     d = { dictamen: "dudoso", motivo: "la IA no pudo leer la captura; revisar a mano" };
   }
-  await db.from("ordenes").update({ ocr, dictamen: d.dictamen, dictamen_motivo: d.motivo }).eq("id", o.id);
+  await db.from("ordenes").update({ ocr, ocr_sufijo, dictamen: d.dictamen, dictamen_motivo: d.motivo }).eq("id", o.id);
   // Solo `coincide` aprueba sin Mau; `dudoso` y `no_coincide` esperan en el panel. Interruptor: config.auto_aprobar.
-  if (d.dictamen === "coincide" && c!.auto_aprobar && await capturaDeUnaSolaOrden(o, ocr!)) {
+  if (d.dictamen === "coincide" && c!.auto_aprobar) {
     const { error: e } = await db.rpc("resolver_orden", { p_id: o.id, p_aprobar: true, p_aprobada_por: "ia" });
     // orden_ya_resuelta: Mau aprobó o rechazó antes. Cualquier otro fallo deja la orden en revisión.
     if (e && e.message !== "orden_ya_resuelta") console.error("auto_aprobar", o.numero, e.message);

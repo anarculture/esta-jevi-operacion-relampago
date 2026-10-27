@@ -49,11 +49,10 @@ export function dictaminar(o: Orden, x: Ocr, destino: Destino): Dictamen {
   else if (monto > esperado + tol) dudas.push(`monto ${monto} mayor al esperado ${esperado}`);
 
   // La app del banco a veces imprime la referencia larga y el comprador tipea los últimos dígitos.
-  // Menos de 6 dígitos tipeados no identifican el pago (rec. 2): nunca coincide solo.
+  // crear_orden exige 6 tipeados (rec. 2); una lectura más corta que la tipeada vale solo si trae 6 o más.
   const a = normRef(x.reference), b = normRef(o.referencia);
   if (!a) dudas.push("no se lee la referencia");
   else if (!(a.endsWith(b) || (b.endsWith(a) && a.length >= 6))) malos.push(`referencia ${x.reference} distinta a ${o.referencia}`);
-  else if (b.length < 6) dudas.push(`referencia tipeada corta (${b.length} caracteres)`);
 
   // Ventana: del día de la orden a 1 día después (rec. 4). Una captura anterior puede ser un pago real reciclado.
   if (!x.transactionDate) dudas.push("no se lee la fecha");

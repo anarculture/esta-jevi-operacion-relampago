@@ -41,10 +41,12 @@ Decisiones congeladas:
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (27-oct-2026, rama `cotejo`, stack local `supabase_db_cotejo` en 57321)
 
-- [ ] `docker exec -i <DB_CONTAINER> psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 con los cuatro asserts nuevos (5 caracteres, misma terminación mismo tipo, misma terminación otro tipo, anon no ve `ocr_sufijo`).
-- [ ] `deno test supabase/functions/` sale 0 y ya no contiene un test de "referencia tipeada corta".
-- [ ] `API=… DB_CONTAINER=… node supabase/tests/auto-aprobar.mjs` sale 0: la primera orden con `coincide` se aprueba sola; una segunda orden con la misma captura y otra referencia queda `en_revision` con `dictamen_motivo` que contiene "ya está en la orden #".
-- [ ] `node ticketera/tests/ux.mjs` sale 0 con el caso nuevo: referencia de 5 caracteres marca error y no sube; con 6 envía.
-- [ ] `node supabase/tests/flujo.mjs <imagen.png>`, `avisos.mjs`, `portero.mjs` siguen saliendo 0.
+- [x] `docker exec -i <DB_CONTAINER> psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 con los cuatro asserts nuevos (5 caracteres, misma terminación mismo tipo, misma terminación otro tipo, anon no ve `ocr_sufijo`). Evidencia: `OK ticketera.sql: 4 órdenes creadas`. Falibilidad: sin `ordenes_tipo_sufijo_key` el test muere con `ERROR: misma terminación en el mismo tipo aceptada`; el assert de la migración con dos órdenes de igual terminación muere con `ERROR: hay órdenes del mismo tipo con la misma terminación…`.
+- [x] `deno test supabase/functions/` sale 0 y ya no contiene un test de "referencia tipeada corta". Evidencia: `ok | 12 passed | 0 failed | 1 ignored`; `rg "tipeada corta" supabase/functions/` → 0 matches.
+- [x] `API=… DB_CONTAINER=… node supabase/tests/auto-aprobar.mjs` sale 0: la primera orden con `coincide` se aprueba sola; una segunda orden con la misma captura y otra referencia queda `en_revision` con `dictamen_motivo` que contiene "ya está en la orden #". Evidencia: `ok  auto_aprobar = true: orden #9 aprobada en 22.8 s` · `ok  la misma captura no produce una segunda orden (sufijo tipeado ni leído)` · `OK auto-aprobar.mjs`.
+- [x] `node ticketera/tests/ux.mjs` sale 0 con el caso nuevo: referencia de 5 caracteres marca error y no sube; con 6 envía. Evidencia: `ok  compra: referencia de 5 caracteres marca error sin subir; con 6 envía` · `OK ux.mjs`.
+- [x] `node supabase/tests/flujo.mjs <imagen.png>`, `avisos.mjs`, `portero.mjs` siguen saliendo 0. Evidencia: `OK flujo: orden #7 aprobada, 2 entradas` (con `pruebas-e2e/pago-movil-bnc.png`) · `OK avisos.mjs · orden #13` · `OK portero: orden #20, 2 ingresadas de 12 aprobadas`.
+
+Autocrítica: dos `revisar` simultáneos con la misma captura no aprueban dos órdenes, porque `sufijo` nace en el insert y la segunda orden siempre encuentra a la primera por esa columna; solo quedaría en carrera el caso en que ninguna referencia tipeada coincide con la leída, y ahí `dictaminar` ya da `no_coincide` por referencia distinta. Si la consulta de sufijos falla, el dictamen es `dudoso` (nunca aprueba sola).

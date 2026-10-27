@@ -94,7 +94,7 @@ await caso("compra: pasos ocultos, monto en euros a tasa BCV, copiar plano, vali
 
   await page.click("#ya-pague");
   await page.waitForSelector("#reporte:not([hidden])");
-  await page.fill("#referencia", "12283");
+  await page.fill("#referencia", "712283");
   await page.fill("#nombre", "Ana Pérez");
   await page.fill("#cedula", "12");
   await page.fill("#telefono", "04141234567");
@@ -171,6 +171,32 @@ await caso("compra: un WhatsApp por entrada, error antes de subir, recarga los c
   // Misma tabla que ticketera.sql: venezolano sin el 0 y +58 0414… no pueden salir a otro país.
   a.deepEqual(await page.evaluate(() => ["0414-123.45.67", "414 123 4567", "+58 0414 123 4567", "+1 (305) 555-0100", "12345"].map(normalizarWhatsapp)),
     ["584141234567", "584141234567", "584141234567", "13055550100", null], "normalizarWhatsapp distinta de SQL");
+  await ctx.close();
+});
+
+await caso("compra: referencia de 5 caracteres marca error sin subir; con 6 envía", async () => {
+  const ctx = await pagina({ tasa: VENTA, crear_orden: () => ({ numero: 15, token: TOKENS[2] }), storage: { Key: "x" }, revisar: {} });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  a.ok((await page.getAttribute("#referencia", "placeholder")).includes("últimos 6"), "el hint no pide los últimos 6");
+  await page.fill("#referencia", "0-12.283"); // 5 tras normalizar: el cero a la izquierda no cuenta
+  await page.fill("#nombre", "Ana Pérez");
+  await page.fill("#cedula", "V12345678");
+  await page.fill("#telefono", "04141234567");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  llamadas.length = 0;
+  await page.click("#enviar");
+  await page.waitForSelector("#e-referencia:not([hidden])");
+  a.ok((await page.textContent("#e-referencia")).includes("últimos 6"), "el error no pide los últimos 6");
+  a.ok(!llamadas.includes("storage") && !llamadas.includes("crear_orden"), "subió o registró con 5 caracteres");
+  await foto(page, "03c-compra-referencia-corta");
+  await page.fill("#referencia", "712283");
+  await page.click("#enviar");
+  await page.waitForURL(/orden\.html\?t=/);
+  a.ok(llamadas.includes("crear_orden"), "con 6 caracteres no registró");
   await ctx.close();
 });
 
