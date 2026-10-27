@@ -14,6 +14,7 @@
   const STORAGE_KEY = APP_ID + ':v1';
   const BACKUP_KEY = STORAGE_KEY + ':respaldo';
   const CORRUPT_KEY = STORAGE_KEY + ':ilegible';
+  const CLAVE_KEY = STORAGE_KEY + ':clave'; // clave de la plataforma compartida (Edge Function `pm`)
 
   const LIMITS = Object.freeze({
     ticketsModel: 10000, ticketsUI: 500, moneyCents: 1e8, units: 100000,
@@ -553,7 +554,7 @@
   }
 
   const Model = {
-    APP_ID, SCHEMA_VERSION, STORAGE_KEY, BACKUP_KEY, CORRUPT_KEY, LIMITS, ENUMS, PRESET_COVERS, COMPARE_TICKETS, COMPARE_TARIFFS,
+    APP_ID, SCHEMA_VERSION, STORAGE_KEY, BACKUP_KEY, CORRUPT_KEY, CLAVE_KEY, LIMITS, ENUMS, PRESET_COVERS, COMPARE_TICKETS, COMPARE_TARIFFS,
     defaultState, defaultScenario, newItem, splitTickets, isCovered, forecastCost, budgetTotals, barShare, calcScenario, breakEven,
     compareGrid, chartDomain, chartSeries, niceTicks, cashReal, nextAction, blockedTasks, resetScenario, parseField, validateState,
     parseBackup, serializeState, saveState, loadState, backupBeforeReplace, readBackup, toCSV, fmtMoney, fmtInt, fmtInput,
@@ -592,6 +593,20 @@
     const invalid = new Map();
     const openSet = new Set();
     let lastChart = null;
+
+    // Plataforma compartida (spec #2): mismo patrón LOCAL/API/KEY que ticketera/comun.js.
+    // La publishable key es pública por diseño; lo que protege el estado es la clave.
+    const LOCAL = ['localhost', '127.0.0.1'].includes(win.location.hostname);
+    const PM_URL = (LOCAL ? 'http://127.0.0.1:54321' : 'https://ptbzdepejxxlavqfyepw.supabase.co') + '/functions/v1/pm';
+    const PM_KEY = LOCAL ? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH' : 'sb_publishable_iN1zfxf9SYEg42123alZHQ_4c3UYh_D';
+    let clave = null;
+    try { clave = storage && storage.getItem(M.CLAVE_KEY); } catch (e) { clave = null; }
+    let base = null; // versión remota sobre la que trabaja esta pestaña; null = aún no leída
+    let dirty = false; // hay cambios locales sin subir
+    let sync = null; // { ok: true, version } | { ok: false, error }
+    let aviso = '';
+    let timer = 0;
+    let cola = Promise.resolve(); // las llamadas a `pm` van de una en una
 
     // ---------- utilidades DOM (solo textContent / atributos, nunca HTML) ----------
 
@@ -689,12 +704,20 @@
       const r = M.saveState(storage, state, new Date());
       if (r.ok) { state.savedAt = r.savedAt; save = { ok: true, at: r.savedAt }; }
       else save = { ok: false, error: r.error };
+      // Con clave, agrupa la ráfaga de cambios en un solo guardado remoto.
+      if (clave) { dirty = true; win.clearTimeout(timer); timer = win.setTimeout(() => enCola(subir), 1500); }
       renderSave();
     }
 
     function renderSave() {
       const det = $('save-detail');
-      if (save.ok === true) {
+      if (save.ok === true && clave && sync && sync.ok && !dirty) {
+        setText($('ind-save'), 'Sincronizado ' + hhmm(save.at));
+        setText(det, 'Guardado en este navegador y en la plataforma compartida (versión ' + sync.version + '): ' + new Date(save.at).toLocaleString('es-419') + '.');
+      } else if (save.ok === true && clave && sync && !sync.ok) {
+        setText($('ind-save'), 'Guardado solo en este navegador');
+        setText(det, 'Guardado solo en este navegador (' + sync.error + '): ' + new Date(save.at).toLocaleString('es-419') + '. Se reintenta con el próximo cambio o al volver a esta pestaña.');
+      } else if (save.ok === true) {
         setText($('ind-save'), 'Guardado ' + hhmm(save.at));
         setText(det, 'Último guardado en este navegador: ' + new Date(save.at).toLocaleString('es-419') + '.');
       } else if (save.ok === false) {
@@ -707,6 +730,7 @@
       const msgs = [];
       if (save.ok === false) msgs.push('No se guardó: ' + save.error + ' Los cambios siguen en esta pestaña; exporta un respaldo JSON para no perderlos.');
       if (loaded.source === 'corrupt') msgs.push('Los datos guardados no se pudieron leer: se cargó la plantilla y se conservó una copia sin leer en este navegador.');
+      if (aviso) msgs.push(aviso);
       const al = $('storage-alert');
       setText(al, msgs.join(' '));
       al.hidden = !msgs.length;
@@ -1187,6 +1211,95 @@
       updateRestore();
     }
 
+    // ---------- plataforma compartida (Edge Function `pm`) ----------
+
+    function enCola(fn) { cola = cola.then(fn).catch(e => console.error(e)); return cola; }
+
+    function remoto(body) {
+      return win.fetch(PM_URL, { method: 'POST', headers: { apikey: PM_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ clave }, body)),
+        signal: win.AbortSignal.timeout && win.AbortSignal.timeout(20000) }) // un pedido colgado no traba la cola
+        .then(r => r.json().catch(() => null).then(d => ({ status: r.status, d })), () => ({ status: 0, d: null }));
+    }
+
+    // 401 olvida la clave. Sin red, 5xx u otro error: lo local queda y se reintenta en el próximo cambio o al volver a la pestaña.
+    function fallo(r) {
+      if (r.status === 401) { olvidarClave('La clave de la plataforma no es válida y se olvidó. Escríbela de nuevo.'); return; }
+      sync = { ok: false, error: r.status === 0 ? 'sin conexión' : 'error ' + r.status + (r.d && r.d.error ? ': ' + r.d.error : '') };
+      renderSave();
+    }
+
+    async function leerRemoto() {
+      if (!clave) return;
+      const r = await remoto({ accion: 'leer' });
+      if (r.status !== 200 || !r.d) return fallo(r);
+      // Remoto vacío y datos guardados aquí: se suben con base 0.
+      if (r.d.version === 0) { if (base !== 0 && state.savedAt) dirty = true; base = 0; }
+      else if (r.d.version !== base) return adoptar(r.d);
+      if (dirty) return subir();
+      sync = { ok: true, version: base };
+      renderSave();
+    }
+
+    async function subir() {
+      if (!clave) return;
+      if (base === null) return leerRemoto();
+      if (!dirty) return;
+      dirty = false;
+      const r = await remoto({ accion: 'guardar', base, autor: 'navegador', estado: state });
+      if (r.status === 200 && r.d) { base = r.d.version; sync = { ok: true, version: base }; aviso = ''; renderSave(); return; }
+      if (r.status === 409 && r.d) return adoptar(r.d);
+      dirty = true;
+      fallo(r);
+    }
+
+    const canon = s => { const r = M.validateState(Object.assign({}, s, { savedAt: null })); return r.ok ? M.serializeState(r.state) : ''; };
+
+    // Lo remoto reemplaza a lo local; antes, lo local queda como respaldo anterior (salvo que sean iguales).
+    // Del cuerpo de `leer` solo se usan version y estado: claves extra (el futuro bloque `ticketera`) no entran al estado.
+    function adoptar(d) {
+      const r = M.validateState(d.estado);
+      if (!r.ok) { sync = { ok: false, error: 'la versión compartida ' + d.version + ' no es válida' }; renderSave(); return; }
+      const distinto = canon(state) !== canon(r.state);
+      if (distinto) keepBackup();
+      base = d.version;
+      replaceState(r.state);
+      win.clearTimeout(timer); // replaceState → persist programó subir lo que acaba de bajar
+      dirty = false;
+      sync = { ok: true, version: base };
+      if (distinto) {
+        aviso = 'Se cargó la versión ' + d.version + ' de la plataforma compartida, guardada por ' + d.autor + ' (' + hhmm(d.guardado_en) + '). Lo que tenías en este navegador quedó como respaldo anterior.';
+        dataMsg(aviso);
+      }
+      renderSave();
+    }
+
+    function renderClave() {
+      $('pm-form').hidden = !!clave;
+      $('btn-forget').hidden = !clave;
+    }
+
+    function olvidarClave(msg) {
+      clave = null; base = null; dirty = false; sync = null; aviso = '';
+      win.clearTimeout(timer);
+      try { storage.removeItem(M.CLAVE_KEY); } catch (e) { /* sin almacenamiento: no había clave guardada */ }
+      renderClave();
+      renderSave();
+      dataMsg(msg);
+    }
+
+    function onClave(e) {
+      e.preventDefault();
+      const v = $('pm-clave').value.trim();
+      if (!v) return;
+      clave = v;
+      base = null;
+      try { storage.setItem(M.CLAVE_KEY, v); } catch (err) { /* sin almacenamiento: la clave vale solo en esta pestaña */ }
+      $('pm-clave').value = '';
+      renderClave();
+      dataMsg('Clave guardada en este navegador. El indicador de guardado muestra si quedó sincronizado.');
+      enCola(leerRemoto);
+    }
+
     async function onImport(e) {
       const f = e.target.files && e.target.files[0];
       e.target.value = '';
@@ -1214,7 +1327,7 @@
     }
 
     function resetAll() {
-      if (!win.confirm('¿Borrar TODOS los datos de este navegador (presupuesto, caja, tareas, ventas y operación) y volver a la plantilla? Se guardará una copia para poder restaurarla.')) return;
+      if (!win.confirm('¿Borrar TODOS los datos de este navegador' + (clave ? ' y de la plataforma compartida' : '') + ' (presupuesto, caja, tareas, ventas y operación) y volver a la plantilla? Se guardará una copia para poder restaurarla.')) return;
       keepBackup();
       replaceState(M.defaultState());
       dataMsg('Datos reemplazados por la plantilla. Puedes restaurar la copia anterior.');
@@ -1237,6 +1350,7 @@
       else if (a === 'reset-scenario') resetScenario();
       else if (a === 'reset-all') resetAll();
       else if (a === 'restore-backup') restoreBackup();
+      else if (a === 'forget-key') olvidarClave('Clave olvidada: desde ahora se guarda solo en este navegador.');
       else if (a === 'import-json') $('import-file').click();
       else if (a === 'export-json') { download(M.serializeState(state), 'sindicato-baba-respaldo-' + stamp() + '.json', 'application/json'); dataMsg('Respaldo exportado. Guárdalo en un lugar privado: incluye todo lo que anotaste.'); }
       else if (a === 'export-csv') {
@@ -1282,6 +1396,10 @@
       if (key) { if (d.open) openSet.add(key); else openSet.delete(key); }
     }, true);
     $('import-file').addEventListener('change', onImport);
+    $('pm-form').addEventListener('submit', onClave);
+    win.addEventListener('focus', () => { if (clave) enCola(leerRemoto); });
+    renderClave();
+    if (clave) enCola(leerRemoto);
     win.addEventListener('hashchange', () => route(true));
     if ('ResizeObserver' in win) {
       let raf = 0;

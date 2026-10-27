@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://ptbzdepejxxlavqfyepw.supabase.co http://127.0.0.1:54321; form-action 'none'; base-uri 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="light">
 <title>Sindicato Baba</title>
@@ -42,7 +42,7 @@
 <section id="resumen" class="view" aria-labelledby="h-resumen">
   <div class="view-head">
     <h1 id="h-resumen" tabindex="-1">Sindicato Baba</h1>
-    <p class="lede">Plataforma del organizador: un solo operador, datos solo en este navegador, montos en USD.</p>
+    <p class="lede">Plataforma del organizador: un solo operador, datos en este navegador y, con la clave, en la plataforma compartida; montos en USD.</p>
   </div>
 
   <section class="panel band" aria-label="Saldo previsto y caja real">
@@ -94,13 +94,21 @@
 
   <section class="panel" id="datos" aria-labelledby="h-datos">
     <h2 id="h-datos">Datos y respaldo</h2>
-    <p class="prose">Todo se guarda solo en este navegador: no se comparte, no se sincroniza y no se sube al sitio. Para cambiar de equipo o protegerte de un borrado, exporta un respaldo y guárdalo en un lugar privado.</p>
+    <p class="prose">Sin clave, todo se guarda solo en este navegador: no se comparte ni se sincroniza. Con la clave de la plataforma compartida, cada cambio se guarda también en la plataforma, donde lo leen y registran Claude y vytas, y cualquier equipo con la clave ve el mismo estado. Para protegerte de un borrado, exporta un respaldo y guárdalo en un lugar privado.</p>
     <p class="meta" id="save-detail"></p>
+    <form class="actions" id="pm-form">
+      <div class="field">
+        <label for="pm-clave">Clave de la plataforma compartida</label>
+        <input type="password" id="pm-clave" autocomplete="off" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Conectar</button>
+    </form>
     <div class="actions">
       <button type="button" class="btn btn-primary" data-action="export-json">Exportar respaldo JSON</button>
       <button type="button" class="btn" data-action="import-json">Importar respaldo JSON</button>
       <input type="file" id="import-file" accept="application/json,.json" hidden>
       <button type="button" class="btn" data-action="restore-backup" id="btn-restore" hidden>Restaurar respaldo anterior</button>
+      <button type="button" class="btn" data-action="forget-key" id="btn-forget" hidden>Olvidar clave</button>
       <button type="button" class="btn btn-danger" data-action="reset-all">Borrar todo y volver a la plantilla</button>
     </div>
     <p class="hint">Importar valida el archivo completo antes de reemplazar nada y pide confirmación. Los datos que tenías quedan como respaldo anterior.</p>

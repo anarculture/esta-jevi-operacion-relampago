@@ -1,11 +1,11 @@
 # BUILD: plataforma del organizador compartida (Mau, Claude Code, vytas)
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 01
-- Último verde: — · commit — · —
-- Gates: build ⬜ · test ⬜ · smoke ⬜
+- Ticket actual: 02
+- Último verde: 01 · commit 88eee1a · 2026-10-26
+- Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: —
-- Rama de trabajo: — (la anota el setup)
+- Rama de trabajo: `pm-compartida` (worktree en `.claude/worktrees/pm-compartida`, creado a mano con git: la herramienta del harness no se permite desde un subagente con cwd fijo)
 
 Spec: https://github.com/anarculture/sindicato-baba/issues/2 (léela completa antes del ticket 01:
 `gh issue view 2 --repo anarculture/sindicato-baba`). Tickets en `.scratch/pm-compartida/issues/`.
@@ -57,7 +57,7 @@ congeladas (no las reabras):
 ## Tickets
 
 - [x] 01 · Edge Function `pm` con su tabla y contrato HTTP · Bloqueado por: — · → .scratch/pm-compartida/issues/01-edge-function-pm.md · evidencia: `OK pm: 8 casos del contrato y la carrera de guardados`, `supabase/functions/pm/index.ts:24` (401), smoke `401`
-- [ ] 02 · El navegador sincroniza con `pm` · Bloqueado por: 01 · → .scratch/pm-compartida/issues/02-navegador-sincroniza.md
+- [x] 02 · El navegador sincroniza con `pm` · Bloqueado por: 01 · → .scratch/pm-compartida/issues/02-navegador-sincroniza.md · evidencia: `OK pm-navegador: 6 casos`, `index.html:6` (connect-src), `dump_dom=1`
 - [ ] 03 · Producción y acceso de Claude · Bloqueado por: 01, 02 · → .scratch/pm-compartida/issues/03-produccion-y-claude.md
 - [ ] 04 · vytas usa la plataforma · Bloqueado por: 03 · → .scratch/pm-compartida/issues/04-vytas.md
 
