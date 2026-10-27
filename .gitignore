@@ -7,3 +7,4 @@ ticketera/tests/evidencia/
 # estado de herramientas
 .impeccable/critique/
 .impeccable/live/
+__pycache__/
