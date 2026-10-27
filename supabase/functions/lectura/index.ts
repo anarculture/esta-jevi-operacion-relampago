@@ -19,13 +19,18 @@ serve(async ({ path }, req) => {
   if (r.estado === "guardada") return json({ ocr: paraComprador(r.ocr), creada_en: r.creada_en });
 
   const { data: blob, error: ed } = await db.storage.from("capturas").download(path);
-  // Sin captura no hay OCR; la reserva queda y cuenta (reservar_lectura la libera a los 2 minutos).
-  if (ed) return json({ error: "captura_no_encontrada" }, 404);
+  // Sin captura no se gasta OCR: se suelta la reserva para que paths inventados no agoten el tope total.
+  if (ed) {
+    const { error: el } = await db.from("lecturas").delete().eq("path", path).is("ocr", null);
+    if (el) console.error("lectura: soltar reserva", el.message);
+    return json({ error: "captura_no_encontrada" }, 404);
+  }
   let ocr;
   try {
     ocr = await leerBlob(blob);
   } catch (e) {
-    // La reserva queda sin OCR y cuenta para el límite; `revisar` volverá a leer al registrar la orden.
+    // La reserva queda sin OCR y sigue contando para los topes; el mismo path puede reintentar a los 2
+    // minutos (reservar_lectura) y `revisar` volverá a leer al registrar la orden.
     console.error("lectura", e);
     return json({ error: "lectura_fallida" }, 502);
   }

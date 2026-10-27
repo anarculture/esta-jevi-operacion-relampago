@@ -95,10 +95,11 @@ export function dictaminar(o: Orden, x: Ocr, destino: Destino): Dictamen {
   const cotejos: boolean[] = [];
   const tel = [last10(x.senderPhone), last10(p.telefono ?? "")];
   if (!oculto(x.senderPhone) && tel[0].length === 10 && tel[1].length === 10) cotejos.push(tel[0] === tel[1]);
-  // Cédula contra cédula o RIF (V-09876543-2): sin ceros a la izquierda, el RIF agrega un dígito verificador al final.
-  const ced = [digits(x.senderId), digits(p.cedula ?? "")].map((s) => s.replace(/^0+/, ""));
-  const [corta, larga] = ced[0].length <= ced[1].length ? ced : [ced[1], ced[0]];
-  if (!oculto(x.senderId) && corta.length >= 5) cotejos.push(corta === larga || (larga.length === corta.length + 1 && larga.startsWith(corta)));
+  // Cédula contra cédula o RIF. El RIF de una persona son 9 dígitos: la cédula con ceros a la izquierda
+  // hasta 8 y un verificador (V-09876543-2). Solo una lectura de 9 dígitos se trata como RIF.
+  const leidaCed = digits(x.senderId);
+  const ced = [leidaCed.length === 9 ? leidaCed.slice(0, 8) : leidaCed, digits(p.cedula ?? "")].map((s) => s.replace(/^0+/, ""));
+  if (!oculto(x.senderId) && ced[0].length >= 5 && ced[1].length >= 5) cotejos.push(ced[0] === ced[1]);
   const id = [plain(x.senderId), plain(p.id ?? "")];
   if (!oculto(x.senderId) && id[0] && id[1]) cotejos.push(id[0] === id[1]);
   // Titular: palabras completas de 3 o más letras ("Ana" no coincide con "Mariana"; "J" no cuenta).

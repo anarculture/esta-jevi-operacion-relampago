@@ -106,6 +106,9 @@ Deno.test("sin lectura del emisor (o enmascarada): sin duda del pagador", () => 
 
 Deno.test("pagador: RIF con dígito verificador cuenta como la cédula; un dato bien y otro mal no es duda", () => {
   assertEquals(dictaminar(orden, { ...ok, senderId: "V-09876543-2" }, destino).dictamen, "coincide");
+  // Otra persona con una cédula de 8 dígitos que empieza igual que la declarada de 7 no coincide.
+  const siete = { ...orden, pagador: { ...orden.pagador, cedula: "V1234567" } };
+  assertEquals(dictaminar(siete, { ...ok, senderId: "V-12.345.678" }, destino).motivo.includes("el pagador leído"), true);
   // Regla del cotejo: duda solo si nada de lo comparable coincide (teléfono bien, cédula mal → sin duda).
   assertEquals(dictaminar(orden, { ...ok, senderPhone: "04147654321", senderId: "V-1.111.111" }, destino).dictamen, "coincide");
   const b = { ...orden, metodo: "binance", monto_bs: null, pagador: { id: "BetoDJ" } };
