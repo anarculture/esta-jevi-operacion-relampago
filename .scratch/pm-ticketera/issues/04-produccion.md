@@ -28,11 +28,18 @@ Decisiones congeladas:
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** bloqueado (gate HITL: pregunta a Mau + comandos de producción; ver `## BLOQUEADO` del BUILD)
 
-- [ ] `supabase migration list --linked --project-ref ptbzdepejxxlavqfyepw` muestra la migración nueva aplicada en remoto y ninguna pendiente.
-- [ ] `leer` en producción (POST a `https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm` con `PM_CLAVE` por variable de entorno) responde 200 con `ticketera.aprobadas.entradas` ≥ 1 y `consultado_en` de hoy; con clave mala responde 401.
-- [ ] `https://postropicalia.com/sindicato-baba/pm/index.html` responde 200 y contiene "fuera de la ticketera"; `https://postropicalia.com/sindicato-baba/pm/app.js` contiene "Sin conexión con la ticketera".
-- [ ] `ssh aios-vm 'grep -c "ticketera.aprobadas.entradas" ~/.hermes/skills/plataforma-sindicato-baba/SKILL.md'` imprime 1 o más.
-- [ ] `git grep -n "$(cat ~/.config/sindicato-baba/pm_clave)"` sale 1 (la clave no está en el repo).
-- [ ] Mau confirma (una pregunta) que el registro manual de la plataforma no duplica la orden #2 y que la columna Ticketera en `/pm/` coincide con el panel admin.
+- [ ] `supabase migration list --linked --project-ref ptbzdepejxxlavqfyepw` muestra la migración nueva aplicada en remoto y ninguna pendiente. *(Hoy: todas aplicadas hasta `20261027120300`; `20261027200000` pendiente. `db push --dry-run` → solo `20261027200000_resumen_ticketera.sql`.)*
+- [ ] `leer` en producción (POST a `https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm` con `PM_CLAVE` por variable de entorno) responde 200 con `ticketera.aprobadas.entradas` ≥ 1 y `consultado_en` de hoy; con clave mala responde 401. *(Hoy, antes del deploy: `leer 200 version 10 ... trae ticketera: false`; clave mala `401`.)*
+- [ ] `https://postropicalia.com/sindicato-baba/pm/index.html` responde 200 y contiene "fuera de la ticketera"; `https://postropicalia.com/sindicato-baba/pm/app.js` contiene "Sin conexión con la ticketera". *(Falta el `git push`.)*
+- [x] `ssh aios-vm 'grep -c "ticketera.aprobadas.entradas" ~/.hermes/skills/plataforma-sindicato-baba/SKILL.md'` imprime 1 o más. → `1`.
+- [x] `git grep -n "$(cat ~/.config/sindicato-baba/pm_clave)"` sale 1 (la clave no está en el repo). → corrido como `git grep -c -F -f ~/.config/sindicato-baba/pm_clave` (misma búsqueda, sin poner la clave en la línea de comandos): exit 1.
+- [ ] Mau confirma (una pregunta) que el registro manual de la plataforma no duplica la orden #2 y que la columna Ticketera en `/pm/` coincide con el panel admin. *(Dato para la pregunta: producción versión 10 tiene `real.sold = 0` y `ticketsCollectedCents = 0`.)*
+
+**Riesgos de choque con el frente cotejo (#6/#7, agente Alfa, en paralelo):** `resumen_ticketera()` solo lee
+`ordenes.estado`, `tipo`, `cantidad`, `monto_usd_cents`, `monto_bs` y `resuelta_en`, tal como están en
+producción. Si cotejo agrega un estado nuevo a `ordenes`, no cuenta ni como aprobada ni como en revisión.
+`pm-ticketera.mjs` y `pm-navegador.mjs` crean órdenes con la firma actual de `crear_orden` (`p_whatsapps`): si
+cotejo la cambia, hay que ajustarlos. Si cotejo sube una migración con timestamp menor que `20261027200000`
+después de esta, su `db push` va a necesitar `--include-all`.
