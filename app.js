@@ -1,6 +1,6 @@
 /*
   Sindicato Baba · plataforma local del organizador.
-  Script clásico: modelo puro (require en Node, window.SindicatoBaba en el navegador)
+  Script clásico: modelo puro (require en Node, globalThis.SindicatoBaba en el navegador y en Deno)
   más la interfaz. Sin red ni dependencias. Montos en centavos enteros de USD.
 */
 (function (root) {
@@ -560,8 +560,8 @@
   };
 
   if (typeof module === 'object' && module.exports) module.exports = Model;
+  else root.SindicatoBaba = Model; // navegador, y Deno en la Edge Function `pm` (sin document ni module)
   if (typeof document === 'undefined') return;
-  root.SindicatoBaba = Model;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => startUI(Model, document, window));
   else startUI(Model, document, window);
 
