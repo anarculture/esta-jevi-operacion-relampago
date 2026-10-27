@@ -22,8 +22,9 @@ cercano y la fiesta del jueves 29.
 
 1. **Comprador · comprar.** Como comprador, elijo cantidad y método y veo el monto en USD,
    o en Bs con la tasa del día. Veo los datos de la cuenta de destino de ese método.
-2. **Comprador · reportar pago.** Subo la captura y la referencia, con nombre y teléfono.
-   Recibo un número de orden y el estado «en revisión».
+2. **Comprador · reportar pago.** Subo la captura y la referencia, con nombre, cédula y un
+   WhatsApp por entrada (el primero es el mío). Recibo un número de orden y el estado «en
+   revisión». *Desde el 27-oct: un WhatsApp por entrada (issue #5).*
 3. **Sistema · referencia única.** Una referencia ya usada en el mismo método se
    rechaza al enviarse, para que un comprobante no pague dos veces.
 4. **IA · revisar comprobante.** Un modelo de visión lee la captura y extrae método,
@@ -43,6 +44,16 @@ cercano y la fiesta del jueves 29.
    ya usada (con la hora) o inválida, y marca el ingreso. Si no hay internet, existe una
    lista de respaldo descargada. *Hecho (27-oct): `ticketera/portero.html`, clave propia,
    deshacer en 5 min.*
+7a. **Comprador · una entrada por WhatsApp.** Cada entrada de mi orden lleva el WhatsApp de
+    quien va a usarla; en la página de la orden y en el panel el número se ve enmascarado
+    (solo los 4 últimos dígitos). *Hecho (27-oct, issue #5).*
+7b. **Sistema · aviso al aprobarse.** Al aprobarse la orden, cada entrada recibe en su WhatsApp
+    un mensaje con el enlace a su QR, enviado desde el número de vytas (nunca desde el de
+    Mau), con el texto armado por el servidor. Las entradas anteriores al cambio no reciben
+    aviso. *Hecho (27-oct): función `avisos`, cron `avisos-entradas` en `aios-vm`.*
+7c. **Admin · estado del aviso y reenvío.** Como Mau, veo por entrada si el aviso salió, a qué
+    hora o con qué error, y puedo reenviarlo corrigiendo el número. *Hecho (27-oct):
+    `admin.html`, acción `reenviar_aviso`.*
 8. **Vendedor · su enlace.** Como vendedor, tengo un enlace o código propio, y las
    órdenes que entran por él quedan a mi nombre.
 9. **Vendedor · venta en mano.** Registro una venta que cobré yo (efectivo o a mi
