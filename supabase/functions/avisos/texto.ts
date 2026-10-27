@@ -1,6 +1,6 @@
 // Única fuente del texto que vytas manda por WhatsApp con cada entrada (issue #5).
-// Mismos datos que FIESTA y el mapa de ticketera/comun.js (texto.test.ts lo comprueba). Las dudas se
-// responden en el mismo chat.
+// Repite a mano los datos de FIESTA de ticketera/comun.js; texto.test.ts solo compara el mapa (con
+// --allow-read). Las dudas se responden en el mismo chat.
 export const BASE = "https://postropicalia.com/sindicato-baba/";
 export const MAPA = "https://maps.app.goo.gl/D9tyCVLa8ppZVfDE6";
 
