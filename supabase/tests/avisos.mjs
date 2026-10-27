@@ -31,10 +31,10 @@ const nueva = (r, was) => sql(`with o as (insert into ordenes (nombre, cedula, t
 const numero = Number(nueva(ref, "array['584141110001', '584241110002']"));
 const sinWa = Number(nueva(ref + "B", "null"));
 
-for (const accion of ["pendientes", "avisada"]) {
-  assert.equal((await llamar("avisos", { clave: "mala", accion, id: crypto.randomUUID(), ok: true })).status, 401, `clave mala en ${accion}`);
+for (const accion of ["pendientes", "avisada", "consultar"]) {
+  assert.equal((await llamar("avisos", { clave: "mala", accion, id: crypto.randomUUID(), ok: true, whatsapp: "584141110001" })).status, 401, `clave mala en ${accion}`);
+  assert.equal((await llamar("avisos", { clave: ADMIN, accion, whatsapp: "584141110001" })).status, 401, `ADMIN_CLAVE abre ${accion}`);
 }
-assert.equal((await llamar("avisos", { clave: ADMIN, accion: "pendientes" })).status, 401, "ADMIN_CLAVE abre avisos");
 
 let p = await pendientes(numero);
 assert.equal(p.length, 2, `pendientes de la orden: ${JSON.stringify(p)}`);
@@ -77,6 +77,58 @@ p = await pendientes(numero);
 assert.deepEqual(p.map((x) => [x.id, x.whatsapp, x.jid]), [[e2, "584167654321", "584167654321@s.whatsapp.net"]], "reenviar no la devolvió con el número nuevo");
 await llamar("admin", { clave: ADMIN, accion: "reenviar_aviso", id: e1 });
 assert.equal((await pendientes(numero)).length, 2, "reenviar sin número no devolvió la avisada");
+
+// consultar (recepcionista de vytas). Números únicos por corrida: la respuesta junta todas las
+// órdenes del número en el stack. W(k) = 58 414 k + 6 dígitos de la corrida.
+const corrida = String(Date.now()).slice(-6);
+const W = (k) => `58414${k}${corrida}`;
+let nRef = 0;
+const orden = (was, fin = "resolver_orden(id, true)->>'numero'") => Number(sql(`with o as (insert into ordenes (nombre, cedula, telefono, whatsapps, cantidad, metodo, referencia, captura, monto_usd_cents)
+  values ('Prueba Consultar', 'V99999999', '${was[0]}', array['${was.join("', '")}'], ${was.length}, 'zelle', '${ref}C${++nRef}', 'manual.jpg', 1000) returning id, numero)
+  select ${fin} from o;`));
+const consultar = async (whatsapp) => (await avisos({ accion: "consultar", whatsapp })).d;
+const sinCambios = (await pendientes(numero)).map((x) => x.id);
+
+// Orden de 2 entradas: el amigo (posición 2) recibe solo la suya; el comprador, la suya con el enlace de la orden.
+const nA = orden([W(1), W(2)]);
+let c = await consultar(W(2));
+assert.deepEqual(c.ordenes, [{ numero: nA, estado: "aprobada", cantidad: 2, nombre: "Prueba Consultar", comprador: false }], `ordenes del amigo: ${JSON.stringify(c)}`);
+assert.equal(c.textos.length, 1, `textos del amigo: ${JSON.stringify(c.textos)}`);
+assert.ok(c.textos[0].includes("2 de 2") && !c.textos[0].includes("orden.html?t="), `texto del amigo: ${c.textos[0]}`);
+c = await consultar(W(1));
+assert.equal(c.ordenes[0].comprador, true, "el comprador no sale como comprador");
+assert.ok(c.textos.length === 1 && c.textos[0].includes("1 de 2") && c.textos[0].includes("orden.html?t="), `texto del comprador: ${c.textos}`);
+const delA = (await pendientes(nA)).find((x) => x.posicion === 1).texto;
+assert.equal(c.textos[0], delA, "consultar no repite el texto del aviso");
+
+// Mismo número en dos órdenes aprobadas: las dos, la más reciente primero, y los textos de ambas.
+const nB = orden([W(2)]);
+c = await consultar(W(2));
+assert.deepEqual(c.ordenes.map((o) => o.numero), [nB, nA], `dos órdenes: ${JSON.stringify(c.ordenes)}`);
+assert.equal(c.textos.length, 2, `textos de dos órdenes: ${JSON.stringify(c.textos)}`);
+assert.ok(c.textos[0].includes(`#${nB} completa`) && c.textos[1].includes("2 de 2"), `orden de los textos: ${c.textos}`);
+
+// En revisión, rechazada y sin orden: sin textos.
+const nC = orden([W(3)], "numero");
+assert.deepEqual(await consultar(W(3)), { ordenes: [{ numero: nC, estado: "en_revision", cantidad: 1, nombre: "Prueba Consultar", comprador: true }], textos: [] }, "en revisión");
+const nD = orden([W(4)], "resolver_orden(id, false, 'prueba')->>'numero'");
+assert.deepEqual(await consultar(W(4)), { ordenes: [{ numero: nD, estado: "rechazada", cantidad: 1, nombre: "Prueba Consultar", comprador: true }], textos: [] }, "rechazada");
+assert.deepEqual(await consultar(W(5)), { ordenes: [], textos: [] }, "sin orden");
+
+// Tres formatos del mismo número; inválido → 400.
+const local = `0${W(1).slice(2)}`;
+const conMas = `+58 ${W(1).slice(2, 5)} ${W(1).slice(5)}`;
+const base = await consultar(W(1));
+assert.deepEqual(await consultar(local), base, `formato ${local}`);
+assert.deepEqual(await consultar(conMas), base, `formato ${conMas}`);
+for (const malo of ["123", "", null]) {
+  const r = await avisos({ accion: "consultar", whatsapp: malo });
+  assert.deepEqual([r.status, r.d?.error], [400, "whatsapp_invalido"], `inválido ${JSON.stringify(malo)}: ${JSON.stringify(r)}`);
+}
+
+// Solo lectura: las entradas siguen pendientes de aviso igual que antes.
+assert.equal((await pendientes(nA)).length, 2, "consultar tocó los avisos de la orden nueva");
+assert.deepEqual((await pendientes(numero)).map((x) => x.id), sinCambios, "consultar tocó los avisos de la orden vieja");
 
 // Limpieza: que no quede en la cola de avisos de este stack.
 sql(`update entradas set avisada_en = now() where orden_id in (select id from ordenes where referencia like '${ref}%')`);

@@ -352,6 +352,8 @@ begin
      and not has_function_privilege('authenticated', 'reservar_lectura(text, text)', 'execute'), 'anon o authenticated pueden reservar lecturas';
   assert has_function_privilege('service_role', 'reservar_lectura(text, text)', 'execute')
      and has_table_privilege('service_role', 'lecturas', 'insert'), 'la función lectura (service role) no puede reservar';
+  assert not has_function_privilege('anon', 'consultar_whatsapp(text)', 'execute')
+     and not has_function_privilege('authenticated', 'consultar_whatsapp(text)', 'execute'), 'anon o authenticated pueden consultar un WhatsApp';
 end $$;
 
 -- reservar_lectura, como la llama la función `lectura` (service role): una lectura por path, 10 por IP

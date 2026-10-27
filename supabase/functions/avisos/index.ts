@@ -5,7 +5,7 @@ import { type Pendiente, textoAviso } from "./texto.ts";
 
 const CLAVE = Deno.env.get("PM_CLAVE") ?? "";
 
-serve(async ({ clave, accion, id, ok, error }) => {
+serve(async ({ clave, accion, id, ok, error, whatsapp }) => {
   if (CLAVE.length < 16 || clave !== CLAVE) return json({ error: "clave_invalida" }, 401);
 
   if (accion === "pendientes") {
@@ -22,6 +22,16 @@ serve(async ({ clave, accion, id, ok, error }) => {
     const { data, error: e } = await db.rpc("marcar_aviso", { p_id: id, p_ok: ok, p_error: typeof error === "string" ? error : null });
     if (e) return json({ error: e.message }, e.message === "entrada_no_existe" ? 404 : 400);
     return json(data);
+  }
+
+  // Recepcionista de vytas: órdenes de un número y el mismo texto del aviso de cada entrada suya. Solo lectura.
+  if (accion === "consultar") {
+    if (typeof whatsapp !== "string") return json({ error: "whatsapp_invalido" }, 400);
+    const { data, error: e } = await db.rpc("consultar_whatsapp", { p_whatsapp: whatsapp });
+    if (e?.message === "whatsapp_invalido") return json({ error: e.message }, 400);
+    if (e) throw e;
+    const { ordenes, entradas } = data as { ordenes: unknown[]; entradas: Pendiente[] };
+    return json({ ordenes, textos: entradas.map(textoAviso) });
   }
 
   return json({ error: "accion_invalida" }, 400);
