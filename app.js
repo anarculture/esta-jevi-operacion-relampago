@@ -1230,7 +1230,9 @@
 
     async function leerRemoto() {
       if (!clave) return;
+      const k = clave;
       const r = await remoto({ accion: 'leer' });
+      if (clave !== k) return; // se olvidó o cambió la clave con el pedido en vuelo: la respuesta ya no aplica
       if (r.status !== 200 || !r.d) return fallo(r);
       // Remoto vacío y datos guardados aquí: se suben con base 0.
       if (r.d.version === 0) { if (base !== 0 && state.savedAt) dirty = true; base = 0; }
@@ -1245,7 +1247,9 @@
       if (base === null) return leerRemoto();
       if (!dirty) return;
       dirty = false;
+      const k = clave;
       const r = await remoto({ accion: 'guardar', base, autor: 'navegador', estado: state });
+      if (clave !== k) return; // ídem: no tocar una pestaña que ya se desconectó
       if (r.status === 200 && r.d) { base = r.d.version; sync = { ok: true, version: base }; aviso = ''; renderSave(); return; }
       if (r.status === 409 && r.d) return adoptar(r.d);
       dirty = true;
@@ -1256,6 +1260,7 @@
 
     // Lo remoto reemplaza a lo local; antes, lo local queda como respaldo anterior (salvo que sean iguales).
     // Del cuerpo de `leer` solo se usan version y estado: claves extra (el futuro bloque `ticketera`) no entran al estado.
+    // ponytail: un solo respaldo y `base` solo en memoria: al reabrir gana el remoto y un segundo conflicto pisa el respaldo; si Mau edita a diario aquí, guardar `base` en localStorage y respaldos con historial.
     function adoptar(d) {
       const r = M.validateState(d.estado);
       if (!r.ok) { sync = { ok: false, error: 'la versión compartida ' + d.version + ' no es válida' }; renderSave(); return; }
