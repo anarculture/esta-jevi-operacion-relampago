@@ -48,13 +48,15 @@
 
     <section class="card" id="reporte" hidden>
       <h2>3. Reporta tu pago</h2>
-      <label for="referencia" id="l-referencia">Número de referencia</label>
-      <input id="referencia" name="referencia" type="text" autocomplete="off" required>
-      <p class="campo-error" id="e-referencia" hidden></p>
       <label for="captura">Captura del comprobante</label>
       <input id="captura" name="captura" type="file" accept="image/jpeg,image/png,image/webp" required>
       <img id="preview" class="preview" alt="Vista previa de la captura elegida" hidden>
       <p class="campo-error" id="e-captura" hidden></p>
+      <p class="muted" id="leimos" aria-live="polite" hidden></p>
+      <div id="avisos-lectura"></div>
+      <label for="referencia" id="l-referencia">Número de referencia</label>
+      <input id="referencia" name="referencia" type="text" autocomplete="off" placeholder="La leemos de la captura; revisa que sea la de tu pago." required>
+      <p class="campo-error" id="e-referencia" hidden></p>
       <!-- Desde dónde pagó: cambia con el método. Con estos datos Mau encuentra el pago en su banco. -->
       <div id="pagador">
         <div data-tipo="pago_movil" hidden>
@@ -104,11 +106,7 @@
 addEventListener("DOMContentLoaded", async () => {
   const $ = (id) => document.getElementById(id);
   const f = $("f");
-  const REF = {
-    pago_movil: ["Referencia del pago móvil", "Al menos los últimos 6 números que muestra tu banco"],
-    binance: ["Order ID de Binance Pay", "Al menos los últimos 6 caracteres del detalle del pago"],
-    zelle: ["Número de confirmación de Zelle", "Al menos los últimos 6 caracteres que muestra tu banco"],
-  };
+  const REF = { pago_movil: "Referencia del pago móvil", binance: "Order ID de Binance Pay", zelle: "Número de confirmación de Zelle" };
   const DATOS = { banco: "Banco", telefono: "Teléfono", cedula: "Cédula", id: "Binance Pay ID", correo: "Correo Zelle", titular: "Titular" };
   const tipo = (m) => (m.startsWith("pago_movil") ? "pago_movil" : m);
 
@@ -133,6 +131,46 @@ addEventListener("DOMContentLoaded", async () => {
         tipo(k) === "pago_movil" ? `${eur(venta.precio_pm_eur_cents)} por entrada, en Bs a tasa BCV` : `${usd(venta.precio_usd_cents)} por entrada`
       }</small></span></label>`).join("")
     : `<p class="aviso">La venta aún no abre.</p>`;
+
+  // Lectura de la captura (issue #7): se sube y se lee al elegirla; la referencia leída se precarga.
+  let subida = { file: null, path: null }; // path: promesa de la subida; la misma captura no se sube dos veces
+  function subir(file) {
+    if (subida.file !== file) {
+      const path = subirCaptura(file);
+      subida = { file, path };
+      path.catch(() => { if (subida.path === path) subida = { file: null, path: null }; }); // un fallo no queda pegado: el envío reintenta
+    }
+    return subida.path;
+  }
+  let lectura = { estado: "", ocr: null }; // estado: "" | leyendo | ok | error
+  let precargada = ""; // la referencia que puso la lectura; si el comprador la cambió, no se pisa
+  const DOC = { pago_movil: "pago móvil", zelle: "Zelle", binance: "Binance" };
+  const numero = (s) => (s && Number.isFinite(Number(s)) ? Number(s) : null);
+  const montoLeido = (o) => (numero(o.amount) === null ? ""
+    : o.documentType === "pago_movil" ? bs(numero(o.amount))
+    : o.documentType === "binance" ? `${numero(o.amount)} USDT` : `$${numero(o.amount).toFixed(2)}`);
+  // Línea "Leímos: …" y avisos que no bloquean (el dictamen decide). Misma tolerancia que dictamen.ts.
+  function pintarLectura() {
+    const o = lectura.ocr;
+    const util = o && o.documentType !== "other" && (o.reference || numero(o.amount) !== null);
+    $("leimos").hidden = !lectura.estado;
+    $("leimos").textContent = lectura.estado === "leyendo" ? "Leyendo el comprobante…"
+      : util ? `Leímos: ${[montoLeido(o), o.reference && `ref ${o.reference}`,
+          [fechaCorta(o.transactionDate), o.transactionTime].filter(Boolean).join(" ")].filter(Boolean).join(" · ")}`
+      : "No pudimos leer la captura; escribe la referencia";
+    const avisos = [];
+    const metodo = f.metodo?.value, cant = cantidad();
+    if (util && metodo && lectura.estado === "ok") {
+      const pm = tipo(metodo) === "pago_movil";
+      const esperado = pm ? Math.round(cant * venta.precio_pm_eur_cents * venta.tasa_eur) / 100 : cant * venta.precio_usd_cents / 100;
+      if (o.documentType !== tipo(metodo)) {
+        avisos.push(`El comprobante parece de ${DOC[o.documentType] ?? o.documentType} y elegiste ${venta.metodos[metodo]?.nombre ?? metodo}`);
+      } else if (cant && numero(o.amount) !== null && Math.abs(numero(o.amount) - esperado) > (pm ? 1 : 0.01)) {
+        avisos.push(`El monto leído (${montoLeido(o)}) no es el de la orden (${pm ? bs(esperado) : usd(cant * venta.precio_usd_cents)})`);
+      }
+    }
+    $("avisos-lectura").innerHTML = avisos.map((t) => `<p class="aviso" role="status">${esc(t)}</p>`).join("");
+  }
 
   // El formulario sobrevive a que el navegador recargue la pestaña al volver de la app del banco.
   const CAMPOS = ["cantidad", "metodo", "referencia", "nombre", "cedula", "telefono",
@@ -176,6 +214,7 @@ addEventListener("DOMContentLoaded", async () => {
     const cant = cantidad();
     camposWa();
     for (const g of document.querySelectorAll("#pagador [data-tipo]")) g.hidden = !metodo || g.dataset.tipo !== tipo(metodo);
+    pintarLectura();
     $("precio").textContent = metodo && tipo(metodo) === "pago_movil" ? eur(venta.precio_pm_eur_cents) : usd(venta.precio_usd_cents);
     if (!metodo || !cant) return;
     const m = venta.metodos[metodo];
@@ -191,9 +230,7 @@ addEventListener("DOMContentLoaded", async () => {
     }
     $("destino").innerHTML = Object.entries(DATOS).filter(([k]) => m[k])
       .map(([k, t]) => `<dt>${t}</dt><dd>${esc(m[k])}${k === "titular" ? "" : ` <button type="button" class="sec copiar" data-copiar="${esc(m[k])}">Copiar</button>`}</dd>`).join("");
-    const [label, hint] = REF[tipo(metodo)] ?? REF.pago_movil;
-    $("l-referencia").textContent = label;
-    $("referencia").placeholder = hint;
+    $("l-referencia").textContent = REF[tipo(metodo)] ?? REF.pago_movil;
     $("pago").hidden = false;
   }
   f.addEventListener("input", pintar);
@@ -211,16 +248,27 @@ addEventListener("DOMContentLoaded", async () => {
   });
 
   let urlPreview;
-  $("captura").addEventListener("change", () => {
+  $("captura").addEventListener("change", async () => {
     const file = $("captura").files[0];
     if (urlPreview) URL.revokeObjectURL(urlPreview);
     $("preview").hidden = !file;
     campoError("captura", "");
+    lectura = { estado: file ? "leyendo" : "", ocr: null };
+    pintarLectura();
     if (!file) return;
     urlPreview = URL.createObjectURL(file);
     $("preview").src = urlPreview;
-  });
 
+    let ocr = null;
+    try { ocr = (await funcion("lectura", { path: await subir(file) })).ocr; } catch { /* sin lectura: se teclea como antes */ }
+    if ($("captura").files[0] !== file) return; // eligió otra captura mientras tanto
+    lectura = { estado: ocr ? "ok" : "error", ocr };
+    // Precarga sin pisar: solo si el campo está vacío o tiene lo que puso la lectura anterior.
+    const precargar = (id, v) => { $(id).value = v; $(id).dispatchEvent(new Event("input", { bubbles: true })); };
+    if (ocr?.reference && (!valor("referencia") || valor("referencia") === precargada)) precargar("referencia", (precargada = ocr.reference));
+    if (ocr?.senderName && f.metodo?.value && tipo(f.metodo.value) === "zelle" && !valor("nombre")) precargar("nombre", ocr.senderName);
+    pintarLectura();
+  });
   const valor = (id) => $(id).value.trim();
   // Lo que va en p_pagador: solo las claves del método elegido; crear_orden normaliza.
   const pagador = (m) => ({
@@ -229,7 +277,7 @@ addEventListener("DOMContentLoaded", async () => {
     binance: { id: valor("pagador-id") },
   })[tipo(m)];
 
-  // Mismas reglas que crear_orden en SQL, para no subir la captura y recién ahí fallar.
+  // Mismas reglas que crear_orden en SQL, para no registrar y recién ahí fallar.
   function validar() {
     const errores = [];
     const chk = (id, ok, msg) => { campoError(id, ok ? "" : msg); if (!ok) errores.push(id); };
@@ -251,7 +299,6 @@ addEventListener("DOMContentLoaded", async () => {
     return errores;
   }
 
-  let subida = { file: null, path: null }; // la captura ya subida se reutiliza si el registro falla
   f.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     $("error").hidden = true;
@@ -266,15 +313,13 @@ addEventListener("DOMContentLoaded", async () => {
     boton.disabled = true;
     try {
       const file = f.captura.files[0];
-      if (subida.file !== file) {
-        boton.textContent = "Subiendo captura…";
-        subida = { file, path: await subirCaptura(file) };
-      }
+      if (subida.file !== file) boton.textContent = "Subiendo captura…";
+      const path = await subir(file);
       boton.textContent = "Registrando…";
       const o = await rpc("crear_orden", {
         p_nombre: f.nombre.value, p_cedula: f.cedula.value, p_telefono: f.telefono.value,
         p_cantidad: cantidad(), p_metodo: f.metodo.value,
-        p_referencia: f.referencia.value, p_captura: subida.path,
+        p_referencia: f.referencia.value, p_captura: path,
         p_whatsapps: whatsapps().map(normalizarWhatsapp), p_pagador: pagador(f.metodo.value),
       });
       funcion("revisar", { token: o.token }).catch(() => {}); // el dictamen no bloquea al comprador

@@ -66,6 +66,8 @@ async function caso(nombre, fn) {
   try { await fn(); console.log("ok ", nombre); }
   catch (e) { fallos++; console.log("FAIL", nombre, "\n   ", e.message.split("\n")[0]); }
 }
+// La captura se sube y se lee al elegirla (issue #7): espera a que la lectura termine, bien o mal.
+const leida = (page) => page.waitForFunction(() => { const p = document.querySelector("#leimos"); return p && !p.hidden && !p.textContent.includes("Leyendo"); });
 const foto = (page, n) => page.screenshot({ path: join(OUT, `${n}.png`), fullPage: true });
 
 // ---------- compra ----------
@@ -107,16 +109,17 @@ await caso("compra: pasos ocultos, monto en euros a tasa BCV, copiar plano, vali
   writeFileSync(png, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64"));
   await page.setInputFiles("#captura", png);
   a.equal(await page.isVisible("#preview"), true, "sin miniatura de la captura");
+  await leida(page);
   llamadas.length = 0;
   await page.click("#enviar");
   await page.waitForSelector("#e-cedula:not([hidden])");
-  a.ok(!llamadas.includes("storage"), "subió la captura con la cédula inválida");
+  a.ok(!llamadas.includes("crear_orden"), "registró con la cédula inválida");
   await foto(page, "03-compra-error-cedula");
 
   await page.fill("#cedula", "V12345678");
   await page.click("#enviar");
   await page.waitForURL(/orden\.html\?t=/);
-  a.ok(llamadas.includes("storage") && llamadas.includes("crear_orden"), "no subió ni registró");
+  a.ok(llamadas.includes("crear_orden") && !llamadas.includes("storage"), "no registró, o subió la captura dos veces");
   a.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("ticketera-orden")).numero), 13, "orden no guardada en el teléfono");
   await ctx.close();
 });
@@ -162,10 +165,11 @@ await caso("compra: un WhatsApp por entrada, error antes de subir, recarga los c
     ["0414-123.45.67", "+1 305 555 0100", "12345"], "la recarga no restauró los 3 WhatsApps");
   const png = join(tmpdir(), "captura-test.png");
   await page.setInputFiles("#captura", png);
+  await leida(page);
   llamadas.length = 0;
   await page.click("#enviar");
   await page.waitForSelector("#e-wa-3:not([hidden])");
-  a.ok(!llamadas.includes("storage") && !llamadas.includes("crear_orden"), "subió o registró con un WhatsApp de 5 dígitos");
+  a.ok(!llamadas.includes("crear_orden"), "registró con un WhatsApp de 5 dígitos");
   a.equal(await page.isHidden("#e-wa-2"), true, "marcó un número extranjero válido");
   await foto(page, "03b-compra-whatsapp-invalido");
   await page.fill("#wa-3", "04241112233");
@@ -185,7 +189,7 @@ await caso("compra: referencia de 5 caracteres marca error sin subir; con 6 env�
   await page.waitForSelector("#metodos input");
   await page.check("input[value=pago_movil_bnc]");
   await page.click("#ya-pague");
-  a.ok((await page.getAttribute("#referencia", "placeholder")).includes("últimos 6"), "el hint no pide los últimos 6");
+  a.equal(await page.getAttribute("#referencia", "placeholder"), "La leemos de la captura; revisa que sea la de tu pago.", "hint de la referencia");
   await page.fill("#referencia", "0-12.283"); // 5 tras normalizar: el cero a la izquierda no cuenta
   await page.selectOption("#pagador-banco", "BNC");
   await page.fill("#pagador-telefono", "04147654321");
@@ -194,11 +198,12 @@ await caso("compra: referencia de 5 caracteres marca error sin subir; con 6 env�
   await page.fill("#cedula", "V12345678");
   await page.fill("#telefono", "04141234567");
   await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
   llamadas.length = 0;
   await page.click("#enviar");
   await page.waitForSelector("#e-referencia:not([hidden])");
   a.ok((await page.textContent("#e-referencia")).includes("últimos 6"), "el error no pide los últimos 6");
-  a.ok(!llamadas.includes("storage") && !llamadas.includes("crear_orden"), "subió o registró con 5 caracteres");
+  a.ok(!llamadas.includes("crear_orden"), "registró con 5 caracteres");
   await foto(page, "03c-compra-referencia-corta");
   await page.fill("#referencia", "712283");
   await page.click("#enviar");
@@ -222,12 +227,13 @@ await caso("compra: pago móvil pide banco, teléfono y cédula del pagador; p_p
   await page.fill("#cedula", "V12345678");
   await page.fill("#telefono", "04141234567");
   await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
   llamadas.length = 0;
   await page.click("#enviar");
   await page.waitForSelector("#e-pagador-banco:not([hidden])");
   a.equal(await page.isVisible("#e-pagador-telefono"), true, "teléfono del pagador vacío sin error");
   a.equal(await page.isVisible("#e-pagador-cedula"), true, "cédula del pagador vacía sin error");
-  a.ok(!llamadas.includes("storage") && !llamadas.includes("crear_orden"), "subió o registró sin datos del pagador");
+  a.ok(!llamadas.includes("crear_orden"), "registró sin datos del pagador");
   await page.selectOption("#pagador-banco", "Mercantil");
   await page.fill("#pagador-telefono", "0414-765.43.21");
   await page.fill("#pagador-cedula", "v-9.876.543");
@@ -248,6 +254,90 @@ await caso("compra: pago móvil pide banco, teléfono y cédula del pagador; p_p
   await z.click("#ya-pague");
   a.equal(await z.isVisible("#pagador-titular"), true, "sin titular en Zelle");
   for (const id of ["pagador-banco", "pagador-telefono", "pagador-cedula", "pagador-id"]) a.equal(await z.isHidden(`#${id}`), true, `#${id} visible en Zelle`);
+  await ctx.close();
+});
+
+const OCR_PM = {
+  documentType: "pago_movil", amount: "9930.88", reference: "61540227", transactionDate: "2026-10-27", transactionTime: "21:03",
+  recipientName: "", editSignals: "", confidence: "high", senderName: "Ana Pérez", senderPhone: "", senderId: "", senderBank: "",
+};
+// Llena lo que no es referencia ni captura, para poder enviar.
+async function datosComprador(page, metodo) {
+  if (metodo === "zelle") await page.fill("#pagador-titular", "Ana Pérez");
+  else { await page.selectOption("#pagador-banco", "BNC"); await page.fill("#pagador-telefono", "04147654321"); await page.fill("#pagador-cedula", "9876543"); }
+  if (!(await page.inputValue("#nombre"))) await page.fill("#nombre", "Ana Pérez");
+  await page.fill("#cedula", "V12345678");
+  await page.fill("#telefono", "04141234567");
+}
+
+await caso("lectura: elegir la captura la sube, la lee y precarga la referencia con 'Leímos'; avisa el monto; no se sube dos veces", async () => {
+  let leidoPath = null, args = null;
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" }, revisar: {},
+    lectura: (b) => ((leidoPath = b.path), { ocr: OCR_PM, creada_en: "2026-10-27T21:04:00Z" }),
+    crear_orden: (b) => ((args = b), { numero: 17, token: TOKENS[0] }) });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  llamadas.length = 0;
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  a.ok(/^[0-9a-f-]{36}\.png$/.test(leidoPath ?? ""), `lectura sin el path subido: ${leidoPath}`);
+  a.equal(await page.inputValue("#referencia"), "61540227", "no precargó la referencia");
+  a.equal(await page.textContent("#leimos"), "Leímos: Bs 9.930,88 · ref 61540227 · 27/10 21:03");
+  a.equal(await page.locator("#avisos-lectura .aviso").count(), 0, "aviso con monto y método correctos");
+  await page.fill("#cantidad", "2");
+  await page.waitForSelector("#avisos-lectura .aviso");
+  a.ok((await page.textContent("#avisos-lectura")).includes("El monto leído (Bs 9.930,88) no es el de la orden"), "sin aviso de monto");
+  await foto(page, "03e-compra-lectura-monto");
+  await page.fill("#cantidad", "1");
+  await page.fill("#telefono", "04141234567");
+  await datosComprador(page, "pago_movil");
+  await page.click("#enviar");
+  await page.waitForURL(/orden\.html\?t=/);
+  a.equal(args.p_captura, leidoPath, "crear_orden recibió otra captura que la leída");
+  a.equal(llamadas.filter((c) => c === "storage").length, 1, "la captura se subió más de una vez");
+  await ctx.close();
+});
+
+await caso("lectura: Zelle con comprobante de pago móvil avisa el método y precarga el nombre; no pisa la referencia tecleada", async () => {
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" }, lectura: { ocr: OCR_PM, creada_en: "2026-10-27T21:04:00Z" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=zelle]");
+  await page.click("#ya-pague");
+  await page.fill("#referencia", "ZX778899");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  a.equal(await page.inputValue("#referencia"), "ZX778899", "la lectura pisó la referencia tecleada");
+  a.equal(await page.inputValue("#nombre"), "Ana Pérez", "no precargó el nombre en Zelle");
+  a.ok((await page.textContent("#avisos-lectura")).includes("El comprobante parece de pago móvil y elegiste Zelle"), "sin aviso de método");
+  await foto(page, "03f-compra-lectura-metodo");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.waitForFunction(() => !document.querySelector("#avisos-lectura").textContent.includes("parece de"));
+  await ctx.close();
+});
+
+await caso("lectura: si falla (429) avisa y el formulario se envía igual", async () => {
+  let args = null;
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" }, revisar: {},
+    lectura: { __status: 429, error: "demasiadas_lecturas" }, crear_orden: (b) => ((args = b), { numero: 18, token: TOKENS[1] }) });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=zelle]");
+  await page.click("#ya-pague");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  a.equal(await page.textContent("#leimos"), "No pudimos leer la captura; escribe la referencia");
+  a.equal(await page.inputValue("#referencia"), "", "precargó algo sin lectura");
+  await page.fill("#referencia", "ZX445566");
+  await datosComprador(page, "zelle");
+  await page.click("#enviar");
+  await page.waitForURL(/orden\.html\?t=/);
+  a.equal(args.p_referencia, "ZX445566");
   await ctx.close();
 });
 

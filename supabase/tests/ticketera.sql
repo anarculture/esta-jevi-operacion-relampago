@@ -321,7 +321,36 @@ begin
   assert false, 'anon puede marcar avisos';
 exception when insufficient_privilege then null;
 end $$;
+-- Lecturas del OCR (issue #7): solo la función `lectura` (service role) las toca.
+do $$
+begin
+  perform * from lecturas;
+  assert false, 'anon puede leer lecturas';
+exception when insufficient_privilege then null;
+end $$;
+do $$
+begin
+  perform reservar_lectura('11111111-1111-1111-1111-111111111111.png', '203.0.113.1');
+  assert false, 'anon puede reservar lecturas';
+exception when insufficient_privilege then null;
+end $$;
 reset role;
+
+-- reservar_lectura: una lectura por path, 10 por IP y 200 en total por hora.
+do $$
+begin
+  assert reservar_lectura('lec-a.png', 'ip-prueba') ->> 'estado' = 'nueva', 'primera reserva';
+  assert reservar_lectura('lec-a.png', 'ip-prueba') ->> 'estado' = 'pendiente', 'reserva sin OCR no quedó pendiente';
+  update lecturas set ocr = '{"reference": "61540227"}' where path = 'lec-a.png';
+  assert reservar_lectura('lec-a.png', 'otra-ip') ->> 'estado' = 'guardada', 'path leído no devuelve la guardada';
+  assert reservar_lectura('lec-a.png', 'otra-ip') -> 'ocr' ->> 'reference' = '61540227', 'la guardada sin ocr';
+  insert into lecturas (path, ip) select 'lec-ip-' || g, 'ip-prueba' from generate_series(1, 9) g;
+  assert reservar_lectura('lec-b.png', 'ip-prueba') ->> 'estado' = 'limite', 'la lectura 11 de una IP pasó el límite';
+  assert reservar_lectura('lec-b.png', 'ip-otra') ->> 'estado' = 'nueva', 'el límite de una IP frenó a otra';
+  insert into lecturas (path, ip, creada_en) select 'lec-vieja-' || g, 'ip-prueba', now() - interval '61 minutes' from generate_series(1, 5) g;
+  insert into lecturas (path, ip) select 'lec-tot-' || g, 'ip-' || g from generate_series(1, 200) g;
+  assert reservar_lectura('lec-c.png', 'ip-nueva') ->> 'estado' = 'limite', 'el tope total por hora no frena';
+end $$;
 
 select 'OK ticketera.sql: ' || count(*) || ' órdenes creadas' from ordenes;
 rollback;

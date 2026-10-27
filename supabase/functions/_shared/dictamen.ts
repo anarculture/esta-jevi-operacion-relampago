@@ -6,6 +6,7 @@ export type Ocr = {
   amount: string;
   reference: string;
   transactionDate: string;
+  transactionTime?: string; // HH:MM impreso; se guarda para desempatar movimientos del mismo monto, no se coteja
   recipientName: string;
   recipientPhone: string;
   recipientId: string;

@@ -421,6 +421,10 @@ verify_jwt = false
 [functions.revisar]
 verify_jwt = false
 
+# Lectura de la captura al elegirla (issue #7): anónima, con límite por IP en reservar_lectura.
+[functions.lectura]
+verify_jwt = false
+
 [functions.admin]
 verify_jwt = false
 

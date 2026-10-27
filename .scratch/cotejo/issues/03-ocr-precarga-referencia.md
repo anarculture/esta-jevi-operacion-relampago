@@ -52,10 +52,25 @@ Decisiones congeladas:
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done (27-oct-2026, rama `cotejo`, stack local `supabase_db_cotejo` en 57321)
 
-- [ ] `API=… DB_CONTAINER=… node supabase/tests/lectura.mjs` sale 0: segunda llamada con el mismo `path` devuelve la misma `creada_en`; la respuesta no trae `recipientPhone` ni `recipientId`; la llamada 11 desde la misma IP responde 429; tras `crear_orden` y `revisar`, `ordenes.ocr` es igual a `lecturas.ocr` y el OCR se llamó una sola vez (contador en el test por `creada_en` o por log).
-- [ ] `node ticketera/tests/ux.mjs` sale 0 con los casos: elegir captura → `lectura` recibe el `path` subido, `referencia` queda con el valor leído y aparece "Leímos:"; con método Zelle y lectura `pago_movil` aparece el aviso de método; referencia tecleada antes de la lectura no cambia; `lectura` con error deja enviar.
-- [ ] `deno test supabase/functions/` sale 0 e incluye un test de que `SCHEMA.required` contiene `transactionTime`.
-- [ ] `docker exec -i <DB_CONTAINER> psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 con el assert: `set role anon; select * from lecturas` lanza `insufficient_privilege` (o `permission denied`).
-- [ ] `node supabase/tests/flujo.mjs <imagen.png>`, `auto-aprobar.mjs`, `avisos.mjs`, `portero.mjs` siguen saliendo 0.
+- [x] `API=… DB_CONTAINER=… node supabase/tests/lectura.mjs` sale 0: segunda llamada con el mismo `path` devuelve la misma `creada_en`; la respuesta no trae `recipientPhone` ni `recipientId`; la llamada 11 desde la misma IP responde 429; tras `crear_orden` y `revisar`, `ordenes.ocr` es igual a `lecturas.ocr` y el OCR se llamó una sola vez (contador en el test por `creada_en` o por log). Evidencia: `ok  lectura: ref 000071239946, hora 22:41; la segunda devuelve la guardada` · `ok  la lectura 11 de una IP en una hora responde 429` · `ok  revisar reutilizó la lectura` · `OK lectura.mjs`. El test marca la lectura guardada y exige la marca en `ordenes.ocr`; con `revisar` del 02 falla con `revisar volvió a llamar al OCR en vez de usar la lectura`. Las 10 lecturas previas de la IP se siembran por SQL para no pagar 10 OCR.
+- [x] `node ticketera/tests/ux.mjs` sale 0 con los casos: elegir captura → `lectura` recibe el `path` subido, `referencia` queda con el valor leído y aparece "Leímos:"; con método Zelle y lectura `pago_movil` aparece el aviso de método; referencia tecleada antes de la lectura no cambia; `lectura` con error deja enviar. Evidencia: `ok  lectura: elegir la captura la sube, la lee y precarga la referencia con 'Leímos'; avisa el monto; no se sube dos veces` · `ok  lectura: Zelle con comprobante de pago móvil avisa el método y precarga el nombre; no pisa la referencia tecleada` · `ok  lectura: si falla (429) avisa y el formulario se envía igual` · `OK ux.mjs`.
+- [x] `deno test supabase/functions/` sale 0 e incluye un test de que `SCHEMA.required` contiene `transactionTime`. Evidencia: `ok | 17 passed | 0 failed | 1 ignored` (`el esquema pide la hora y los datos del emisor`, `lectura: la respuesta no trae los datos de la cuenta de destino`).
+- [x] `docker exec -i <DB_CONTAINER> psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 con el assert: `set role anon; select * from lecturas` lanza `insufficient_privilege` (o `permission denied`). Evidencia: `OK ticketera.sql: 48 órdenes creadas`; con `grant select on lecturas to anon` falla con `ERROR: anon puede leer lecturas`. También: anon no ejecuta `reservar_lectura`; una lectura por path, 10 por IP y 200 en total por hora.
+- [x] `node supabase/tests/flujo.mjs <imagen.png>`, `auto-aprobar.mjs`, `avisos.mjs`, `portero.mjs` siguen saliendo 0. Evidencia: `OK flujo: orden #110 aprobada, 2 entradas` · `OK auto-aprobar.mjs` · `OK avisos.mjs · orden #116` · `OK portero: orden #118, 14 ingresadas de 62 aprobadas`. Smoke en 8793: 200 con "Tu WhatsApp" y "Leímos".
+
+Decisiones de implementación:
+- El límite vive en `reservar_lectura` (SQL, con candado): reserva el path antes de gastar OCR, así
+  dos pedidos simultáneos no pasan el tope y una lectura fallida cuenta igual. Además del tope por
+  IP hay un tope total de 200 por hora: el primer valor de `x-forwarded-for` lo puede escribir el
+  cliente, y el tope total acota el gasto aunque alguien rote la IP.
+- La captura va antes que la referencia en el formulario: al elegirla se lee y llena el campo de abajo.
+- El hint del ticket 03 reemplaza al del 01 ("al menos los últimos 6"); la regla de 6 sigue en
+  `validar`, en `crear_orden` y en el mensaje de error.
+- `serve` pasa el `Request` al handler para leer la IP; las demás funciones no cambian.
+- `OCR_MODEL` se lee al llamar al OCR y no al importar `ocr.ts`: `deno test` corre sin `--allow-env`.
+
+Autocrítica: una lectura que falló deja el path en `pendiente` (409) para siempre; el comprador ve
+"No pudimos leer la captura" y teclea, y `revisar` vuelve a leer al registrar la orden. Las capturas
+que se suben al elegirlas y no terminan en compra quedan huérfanas en el bucket (ya pasaba).
