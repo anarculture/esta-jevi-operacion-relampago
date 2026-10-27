@@ -23,7 +23,7 @@ Decisiones congeladas:
   la ticketera en la raíz). Con cambios ajenos sin commit en el checkout principal, merge con
   `git merge-tree --write-tree` + `git commit-tree` y push del SHA.
 - Prueba real: orden de prueba creada desde la página publicada con 1 entrada y el WhatsApp de
-  Mau, aprobada desde el panel (no hace falta esperar a la IA), `hermes cron resume` en la VM,
+  Mau, aprobada desde el panel (no hace falta esperar a la IA), reanudar el cron de vytas en la VM,
   y Mau confirma el mensaje. Luego borrado con SQL (`entradas` y `ordenes` de esa referencia).
   **No se avisa a ninguna entrada real** durante la prueba: antes de reanudar el cron,
   `pendientes` en producción debe devolver solo la de prueba (las históricas quedaron avisadas
@@ -36,7 +36,7 @@ Decisiones congeladas:
 - [ ] `supabase migration list --linked --project-ref ptbzdepejxxlavqfyepw` muestra la migración nueva aplicada.
 - [ ] Con `~/.config/sindicato-baba/pm_clave`, `POST …/functions/v1/avisos` `{accion:"pendientes"}` responde 200 y, antes de la prueba, lista vacía.
 - [ ] `python3 -c` contra `https://postropicalia.com/sindicato-baba/index.html` encuentra "Tu WhatsApp" (reintentar hasta 5 min tras el push).
-- [ ] `ssh aios-vm 'hermes cron list'` muestra el job activo (no en pausa).
+- [ ] El listado de crons de vytas en la VM muestra el job activo (no en pausa).
 - [ ] La orden de prueba aparece en `pendientes`, y tras ≤ 2 min `cola` de `admin` la muestra con `avisada_en` no nulo; Mau confirma que recibió el mensaje de vytas (gate HITL).
 - [ ] Tras el borrado, `select count(*) from ordenes where referencia like 'PRUEBAAVISO%'` imprime 0.
 - [ ] `git grep -n "$(cat ~/.config/sindicato-baba/pm_clave)"` no encuentra nada (sale 1).

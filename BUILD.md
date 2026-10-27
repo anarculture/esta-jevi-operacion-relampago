@@ -27,7 +27,7 @@ Spec: https://github.com/anarculture/sindicato-baba/issues/2 (léela completa an
    `supabase functions serve --env-file supabase/functions/.env`. Si el log muestra error de
    arranque, arréglalo antes de seguir.
 5. Herramientas que ya están en la máquina y bastan: `node` (trae `fetch` y `WebSocket`),
-   `deno`, `google-chrome`, `supabase` CLI, `gh`, `zenity`, `ssh aios-vm`. No instales deps nuevas.
+   `deno`, `google-chrome`, `supabase` CLI, `gh`, `zenity`, `ssh` a la VM. No instales deps nuevas.
 
 ## Tu rol
 
@@ -154,7 +154,7 @@ Todos `[x]`, build + test verdes, `functions serve` arranca, smoke pasa. Al cerr
 
 - Las claves (`PM_CLAVE`, `ADMIN_CLAVE`, service role) nunca en el repo, en commits, en logs ni
   en el chat. La de producción vive solo en el secreto de Supabase, `~/.config/sindicato-baba/pm_clave`
-  (600), `~developer/.hermes/.env` y el diálogo zenity a Mau.
+  (600), el home de vytas y el diálogo zenity a Mau.
 - Las migraciones existentes no se editan; todo cambio de esquema va en una migración nueva.
 - RLS activado en toda tabla nueva; `anon` no lee ni escribe el estado de la plataforma.
 - `ordenes`, `entradas`, `config` y las funciones `admin`, `revisar` y `tasa` no se tocan.

@@ -60,7 +60,7 @@ cercano y la fiesta del jueves 29.
 7b. **Sistema · aviso al aprobarse.** Al aprobarse la orden, cada entrada recibe en su WhatsApp
     un mensaje con el enlace a su QR, enviado desde el número de vytas (nunca desde el de
     Mau), con el texto armado por el servidor. Las entradas anteriores al cambio no reciben
-    aviso. *Hecho (27-oct): función `avisos`, cron `avisos-entradas` en `aios-vm`.*
+    aviso. *Hecho (27-oct): función `avisos`, avisos de vytas en marcha.*
 7c. **Admin · estado del aviso y reenvío.** Como Mau, veo por entrada si el aviso salió, a qué
     hora o con qué error, y puedo reenviarlo corrigiendo el número. *Hecho (27-oct):
     `admin.html`, acción `reenviar_aviso`.*

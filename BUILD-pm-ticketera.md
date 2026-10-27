@@ -44,8 +44,8 @@ son solo referencia de estilo y de evidencia.
    en Node. `grep` es `rg`: sintaxis de ripgrep (`-e` por patrón, `-F` para literal). Los
    comandos que escriben en producción (`db push`, `functions deploy`, `git push`) suelen quedar
    bloqueados por el hook de permisos: no los rodees, anótalos en `## BLOQUEADO` (ticket 04).
-   `ssh aios-vm` funciona sin contraseña; el usuario allí es `developer`, Hermes vive en
-   `~/.hermes` y no hay `rg` (usa `grep`).
+   `ssh` a la VM funciona sin contraseña; el usuario allí es `developer`, Hermes vive en
+   el home de vytas y no hay `rg` (usa `grep`).
 5. Secretos: nunca imprimas `PM_CLAVE`, `ADMIN_CLAVE` ni claves de API en la salida, en commits
    ni en mensajes; léelos de archivos y pásalos por variables de entorno.
 

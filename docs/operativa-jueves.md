@@ -63,11 +63,9 @@ escriben en producción los corre Mau con `!` en Claude Code (el hook se los nie
 - **La IA aprueba lo que no debe, o se quiere revisar todo a mano**: apagar la aprobación automática.
   `!supabase db query --linked --project-ref ptbzdepejxxlavqfyepw "update config set auto_aprobar = false"`.
   Todo pasa a "Por revisar"; volver con `= true`.
-- **Avisos que no llegan**: en `aios-vm`, `ssh aios-vm '~/.local/bin/hermes cron list'` debe mostrar
-  `avisos-entradas [active]` con "Last run … ok" del último minuto. Si no: `ssh aios-vm 'systemctl --user
-  restart hermes-gateway.service'` y luego `hermes cron resume f2e9920487c7`. Pausar los avisos:
-  `hermes cron pause f2e9920487c7`. Lo pendiente de avisar se ve con la función `avisos`
-  (`accion: pendientes`, clave PM).
+- **Avisos que no llegan**: revisar en el panel qué entradas siguen sin aviso (función `avisos`,
+  `accion: pendientes`, clave PM). Interruptor técnico (revisar, reiniciar, pausar o reanudar los
+  avisos de vytas): pídeselo a Claude (detalle en la copia privada del manual).
 - **Se cayó la tasa (pago móvil bloqueado)**: la página sigue vendiendo en Zelle y Binance. Para
   destrabar pago móvil, poner la tasa a mano con el valor del BCV del día:
   `!supabase db query --linked --project-ref ptbzdepejxxlavqfyepw "update config set tasa_eur = <euros en Bs>,
@@ -78,7 +76,7 @@ escriben en producción los corre Mau con `!` en Claude Code (el hook se los nie
   descargar la lista otra vez. Lo que ya entró está en el servidor, no en el teléfono.
 - **Se filtró una clave**: regenerar el secreto en Supabase (`supabase secrets set ADMIN_CLAVE=…` /
   `PORTERO_CLAVE` / `PM_CLAVE`), guardar el archivo 600 nuevo y volver a escribirla en el teléfono.
-  La de PM también vive en el `.env` de vytas en `aios-vm`.
+  La de PM también la usa vytas: pídele a Claude que la actualice allá (detalle en la copia privada del manual).
 - **Deshacer una aprobación equivocada**: no hay botón. Por SQL, `update ordenes set estado = 'rechazada',
   rechazo_motivo = '…' where numero = N` deja las entradas inválidas en la puerta; el aviso ya enviado no
   se retira (escribirle al comprador).

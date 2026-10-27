@@ -19,7 +19,7 @@ Decisiones congeladas:
   fuera de la ticketera" no incluyan ventas que la ticketera ya cuenta (la orden #2 de Johan está
   en la ticketera como Zelle). Si las incluye, las resta él desde la plataforma; el agente no
   edita el estado compartido.
-- Skill de vytas: `~developer/.hermes/skills/plataforma-sindicato-baba/SKILL.md` en `aios-vm` ya
+- Skill de vytas: `plataforma-sindicato-baba/SKILL.md` en el home de vytas (en la VM) ya
   trae la regla (línea "Las ventas de la ticketera no se registran a mano … cuántas llevamos =
   `ticketera.aprobadas.entradas` + `real.sold`"). Solo se verifica; no se edita ni se reinicia
   nada en la VM.
@@ -39,7 +39,7 @@ verdes) e hizo `git push origin HEAD:vm/evento-pm-v2` → `081e1a9..aee5dc6`.
 - [x] `supabase migration list --linked --project-ref ptbzdepejxxlavqfyepw` muestra la migración nueva aplicada en remoto y ninguna pendiente. → `{"local":"20261027200000","remote":"20261027200000",...}`, sin ninguna con `remote` vacío.
 - [x] `leer` en producción (POST a `https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm` con `PM_CLAVE` por variable de entorno) responde 200 con `ticketera.aprobadas.entradas` ≥ 1 y `consultado_en` de hoy; con clave mala responde 401. → `leer 200 version 14`, `aprobadas {"ordenes":3,"entradas":5,"usd_cents":4000}`, `consultado_en 2026-10-27T06:20:35Z`, clave mala `401`.
 - [x] `https://postropicalia.com/sindicato-baba/pm/index.html` responde 200 y contiene "fuera de la ticketera"; `https://postropicalia.com/sindicato-baba/pm/app.js` contiene "Sin conexión con la ticketera". → `index 200 fuera de la ticketera: True | app.js Sin conexión: True | ticketeraValida: True` (es el commit aee5dc6).
-- [x] `ssh aios-vm 'grep -c "ticketera.aprobadas.entradas" ~/.hermes/skills/plataforma-sindicato-baba/SKILL.md'` imprime 1 o más. → `1`.
+- [x] `grep -c "ticketera.aprobadas.entradas"` sobre el skill `plataforma-sindicato-baba` del home de vytas (en la VM) imprime 1 o más. → `1`.
 - [x] `git grep -n "$(cat ~/.config/sindicato-baba/pm_clave)"` sale 1 (la clave no está en el repo). → corrido como `git grep -c -F -f ~/.config/sindicato-baba/pm_clave` (misma búsqueda, sin poner la clave en la línea de comandos): exit 1.
 - [x] Mau confirma (una pregunta) que el registro manual de la plataforma no duplica la orden #2 y que la columna Ticketera en `/pm/` coincide con el panel admin. → Doble conteo: Mau "ok" (v14 con `real.sold = 0`). Coincidencia con el panel: el bloque se calcula en el servidor desde la misma tabla `ordenes` que lee el panel. El agente no tiene permiso para leer la cola de `admin` (se denegó el uso de `ADMIN_CLAVE`), así que la comparación visual en `/pm/` → Ventas contra el panel queda para Mau.
 

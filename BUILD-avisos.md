@@ -5,7 +5,7 @@
 - Último verde: 04 · 2026-10-27 (01 41ac3bc+e1d993c · 02 dfd31cf+be11f7c · 03 7c1606f · 04 1c04bbf+921b2d5; merges de `ticketera` en 46873d1 y bf74878) · 05: migraciones 20261027120000-120300 aplicadas, `revisar admin avisos` desplegadas, prueba PRUEBAAVISO1 (#9) avisada 00:41:46 y borrada (count 0), `git grep` de PM_CLAVE sale 1.
 - Verificación independiente (01–04): 17 AC PASS, 04.3 N/A (HITL ya confirmado); falsabilidad ROJO en 01, 02 y 03, N/A en los asserts SQL (la base ya tiene las migraciones). Code review: 3 hallazgos de corrección arreglados (e1d993c, be11f7c); los de calidad van al reporte final.
 - Gates: build ✅ (sin build) · test ✅ SQL (en `supabase_db_avisos`; la compartida la recrea otro build), ux, deno, flujo, auto-aprobar, avisos, dry-run del script · smoke ✅ 8790 "Tu WhatsApp"
-- VM: script `~/.hermes/scripts/avisos-entradas.sh`, `AVISOS_URL` en `~/.hermes/.env`, sección en el skill `plataforma-sindicato-baba`, cron `avisos-entradas` (f2e9920487c7) **activo** desde 2026-10-27 00:41.
+- VM: script de avisos y `AVISOS_URL` en el home de vytas, sección en el skill `plataforma-sindicato-baba`, cron `avisos-entradas` (<id del cron>) **activo** desde 2026-10-27 00:41.
 - Bloqueado: nada.
 - Servicios propios abajo (stack `avisos`, `functions serve`, `http.server` 8790). El worktree se queda porque los comandos de `## BLOQUEADO` corren desde ahí. `/f5` y `ExitWorktree` quedan para el Done global, después del 05.
 - Rama de trabajo: `worktree-agent-af9623a6e11453d53` (worktree `.claude/worktrees/agent-af9623a6e11453d53`; base: rama del portero ya publicada en `origin/vm/evento-pm-v2` + `git merge ticketera`)
@@ -38,8 +38,8 @@ Otros builds en paralelo en este repo: `BUILD.md` (plataforma compartida, issue 
    - Smoke: `python3 -m http.server 8787 --bind 127.0.0.1` desde el worktree; `index.html` de la ticketera responde 200 y contiene "Tu WhatsApp".
 4. Hooks del entorno: `curl`/`wget` están redirigidos; usa `python3 -c` con `urllib` o `fetch`
    en Node. Los comandos que escriben en producción pueden quedar bloqueados por el hook de
-   permisos: no los rodees, anótalos en `## BLOQUEADO` (ticket 05). `ssh aios-vm` funciona sin
-   contraseña; el usuario allí es `developer` y Hermes vive en `~/.hermes`.
+   permisos: no los rodees, anótalos en `## BLOQUEADO` (ticket 05). `ssh` a la VM funciona sin
+   contraseña; el usuario allí es `developer` y Hermes vive en el home de vytas.
 5. Secretos: nunca imprimas `PM_CLAVE`, `ADMIN_CLAVE` ni claves de API en la salida, en commits
    ni en mensajes; léelos de archivos y pásalos por variables de entorno.
 
@@ -51,7 +51,7 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 - Un WhatsApp por entrada; el primero es el del comprador y sigue en `ordenes.telefono`.
 - `coincide` aprueba sola; `dudoso` y `no_coincide` van a la cola de Mau; interruptor
   `config.auto_aprobar`.
-- Los avisos salen del número de vytas (`hermes send` en `aios-vm`), nunca del de Mau.
+- Los avisos salen del número de vytas (el envío de vytas, en la VM), nunca del de Mau.
 - El texto del aviso lo arma el servidor (una sola fuente); lleva enlace, no PNG.
 - Las entradas anteriores a la migración quedan avisadas por backfill: nunca reciben mensaje.
 - Las RPC anónimas devuelven el WhatsApp enmascarado (4 dígitos); el completo solo con clave.
@@ -92,7 +92,7 @@ puede seguir un agente con estos permisos o Mau):
    avisadas las históricas). Si trae algo, **no** reanudes el cron.
 5. En https://postropicalia.com/sindicato-baba/index.html, compra 1 entrada con referencia
    `PRUEBAAVISO1` y el WhatsApp de Mau (04145287337), y apruébala desde el panel.
-6. `pendientes` → solo esa entrada. Entonces `! ssh aios-vm '~/.local/bin/hermes cron resume f2e9920487c7'`.
+6. `pendientes` → solo esa entrada. Entonces reanudar el cron de vytas (<id del cron>) en la VM.
 7. En ≤ 2 min la `cola` de `admin` la muestra con `avisada_en`, y Mau confirma el mensaje de vytas.
 8. Borrado: `! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/agent-af9623a6e11453d53 && supabase db query --linked -f supabase/manual/borrar-prueba-aviso.sql` (la última línea imprime 0).
 9. `git grep -n "$(cat ~/.config/sindicato-baba/pm_clave)"` sale 1.
