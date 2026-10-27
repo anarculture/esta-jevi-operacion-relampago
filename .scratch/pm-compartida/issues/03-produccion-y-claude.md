@@ -42,8 +42,12 @@ Notas del agente:
   "ci: publicar la ticketera como raíz de Pages") publica Pages con un workflow: la ticketera en la
   raíz y la plataforma PM en `pm/`. `https://anarculture.github.io/sindicato-baba/app.js` ahora da
   404 y la plataforma vive en `https://anarculture.github.io/sindicato-baba/pm/`. El AC de Pages se
-  comprueba en `.../sindicato-baba/pm/app.js` (mismo check, ubicación vigente). El `localStorage` de
-  Mau no se pierde: es por origen (`anarculture.github.io`), no por ruta.
+  comprueba en `.../sindicato-baba/pm/app.js` (mismo check, ubicación vigente). **Corrección:** esta nota
+  decía que el `localStorage` de Mau no se perdía; es falso. `anarculture.github.io` redirige (301) a
+  `postropicalia.com`, que es otro origen: los datos de Mau quedaron en el `localStorage` del origen
+  viejo (Firefox, savedAt 01:09Z) y su primera conexión subió la plantilla como versión 1. El
+  coordinador recuperó el estado desde el disco (`~/Downloads/sindicato-baba-respaldo-recuperado.json`,
+  pasa `parseBackup`) para que Mau lo importe desde la página.
 - `supabase migration list --linked` antes de aplicar: `20261024000000` y `20261026000000` aplicadas
   en remoto, `20261026120000` pendiente; `db push --dry-run` aplicaría solo
   `20261026120000_pm_compartida.sql`.

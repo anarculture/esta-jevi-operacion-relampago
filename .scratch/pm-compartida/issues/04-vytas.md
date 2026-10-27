@@ -46,9 +46,18 @@ Decisiones congeladas:
 Notas del agente:
 
 - Skill `~developer/.hermes/skills/plataforma-sindicato-baba/SKILL.md` (un solo archivo, formato de
-  los demás: carpeta + `SKILL.md` con frontmatter `name`/`description`). Define una función `pm()` de
-  una línea que lee `PM_CLAVE` de `~/.hermes/.env` en cada llamada: **no hace falta reiniciar
-  `hermes-gateway.service`** (systemd de usuario, arrancado el 22-oct, que no vería una variable
-  nueva del `.env` sin reinicio). Se evita tocar el gateway en vivo a 3 días de la fiesta.
+  los demás: carpeta + `SKILL.md` con frontmatter). Primera versión: `pm()` leía la clave del `.env`
+  de Hermes → **falla 1 del AC5**: Hermes tiene una regla de denegación deliberada de Mau
+  (`'*.hermes/.env*'` en `config.yaml`) y vytas respondió "el acceso a la clave está bloqueado". La
+  regla no se tocó. Arreglo: `pm()` usa `$PM_CLAVE` del entorno y el frontmatter la declara en
+  `required_environment_variables` (passthrough nativo de Hermes); diagnóstico con `hermes -z` →
+  `presente`.
 - `PM_CLAVE` se agregó a `~/.hermes/.env` por `ssh` con stdin (nunca en argumentos ni en pantalla);
-  el archivo sigue en 600.
+  el archivo sigue en 600. Como Hermes carga el `.env` al arrancar, se reinició el gateway con
+  `systemctl --user restart hermes-gateway.service` (arrancaba desde el 22-oct): activo, WhatsApp
+  "Bridge ready (status: connected)".
+- Pausa humana: zenity a las 02:59Z; versión `navegador` a las 03:07:39Z. **Pero esa v1 era la
+  plantilla**: los datos de Mau estaban en el `localStorage` del origen viejo (ver nota del 03). Mi
+  chequeo "no es plantilla" dio falso negativo porque comparaba JSON serializado y jsonb reordena
+  las claves (lo detectó el coordinador). La prueba de escritura de vytas (v2, 03:08:11Z) es igual a
+  la v1. Mau importa el respaldo recuperado desde la página: esa será la v3 o posterior.
