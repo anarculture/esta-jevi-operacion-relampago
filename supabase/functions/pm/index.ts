@@ -11,7 +11,7 @@ const CLAVE = Deno.env.get("PM_CLAVE") ?? "";
 const AUTORES = ["navegador", "claude", "vytas"];
 const VACIO = { version: 0, guardado_en: null, autor: null, estado: null };
 
-// Objeto plano a propósito: otra spec le añadirá un bloque `ticketera`; los clientes ignoran lo que no conocen.
+// Objeto plano a propósito: `leer` le adjunta el bloque `ticketera`; los clientes ignoran lo que no conocen.
 async function leer(version?: number) {
   let q = db.from("pm_versiones").select("version, guardado_en, autor, estado");
   q = version === undefined ? q.order("version", { ascending: false }).limit(1) : q.eq("version", version);
@@ -20,14 +20,26 @@ async function leer(version?: number) {
   return data;
 }
 
+// Totales de la ticketera al momento (spec #3); nunca se guardan. Si fallan, `leer` responde igual con null.
+async function ticketera() {
+  try {
+    const { data, error } = await db.rpc("resumen_ticketera");
+    if (error) throw error;
+    return data;
+  } catch (e) {
+    console.error("resumen_ticketera", e);
+    return null;
+  }
+}
+
 serve(async ({ clave, accion, version, base, autor, estado }) => {
   if (CLAVE.length < 16 || clave !== CLAVE) return json({ error: "clave_invalida" }, 401);
 
   if (accion === "leer") {
-    if (version === undefined) return json((await leer()) ?? VACIO);
+    if (version === undefined) return json({ ...((await leer()) ?? VACIO), ticketera: await ticketera() });
     if (!Number.isInteger(version) || (version as number) < 1) return json({ error: "version_invalida" }, 400);
     const v = await leer(version as number);
-    return v ? json(v) : json({ error: "version_no_existe" }, 404);
+    return v ? json({ ...v, ticketera: await ticketera() }) : json({ error: "version_no_existe" }, 404);
   }
 
   if (accion === "versiones") {

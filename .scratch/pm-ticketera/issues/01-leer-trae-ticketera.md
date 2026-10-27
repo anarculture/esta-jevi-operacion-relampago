@@ -35,9 +35,19 @@ Decisiones congeladas:
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `node supabase/tests/pm-ticketera.mjs` sale 0 con los seis casos del spec en este orden: (1) sin órdenes, `leer` trae `ticketera` con todo en 0, los tres métodos presentes y `ultima_aprobacion: null`; (2) una orden de 2 entradas por pago móvil aprobada → `aprobadas.entradas = 2`, `usd_cents = 2000`, `por_metodo.pago_movil.bs` igual al `monto_bs` de la orden, `ultima_aprobacion` no nulo; (3) una en revisión y una rechazada no cuentan en `aprobadas` y solo la de revisión aparece en `en_revision`; (4) Zelle y Binance suman en su método con `bs: null`; (5) clave mala → 401 sin bloque; (6) `leer` con `version` histórica trae el mismo `ticketera` actual.
-- [ ] `docker exec -i <contenedor de base> psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 con un assert nuevo: `set role anon; select resumen_ticketera()` lanza `insufficient_privilege`.
-- [ ] `node supabase/tests/pm.mjs` sigue saliendo 0 (el contrato anterior de `leer`, `guardar` y `versiones` no cambió).
-- [ ] `deno test supabase/functions/` sale 0.
+- [x] `node supabase/tests/pm-ticketera.mjs` sale 0 con los seis casos del spec en este orden: (1) sin órdenes, `leer` trae `ticketera` con todo en 0, los tres métodos presentes y `ultima_aprobacion: null`; (2) una orden de 2 entradas por pago móvil aprobada → `aprobadas.entradas = 2`, `usd_cents = 2000`, `por_metodo.pago_movil.bs` igual al `monto_bs` de la orden, `ultima_aprobacion` no nulo; (3) una en revisión y una rechazada no cuentan en `aprobadas` y solo la de revisión aparece en `en_revision`; (4) Zelle y Binance suman en su método con `bs: null`; (5) clave mala → 401 sin bloque; (6) `leer` con `version` histórica trae el mismo `ticketera` actual.
+- [x] `docker exec -i <contenedor de base> psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/ticketera.sql` sale 0 con un assert nuevo: `set role anon; select resumen_ticketera()` lanza `insufficient_privilege`.
+- [x] `node supabase/tests/pm.mjs` sigue saliendo 0 (el contrato anterior de `leer`, `guardar` y `versiones` no cambió).
+- [x] `deno test supabase/functions/` sale 0.
+
+**Evidencia (stack local `pm-ticketera`, API 58321, tras `supabase db reset`):**
+
+- `node supabase/tests/pm-ticketera.mjs` → `OK pm-ticketera: 6 casos · aprobadas {"ordenes":3,"entradas":6,"usd_cents":6000}`. Con el `pm` anterior daba rojo: `leer sin bloque ticketera`.
+- `ticketera.sql` → `OK ticketera.sql: 9 órdenes creadas` con los asserts nuevos de `anon` y `authenticated` (`supabase/tests/ticketera.sql:244`).
+- `node supabase/tests/pm.mjs` → `OK pm: 8 casos del contrato y la carrera de guardados`; `avisos.mjs` → `OK avisos.mjs`.
+- `deno test supabase/functions/` → `ok | 13 passed | 0 failed | 1 ignored`.
+- Camino de falla, a mano: con `revoke execute ... from service_role`, `leer` responde `200 version 5 ticketera null` y deja `resumen_ticketera` en el log de funciones.
+- `/security-review`: sin hallazgos. El bloque solo lleva conteos y sumas (`supabase/migrations/20261027200000_resumen_ticketera.sql`); el test busca nombre, cédula, WhatsApp, referencia y `token` en el JSON y no los encuentra.
+- Notas: `pm-ticketera.mjs` supone `ordenes` vacía (corre después de `supabase db reset`, igual que `pm.mjs` supone `pm_versiones` vacía). `leer` hace dos consultas seguidas (versión y totales); `ponytail:` si la latencia importa, van en `Promise.all`. Riesgo de choque: el test crea órdenes con la firma actual de `crear_orden` (`p_whatsapps`); si el frente cotejo (#6/#7) cambia esa firma, el test se ajusta.
