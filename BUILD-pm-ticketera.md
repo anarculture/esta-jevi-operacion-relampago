@@ -1,11 +1,11 @@
 # BUILD: la plataforma del organizador lee las ventas de la ticketera
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: — (01 a 03 verdes; 04 en BLOQUEADO)
-- Último verde: 03 · commit 88974f4 · 27-oct-2026 (tras el rebase: 01 7f96a1a, 02 e327369, 03 88974f4)
-- Gates: build ✅ · test ✅ (pm, pm-ticketera, pm-modelo, ticketera.sql, avisos, flujo, ux, pm-navegador, deno) · smoke ✅
-- Bloqueado: 04 (gate HITL: pregunta a Mau sobre doble conteo + comandos de producción)
-- Rama de trabajo: `worktree-agent-a38d1f2148cd4d058` (desde `ticketera` 02c6117, rebasada sobre `origin/vm/evento-pm-v2` 39b1b46)
+- Ticket actual: — (Done global: 01 a 04 `[x]`)
+- Último verde: 04 · producción verificada · 27-oct-2026. Commits: 01 c01711a, 02 99fd477, 03 1045c3d + aee5dc6 (code review), 04 c417304 y el cierre
+- Gates: build ✅ · test ✅ (pm, pm-ticketera, pm-modelo, ticketera.sql, avisos, flujo, ux, pm-navegador, deno) · smoke ✅ · verificación independiente: 12/12 PASS, falibilidad ROJO-OK en 01, 02 y 03
+- Bloqueado: —
+- Rama de trabajo: `worktree-agent-a38d1f2148cd4d058` (desde `ticketera` 02c6117, rebasada sobre `origin/vm/evento-pm-v2` 081e1a9; empujada a `vm/evento-pm-v2` aee5dc6)
 - Servicios: stack propio `pm-ticketera` (config.toml local con skip-worktree): API `http://127.0.0.1:58321`, DB 58322, studio 58323, contenedor `supabase_db_pm-ticketera`; `supabase functions serve` en background
 
 Spec: https://github.com/anarculture/sindicato-baba/issues/3 (léela completa antes del ticket 01:
@@ -74,36 +74,13 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 - [x] 01 · `leer` trae el bloque `ticketera` · Bloqueado por: — · → .scratch/pm-ticketera/issues/01-leer-trae-ticketera.md · evidencia: `OK pm-ticketera: 6 casos`, `supabase/functions/pm/index.ts:39,42`, `/security-review` sin hallazgos
 - [x] 02 · El modelo puro suma la ticketera · Bloqueado por: — · → .scratch/pm-ticketera/issues/02-modelo-suma-ticketera.md · evidencia: `OK pm-modelo`, `app.js:432,447,513,967`; AC 2 enmendado (el comando literal ya salía 1 en 02c6117 por orden de claves, nota en el ticket)
 - [x] 03 · Ventas muestra "Ticketera" y "Fuera de la ticketera" · Bloqueado por: 01, 02 · → .scratch/pm-ticketera/issues/03-ventas-muestra-ticketera.md · evidencia: `OK pm-navegador: 10 casos` (7 a 10 nuevos), `app.js:967,1277,1294`, `index.html:364,368`
-- [ ] 04 · Producción · Bloqueado por: 03 · → .scratch/pm-ticketera/issues/04-produccion.md · BLOQUEADO (HITL, ver abajo); verificados sin desplegar: skill de vytas y clave fuera del repo
+- [x] 04 · Producción · Bloqueado por: 03 · → .scratch/pm-ticketera/issues/04-produccion.md · evidencia: migración `20261027200000` con `remote`, `leer` 200 con `aprobadas {"ordenes":3,"entradas":5,...}` y clave mala 401, `/pm/` publicado con los textos nuevos, skill de vytas `1`, `git grep` de la clave exit 1, Mau "ok" al doble conteo
 
 ## BLOQUEADO
 
-- **04 · Producción**: gate HITL. El ticket pide que Mau revise el doble conteo *antes* de desplegar, y los
-  tres comandos de producción le tocan a él. El agente no corrió nada que escriba en producción.
-  1. **Pregunta para Mau (antes de desplegar):** ¿el registro manual de `/pm/` ("Entradas vendidas fuera de
-     la ticketera" y "Cobrado fuera de la ticketera") deja afuera la orden #2 de Johan, que ya está en la
-     ticketera como Zelle? Dato leído hoy en producción (versión 10, autor claude, 05:12 UTC):
-     `real.sold = 0` y `ticketsCollectedCents = 0`, así que hoy el registro manual no la duplica. Si la anotó
-     en otra parte, la resta él desde la plataforma.
-  2. **Comandos, en este orden** (con `!` desde la sesión; ruta del worktree, rama rebasada sobre
-     `origin/vm/evento-pm-v2` 39b1b46, así que el push es fast-forward):
-     ```
-     ! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/agent-a38d1f2148cd4d058 && supabase db push --linked --project-ref ptbzdepejxxlavqfyepw --yes
-     ! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/agent-a38d1f2148cd4d058 && supabase functions deploy pm --project-ref ptbzdepejxxlavqfyepw
-     ! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/agent-a38d1f2148cd4d058 && git push origin HEAD:vm/evento-pm-v2
-     ```
-     `supabase db push --dry-run` ya corrió y solo sube `20261027200000_resumen_ticketera.sql`.
-     Ninguna otra función se despliega.
-  3. **Verificación después de desplegar** (AC del 04 que faltan):
-     - `supabase migration list --linked --project-ref ptbzdepejxxlavqfyepw` → `20261027200000` con `remote`.
-     - `leer` en producción, sin imprimir la clave:
-       `PM_CLAVE_PROD="$(cat ~/.config/sindicato-baba/pm_clave)" node -e 'const u="https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm",h={apikey:"sb_publishable_iN1zfxf9SYEg42123alZHQ_4c3UYh_D","Content-Type":"application/json"},p=c=>fetch(u,{method:"POST",headers:h,body:JSON.stringify({clave:c,accion:"leer"})});(async()=>{const r=await p(process.env.PM_CLAVE_PROD.trim()),d=await r.json();console.log(r.status,d.ticketera&&d.ticketera.aprobadas,d.ticketera&&d.ticketera.consultado_en,(await p("mala")).status)})()'`
-       → `200 { ordenes, entradas ≥ 1, usd_cents } <ISO de hoy> 401`.
-     - `/pm/` publicado (1 a 2 min después del push):
-       `python3 -c "import urllib.request as u; b=lambda p: u.urlopen('https://postropicalia.com/sindicato-baba/pm/'+p).read().decode(); print('fuera de la ticketera' in b('index.html'), 'Sin conexión con la ticketera' in b('app.js'))"` → `True True`.
-     - Mau abre `/pm/` → Ventas: la columna Ticketera coincide con el panel admin.
-  Ya verificados sin desplegar: regla en el skill de vytas (`grep -c` → `1`) y la clave fuera del repo
-  (`git grep -c -F -f ~/.config/sindicato-baba/pm_clave` → exit 1).
+(vacío) El 04 estuvo bloqueado por el gate HITL (doble conteo y comandos de producción). Mau respondió "ok",
+el coordinador corrió `db push` y `functions deploy pm`, y el agente hizo el push (081e1a9..aee5dc6). Detalle en
+`.scratch/pm-ticketera/issues/04-produccion.md`.
 
 ## Loop por ticket (lazy-fable)
 
