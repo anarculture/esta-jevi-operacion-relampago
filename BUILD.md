@@ -39,7 +39,11 @@ congeladas (no las reabras):
   y autor; una sola Edge Function `pm` con clave propia `PM_CLAVE`, distinta de `ADMIN_CLAVE`.
 - Contrato `pm`: `leer` (opcional `version`), `guardar` con `base`/`autor`/`estado`, `versiones`.
   401 clave mala, 409 base vieja (devuelve la vigente), 400 estado inválido con `errores`.
-  Autor ∈ `navegador`/`claude`/`vytas`. No hay acción de borrado.
+  Autor ∈ `navegador`/`claude`/`vytas`. No hay acción de borrado. La respuesta de `leer` es un
+  objeto plano extensible: otra spec (repintar-ticketera, bloqueada por 01 y 02) le añadirá un
+  bloque `ticketera` calculado al momento; los clientes ignoran claves que no conocen.
+- `real.sold` y `real.ticketsCollectedCents` son solo ventas fuera de la ticketera. La orden #2
+  está en la ticketera y **no se registra a mano** (decisión de Mau: evita doble conteo).
 - El servidor valida con `validateState` de `app.js` mediante una copia byte a byte en la carpeta
   compartida de funciones; el gate `cmp` la mantiene idéntica.
 - Navegador: sin clave, igual que hoy. Con clave: carga al abrir, sube lo local si el remoto está
@@ -55,7 +59,7 @@ congeladas (no las reabras):
 - [ ] 01 · Edge Function `pm` con su tabla y contrato HTTP · Bloqueado por: — · → .scratch/pm-compartida/issues/01-edge-function-pm.md
 - [ ] 02 · El navegador sincroniza con `pm` · Bloqueado por: 01 · → .scratch/pm-compartida/issues/02-navegador-sincroniza.md
 - [ ] 03 · Producción y acceso de Claude · Bloqueado por: 01, 02 · → .scratch/pm-compartida/issues/03-produccion-y-claude.md
-- [ ] 04 · vytas usa la plataforma y se registra la venta de la orden #2 · Bloqueado por: 03 · → .scratch/pm-compartida/issues/04-vytas-y-venta-orden-2.md
+- [ ] 04 · vytas usa la plataforma · Bloqueado por: 03 · → .scratch/pm-compartida/issues/04-vytas.md
 
 ## Gates
 

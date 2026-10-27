@@ -22,6 +22,9 @@ Decisiones congeladas para este ticket:
   funciones; el gate `cmp` la mantiene idéntica. `app.js` cambia lo mínimo para exponer el
   modelo en `globalThis.SindicatoBaba` también cuando no hay `document` ni `module` (Deno), sin
   cambiar lo que ya expone en Node y en el navegador.
+- La respuesta de `leer` es un objeto plano (`{ version, guardado_en, autor, estado }`), nunca un
+  array: otra spec (repintar-ticketera) le añadirá un bloque `ticketera` calculado al momento y no
+  guardado en las versiones. Los clientes ignoran claves que no conocen.
 - La comparación `base` contra versión vigente y la inserción no pueden intercalarse con otro
   guardado: dos guardados con la misma `base` → uno gana, el otro 409.
 - Test nuevo: script Node por HTTP al estilo de `supabase/tests/flujo.mjs` (fetch +

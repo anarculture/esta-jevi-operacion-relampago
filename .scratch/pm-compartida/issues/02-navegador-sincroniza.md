@@ -21,6 +21,8 @@ comporta exactamente como hoy. Comportamiento (sección "Navegador" del issue #2
 - La URL de la API sigue el patrón de `ticketera/comun.js`: local en `localhost`/`127.0.0.1`,
   producción `https://ptbzdepejxxlavqfyepw.supabase.co`, con la publishable key de cada uno.
 - Exportar e importar respaldo JSON siguen funcionando igual.
+- De la respuesta de `leer` el navegador usa solo `version` y `estado`; claves extra (como el
+  futuro bloque `ticketera`) no rompen la carga ni se guardan en el estado.
 
 Smoke automático aprobado por Mau: un script Node (sin dependencias nuevas; Node trae
 `WebSocket` y `fetch`) que levanta `google-chrome --headless=new --remote-debugging-port`,
