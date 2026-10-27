@@ -40,11 +40,13 @@ begin
   -- Datos del pagador (issue #6, punto 2): solo el panel los ve.
   assert ver_orden((r ->> 'token')::uuid)::text not like '%pagador%' and ver_orden((r ->> 'token')::uuid)::text not like '%9876543%'
      and ver_orden((r ->> 'token')::uuid)::text not like '%7654321%', 'ver_orden expone al pagador';
-  foreach err in array array['pm sin cédula', 'pm teléfono extranjero', 'pm sin banco', 'pm banco no texto', 'zelle sin titular', 'sin pagador', 'pagador no objeto'] loop
+  foreach err in array array['pm sin cédula', 'pm cédula corta', 'pm teléfono extranjero', 'pm sin banco', 'pm banco no texto', 'zelle sin titular', 'sin pagador', 'pagador no objeto'] loop
     begin
       case err
         when 'pm sin cédula' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
           '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "04247654321"}');
+        when 'pm cédula corta' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
+          '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "04247654321", "cedula": "V-1234"}');
         when 'pm teléfono extranjero' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
           '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "+1 305 555 0100", "cedula": "9876543"}');
         when 'pm sin banco' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
