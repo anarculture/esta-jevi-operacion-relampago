@@ -40,11 +40,13 @@ begin
   -- Datos del pagador (issue #6, punto 2): solo el panel los ve.
   assert ver_orden((r ->> 'token')::uuid)::text not like '%pagador%' and ver_orden((r ->> 'token')::uuid)::text not like '%9876543%'
      and ver_orden((r ->> 'token')::uuid)::text not like '%7654321%', 'ver_orden expone al pagador';
-  foreach err in array array['pm sin cédula', 'pm teléfono extranjero', 'pm sin banco', 'pm banco no texto', 'zelle sin titular', 'sin pagador', 'pagador no objeto'] loop
+  foreach err in array array['pm sin cédula', 'pm cédula corta', 'pm teléfono extranjero', 'pm sin banco', 'pm banco no texto', 'zelle sin titular', 'sin pagador', 'pagador no objeto'] loop
     begin
       case err
         when 'pm sin cédula' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
           '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "04247654321"}');
+        when 'pm cédula corta' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
+          '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "04247654321", "cedula": "V-1234"}');
         when 'pm teléfono extranjero' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
           '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "+1 305 555 0100", "cedula": "9876543"}');
         when 'pm sin banco' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
@@ -371,9 +373,13 @@ begin
   -- La ventana es de una hora: 10 lecturas de hace 61 minutos no frenan a esa IP.
   insert into lecturas (path, ip, ocr, creada_en) select 'lec-vieja-' || g, 'ip-vieja', '{}', now() - interval '61 minutes' from generate_series(1, 10) g;
   assert reservar_lectura('lec-d.png', 'ip-vieja') ->> 'estado' = 'nueva', 'lecturas de hace más de una hora cuentan';
-  -- Una reserva sin OCR de hace 3 minutos se libera: el reintento vuelve a reservar.
+  -- Una reserva sin OCR de hace 3 minutos admite reintento: la misma fila vuelve a contar desde ahora.
   update lecturas set creada_en = now() - interval '3 minutes' where path = 'lec-d.png';
-  assert reservar_lectura('lec-d.png', 'ip-vieja') ->> 'estado' = 'nueva', 'reserva colgada no se liberó';
+  assert reservar_lectura('lec-d.png', 'ip-vieja') ->> 'estado' = 'nueva', 'reserva colgada no admite reintento';
+  assert (select creada_en from lecturas where path = 'lec-d.png') = now(), 'el reintento no volvió a contar';
+  -- Las reservas fallidas siguen contando: 10 sin OCR de hace 3 minutos frenan a esa IP.
+  insert into lecturas (path, ip, creada_en) select 'lec-fallida-' || g, 'ip-fallida', now() - interval '3 minutes' from generate_series(1, 10) g;
+  assert reservar_lectura('lec-g.png', 'ip-fallida') ->> 'estado' = 'limite', 'las lecturas fallidas dejaron de contar';
   -- Total: se completa a 199 en la última hora; la 200 pasa y la 201 no.
   insert into lecturas (path, ip, ocr) select 'lec-tot-' || g, 'ip-' || g, '{}'
     from generate_series(1, 199 - (select count(*) from lecturas where creada_en > now() - interval '1 hour')) g;

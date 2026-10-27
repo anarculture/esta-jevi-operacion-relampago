@@ -1,8 +1,14 @@
 # BUILD: cotejo duro de comprobantes y lectura al subir la captura (issues #6 y #7)
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 04
-- Último verde: 03 · commit (ver `git log --oneline -1`) · 27-oct-2026
+- Ticket actual: ninguno. **Done global** 27-oct-2026: 01 a 03 verificados por un subagente fresco
+  (14 AC y 9 gates en PASS) y con prueba de falibilidad (9 sabotajes, los 9 en rojo); 04 desplegado
+  a las 03:30 por el General con el OK de Mau ("Deploy cotejo"), desde 13f0d4f.
+  Pendientes de Mau (afk): la compra de prueba `PRUEBACOTEJO1` con su borrado, y confirmar que el
+  formulario publicado le precargó la referencia desde su teléfono.
+  El `/code-review` del diff completo (8dfb7c6..HEAD) reabrió 03 y 02 con dos hallazgos de corrección,
+  ya corregidos en la rama y **sin desplegar** (ver `## BLOQUEADO`, "Correcciones del code-review final").
+- Último verde: 04 · commit (ver `git log --oneline -1`) · 27-oct-2026
 - Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: —
 - Rama de trabajo: `cotejo` (worktree `.claude/worktrees/alfa`, base 39b1b46 de `ticketera`)
@@ -82,11 +88,80 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 - [x] 01 · Unicidad por sufijo de la referencia · Bloqueado por: — · → .scratch/cotejo/issues/01-unicidad-por-sufijo.md
 - [x] 02 · Datos del pagador · Bloqueado por: 01 · → .scratch/cotejo/issues/02-datos-del-pagador.md
 - [x] 03 · El OCR precarga la referencia al subir la captura (y lee la hora) · Bloqueado por: 02 · → .scratch/cotejo/issues/03-ocr-precarga-referencia.md
-- [ ] 04 · Producción · Bloqueado por: 03 · → .scratch/cotejo/issues/04-produccion.md
+- [x] 04 · Producción (pendientes: compra de prueba y confirmación de Mau) · Bloqueado por: 03 · → .scratch/cotejo/issues/04-produccion.md
 
 ## BLOQUEADO
 
-(vacío)
+### Correcciones del code-review final: en la rama, sin desplegar (necesitan el OK de Mau)
+
+1. **03, el límite de `lectura` mentía.** `reservar_lectura` borraba a los 2 minutos las reservas sin
+   OCR, y al borrarse dejaban de contar para los topes. Migración nueva `20261027220000_lecturas_reintento.sql`:
+   la fila se conserva y el mismo path reintenta a los 2 minutos contando de nuevo. `lectura` suelta la
+   reserva solo si la captura no existe (no gastó OCR). Test: 10 reservas fallidas frenan a esa IP; con la
+   función desplegada da `ERROR: las lecturas fallidas dejaron de contar`.
+2. **02, cédula contra RIF.** La tolerancia aceptaba una cédula de 8 dígitos de otra persona que empezara
+   igual que una declarada de 7, y suprimía la duda del pagador. Ahora solo una lectura de 9 dígitos se
+   trata como RIF. Test nuevo en `dictamen.test.ts`; con la versión desplegada falla.
+
+Comandos, seguidos (no cambia ninguna firma: la página publicada sigue comprando durante el despliegue):
+
+```
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase db push --linked --dry-run
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase db push --linked --yes
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase functions deploy revisar lectura --project-ref ptbzdepejxxlavqfyepw
+```
+
+El dry-run debe listar solo `20261027220000_lecturas_reintento.sql`. Requiere el `supabase link` del paso 0
+de abajo si este worktree sigue sin enlazar. No hace falta push de página: `ticketera/` no cambia.
+
+### 04 · Producción: desplegado; quedan la compra de prueba y la confirmación de Mau
+
+Resuelto el 27-oct-2026 a las 03:30: Mau autorizó ("Deploy cotejo") y el General corrió los pasos 0 a
+5 desde un worktree fijado en 13f0d4f. Pasos 6, 7, 8 y 10 verificados. Quedan el 9 (compra de prueba y
+borrado) y el 11 (confirmación de Mau). Lo que sigue es el plan tal como se dejó escrito.
+
+
+No es el hook: el General pidió no desplegar hasta que Mau autorice. `crear_orden` cambia de firma
+(pide `p_pagador`): **entre el paso 2 y el paso 4 la página publicada vieja no puede comprar**. Pages
+tarda 1 a 2 min. Correrlos seguidos, fuera del horario de venta fuerte. Rama `cotejo` en el worktree
+`/home/acracia/Code/sindicato-baba/.claude/worktrees/alfa`. El push es fast-forward: la rama contiene
+`origin/vm/evento-pm-v2` (8dfb7c6). Este worktree no está enlazado a producción
+(`supabase/.temp/project-ref` no existe), por eso el paso 0. En `supabase/config.toml` quedan sin
+commitear el `project_id` y los puertos del stack local; no afectan a `--linked` ni a `--project-ref`.
+
+```
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase link --project-ref ptbzdepejxxlavqfyepw
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase db query --linked "select tipo, right(referencia, 6) as sufijo, count(*) from ordenes group by 1, 2 having count(*) > 1"
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase db push --linked --dry-run
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase db push --linked --yes
+! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase functions deploy revisar admin lectura --project-ref ptbzdepejxxlavqfyepw
+! git -C /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa push origin HEAD:vm/evento-pm-v2
+```
+
+- Paso 0 (`link`): enlaza el worktree; con la sesión del CLI de Mau no hace falta clave.
+- Paso 1 (assert de la migración 01 contra producción): debe dar **0 filas**. Si trae alguna, no sigas:
+  dos órdenes del mismo tipo terminan igual y la migración fallaría; se decide a mano.
+- Paso 2 (`--dry-run`): debe listar exactamente `20261027210000_sufijo_referencia.sql`,
+  `20261027210100_pagador.sql` y `20261027210200_lecturas.sql`.
+- Pasos 3 a 5: migraciones, funciones (`revisar` reutiliza la lectura, `admin` devuelve `pagador`,
+  `lectura` es nueva con `verify_jwt = false`) y página. Secretos: `OPENROUTER_API_KEY` y
+  `ADMIN_CLAVE` ya existen en producción; no hace falta `secrets set`.
+
+Verificación después (Mau o un agente con permisos de producción):
+
+6. `supabase migration list --linked` muestra las tres aplicadas y ninguna pendiente.
+7. `https://postropicalia.com/sindicato-baba/index.html` responde 200 y contiene "Leímos";
+   `admin.html` contiene "desde". Ojo: el AC del ticket 04 pide "los últimos 6 caracteres" en
+   `index.html`, pero el ticket 03 cambió el hint; esa frase vive en `comun.js` (`ERRORES.referencia_invalida`).
+8. `lectura` con un `path` inexistente bien formado responde 404 (y uno mal formado, 400); `admin` con
+   clave mala sigue dando 401.
+9. Compra de prueba en la página publicada: 1 entrada, referencia `PRUEBACOTEJO1` (corrige la que
+   precargue la lectura), datos del pagador y el WhatsApp de Mau (04145287337). En el panel se ve con
+   "desde …" y su dictamen. Luego
+   `! cd /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa && supabase db query --linked -f supabase/manual/borrar-prueba-cotejo.sql`
+   imprime 0 (borra la orden, sus entradas y la fila de `lecturas` de su captura).
+10. `git -C /home/acracia/Code/sindicato-baba/.claude/worktrees/alfa grep -n "$(cat ~/.config/sindicato-baba/admin_clave)"` sale 1.
+11. Mau confirma que el formulario publicado le precargó la referencia desde su teléfono.
 
 ## Loop por ticket (lazy-fable)
 

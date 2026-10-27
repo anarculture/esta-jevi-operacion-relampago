@@ -92,3 +92,8 @@ acota el gasto). Corregidos de los revisores Sonnet:
   lectura en curso (hasta 20 s) para que `revisar` no pague otro OCR; el error real de la subida se
   muestra en la captura; la línea y los avisos solo se reescriben si cambian (aria-live); lo leído se
   recorta a 80 y nunca entra como HTML (caso XSS en `ux.mjs`).
+
+Code-review final (8dfb7c6..HEAD), reabierto y corregido sin desplegar: `reservar_lectura` borraba a los
+2 minutos las reservas sin OCR y dejaban de contar para los topes (migración `20261027220000_lecturas_reintento.sql`:
+se conservan y el path reintenta contando de nuevo; `lectura` solo suelta la reserva de una captura
+inexistente). Test nuevo rojo con la función desplegada.

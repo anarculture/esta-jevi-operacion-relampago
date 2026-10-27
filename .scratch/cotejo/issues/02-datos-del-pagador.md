@@ -60,3 +60,7 @@ titular por palabras completas de 3 o más letras ("Ana" ya no coincide con "Mar
 cuenta caracteres como el SQL y valida el ID para cualquier método que no sea pago móvil ni Zelle;
 el panel busca también el teléfono del comprador en formato local; caso XSS del pagador en `ux.mjs`
 (rojo sin `esc()`).
+
+Code-review final (8dfb7c6..HEAD), reabierto y corregido sin desplegar: la tolerancia cédula/RIF aceptaba
+la cédula de 8 dígitos de otra persona que empezara igual que una declarada de 7. Ahora solo una lectura
+de 9 dígitos se trata como RIF. Test nuevo rojo con la versión anterior.
