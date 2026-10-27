@@ -88,6 +88,7 @@
       <label for="nombre">Nombre y apellido</label>
       <input id="nombre" name="nombre" type="text" autocomplete="name" required>
       <p class="campo-error" id="e-nombre" hidden></p>
+      <label class="check" id="l-mismo" hidden><input type="checkbox" id="mismo" name="mismo"> <span>Pagué yo: misma cédula y mismo teléfono que el pago móvil</span></label>
       <label for="cedula">Cédula</label>
       <input id="cedula" name="cedula" type="text" inputmode="numeric" placeholder="V12345678" required>
       <p class="campo-error" id="e-cedula" hidden></p>
@@ -156,7 +157,9 @@ addEventListener("DOMContentLoaded", async () => {
     const o = lectura.ocr;
     const util = o && o.documentType !== "other" && (o.reference || numero(o.amount) !== null);
     $("leimos").hidden = !lectura.estado;
-    const linea = lectura.estado === "leyendo" ? "Leyendo el comprobante…"
+    // Mientras se lee: la vista previa late y una línea verde la recorre (t.css .leyendo).
+    for (const id of ["preview", "leimos"]) $(id).classList.toggle("leyendo", lectura.estado === "leyendo");
+    const linea = lectura.estado === "leyendo" ? "Leyendo el comprobante"
       : util ? `Leímos: ${[montoLeido(o), o.reference && `ref ${o.reference}`,
           [fechaCorta(o.transactionDate), o.transactionTime].filter(Boolean).join(" ")].filter(Boolean).join(" · ")}`
       : "No pudimos leer la captura; escribe la referencia";
@@ -182,6 +185,7 @@ addEventListener("DOMContentLoaded", async () => {
     "pagador-banco", "pagador-telefono", "pagador-cedula", "pagador-titular", "pagador-id"];
   const borrador = leer("ticketera-borrador") ?? {};
   for (const c of CAMPOS) if (borrador[c] && f[c]) f[c].value = borrador[c];
+  $("mismo").checked = Boolean(borrador.mismo);
   precargada = borrador.precargada ?? "";
   // Un WhatsApp por entrada: el 1 es "Tu WhatsApp" (#telefono); los demás se generan según la cantidad.
   const otros = $("otros-wa");
@@ -199,7 +203,15 @@ addEventListener("DOMContentLoaded", async () => {
     }
   }
   camposWa(borrador.whatsapps);
-  f.addEventListener("input", () => guardar("ticketera-borrador", { ...Object.fromEntries(CAMPOS.map((c) => [c, f[c]?.value ?? ""])), whatsapps: whatsapps(), precargada }));
+  f.addEventListener("input", () => guardar("ticketera-borrador", { ...Object.fromEntries(CAMPOS.map((c) => [c, f[c]?.value ?? ""])), whatsapps: whatsapps(), precargada, mismo: $("mismo").checked }));
+  // "Pagué yo": la cédula y el WhatsApp del comprador se copian de los del pago móvil mientras esté marcado.
+  function copiarPagador() {
+    if (!$("mismo").checked || $("l-mismo").hidden) return;
+    f.cedula.value = valor("pagador-cedula"); f.telefono.value = valor("pagador-telefono");
+    campoError("cedula", ""); campoError("telefono", "");
+  }
+  $("mismo").addEventListener("change", copiarPagador);
+  for (const id of ["pagador-cedula", "pagador-telefono"]) $(id).addEventListener("input", copiarPagador);
 
   function campoError(id, msg) {
     const p = $(`e-${id}`), i = $(id);
@@ -220,6 +232,8 @@ addEventListener("DOMContentLoaded", async () => {
     const cant = cantidad();
     camposWa();
     for (const g of document.querySelectorAll("#pagador [data-tipo]")) g.hidden = !metodo || g.dataset.tipo !== tipo(metodo);
+    $("l-mismo").hidden = !metodo || tipo(metodo) !== "pago_movil";
+    copiarPagador();
     pintarLectura();
     $("precio").textContent = metodo && tipo(metodo) === "pago_movil" ? eur(venta.precio_pm_eur_cents) : usd(venta.precio_usd_cents);
     if (!metodo || !cant) return;

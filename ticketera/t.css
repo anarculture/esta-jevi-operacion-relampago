@@ -113,3 +113,14 @@ input[aria-invalid="true"] { border-color: var(--rojo); }
 .resultado.invalida { background: var(--rojo); color: var(--negro); } /* negro sobre rojo aviso: 7:1; papel daba 2,75:1 */
 .r-titulo { font: var(--display); font-size: 64px; text-transform: uppercase; margin: 0; } /* el display a 34px no se lee a un metro */
 .r-detalle { font: var(--headline); text-transform: uppercase; margin: 0; }
+
+/* Lectura de la captura (issue #7): mientras la IA lee, la vista previa late con borde verde y la línea anuncia con puntos. */
+.preview.leyendo { outline: 2px solid var(--verde); outline-offset: 3px; animation: latir 1.1s ease-in-out infinite; }
+#leimos.leyendo::after { content: ""; display: inline-block; width: 1.2em; text-align: left; animation: puntos 1.2s steps(4, end) infinite; }
+@keyframes latir { 0%, 100% { opacity: 1; filter: brightness(1); } 50% { opacity: 0.55; filter: brightness(1.35); } }
+@keyframes puntos { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+@media (prefers-reduced-motion: reduce) { .preview.leyendo, #leimos.leyendo::after { animation: none; } }
+/* "Pagué yo": casilla con el mismo chasis que las opciones de método. */
+.check { display: flex; align-items: center; gap: 12px; min-height: var(--hit); margin: var(--s3) 0 var(--s1); color: var(--papel); font: inherit; letter-spacing: 0; }
+.check input { width: 20px; height: 20px; margin: 0; flex: none; }
+.check[hidden] { display: none; }
