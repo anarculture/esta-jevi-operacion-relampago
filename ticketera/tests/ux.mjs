@@ -665,6 +665,8 @@ await caso("portero: válida verde con vibración y deshacer, vuelve sola; ya us
   a.deepEqual(await page.evaluate(() => window.__vib), [[80]], "no vibró un pulso corto");
   a.equal(await page.isVisible("#deshacer"), true, "sin 'Deshacer' tras una válida");
   a.equal(ll.filter((b) => b.accion === "checkin").at(-1).codigo, "bbbbbbbb", "no mandó el código normalizado");
+  // Lo confirmado con señal queda marcado en el teléfono: sin señal, la lista vieja no lo daría por nuevo.
+  a.equal(await page.evaluate((t) => JSON.parse(localStorage.getItem("ticketera-portero-marcas") ?? "{}")[t], PT.bbbbbbbb), HORA_PT, "la válida online no quedó marcada en local");
   await foto(page, "12-portero-valida");
 
   await teclear(page, "bbbbbbbb"); // mismo código dentro de los 3 s: se ignora

@@ -43,6 +43,16 @@ Deno.test("zelle por correo en USD: coincide", () => {
   assertEquals(dictaminar(z, x, { correo: "mau@mail.com" }).dictamen, "coincide");
 });
 
+Deno.test("zelle solo con el nombre del titular: dudoso, nunca coincide", () => {
+  const z = { ...orden, metodo: "zelle", monto_bs: null };
+  const x = { ...ok, documentType: "zelle" as const, amount: "20.00", recipientPhone: "", recipientId: "", recipientName: "Mauricio Perez" };
+  const d = dictaminar(z, x, { correo: "mau@mail.com", titular: "Mauricio Perez" });
+  assertEquals(d.dictamen, "dudoso");
+  assertEquals(d.motivo.includes("solo por nombre"), true);
+  // Nombre correcto pero correo de otro: sigue siendo no_coincide.
+  assertEquals(dictaminar(z, { ...x, recipientId: "otro@mail.com" }, { correo: "mau@mail.com", titular: "Mauricio Perez" }).dictamen, "no_coincide");
+});
+
 Deno.test("hasta Bs 1 de menos: coincide; más de Bs 1 de menos: no_coincide", () => {
   assertEquals(dictaminar(orden, { ...ok, amount: "17723.60" }, destino).dictamen, "coincide");
   assertEquals(dictaminar(orden, { ...ok, amount: "17722.00" }, destino).dictamen, "no_coincide");
@@ -52,6 +62,13 @@ Deno.test("zelle por 2 centavos menos: no_coincide", () => {
   const z = { ...orden, metodo: "zelle", monto_bs: null };
   const x = { ...ok, documentType: "zelle" as const, amount: "19.98", recipientPhone: "", recipientId: "mau@mail.com" };
   assertEquals(dictaminar(z, x, { correo: "mau@mail.com" }).dictamen, "no_coincide");
+});
+
+Deno.test("orden de noche en Venezuela (ya es mañana en UTC): la fecha local del comprobante coincide", () => {
+  // 21:30 del 25 en Caracas = 01:30Z del 26; el banco imprime 2026-10-25.
+  const noche = { ...orden, creada_en: "2026-10-26T01:30:00Z" };
+  assertEquals(dictaminar(noche, { ...ok, transactionDate: "2026-10-25" }, destino).dictamen, "coincide");
+  assertEquals(dictaminar(noche, { ...ok, transactionDate: "2026-10-24" }, destino).dictamen, "dudoso");
 });
 
 Deno.test("captura anterior a la orden: dudoso; un día después: coincide; dos días después: dudoso", () => {

@@ -6,6 +6,10 @@
 - Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: —
 - Rama de trabajo: `cotejo` (worktree `.claude/worktrees/alfa`, base 39b1b46 de `ticketera`)
+- Merge de `ticketera` (8dfb7c6: issue #3 en producción y fixes del code-review de producción) antes
+  del 04. Migraciones del cotejo renumeradas tras `20261027200000_resumen_ticketera`: `20261027210000_sufijo_referencia`,
+  `…210100_pagador`, `…210200_lecturas` (así `db push` no necesita `--include-all`). `pm-ticketera.mjs`
+  y `pm-navegador.mjs` pasan `p_pagador`. `resumen_ticketera()` no cambia: el cotejo no agrega estados a `ordenes`.
 - Servicios: Supabase local `project_id = "cotejo"`, API 57321, DB 57322 (`supabase_db_cotejo`), studio 57323, inbucket 57324, analytics 57327; `functions serve` sobre ese stack; `http.server` en 8793
 
 Specs: https://github.com/anarculture/sindicato-baba/issues/6 (puntos 1, 2 y 5; el 3 "memo

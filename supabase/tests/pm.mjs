@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import assert from "node:assert/strict";
 
 const M = createRequire(import.meta.url)("../../app.js");
-const API = "http://127.0.0.1:54321";
+const API = process.env.API ?? "http://127.0.0.1:54321";
 const KEY = "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
 const CLAVE = readFileSync(new URL("../functions/.env", import.meta.url), "utf8").match(/PM_CLAVE=(.*)/)[1];
 

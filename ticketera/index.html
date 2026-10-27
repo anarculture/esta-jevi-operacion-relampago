@@ -342,7 +342,7 @@ addEventListener("DOMContentLoaded", async () => {
         p_whatsapps: whatsapps().map(normalizarWhatsapp), p_pagador: pagador(f.metodo.value),
       });
       funcion("revisar", { token: o.token }).catch(() => {}); // el dictamen no bloquea al comprador
-      guardar("ticketera-orden", { token: o.token, numero: o.numero });
+      guardar("ticketera-orden", { token: o.token, numero: o.numero, telefono: normalizarWhatsapp(f.telefono.value) });
       enviada = true;
       try { localStorage.removeItem("ticketera-borrador"); } catch {}
       location.href = `orden.html?t=${o.token}`;

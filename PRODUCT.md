@@ -16,6 +16,9 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
 - **Plataforma de PM** (`index.html`, publicada en `pm/`): presupuesto, caja, tareas y operación del
   evento. Su estado vive en Supabase detrás de la Edge Function `pm` (clave `PM_CLAVE`); Claude Code y
   vytas lo leen y actualizan por HTTP. Sin clave, el navegador guarda solo en local.
+  "Ventas y patrocinios" lee las ventas de la ticketera (bloque `ticketera` del `leer` de `pm`, con
+  "Actualizar" y la última lectura en local) y las suma a lo que se anota a mano fuera de ella;
+  la caja real usa el total. Sin conexión ni lectura previa, la caja usa solo lo manual.
 
 ## Users
 
@@ -23,8 +26,9 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
   o WhatsApp. Paga a un desconocido y necesita confianza y una salida humana.
 - **Organizador (Mau)**: una sola persona, en su teléfono, concilia pagos entre otras tareas y
   avisa por WhatsApp.
-- **Portero** *(pendiente)*: valida QR en la puerta, a veces sin señal.
-- **Vendedor / referido** *(pendiente)*: vende con enlace propio y gana consumo.
+- **Portero**: valida QR en la puerta con `portero.html` y clave propia, también sin señal (lista
+  descargada, cola local y reenvío); deshacer en 5 min; la lista no muestra datos personales.
+- **Vendedor / referido** *(fuera por ahora, 27-oct)*: sin alicientes ni recompensas para esta fiesta.
 
 ## Platform
 
@@ -60,6 +64,6 @@ lector de pantalla, nada transmitido solo por color. El QR se mantiene negro sob
 
 ## Open decisions
 
-- Check-in del portero y tarifa de puerta (historias 7 y 11 de `docs/user-stories.md`).
-- Referidos y vendedores (8 a 11c): % y forma de pago sin decidir.
+- Tarifa de puerta (historia 11 de `docs/user-stories.md`); el check-in (7) ya está hecho.
+- ~~Referidos y vendedores (8 a 11c)~~: decidido el 27-oct, sin alicientes por ahora (`docs/referidos.md` queda como borrador).
 - Si la plataforma de PM adopta la misma identidad visual o se queda sobria *(inferido: se queda)*.

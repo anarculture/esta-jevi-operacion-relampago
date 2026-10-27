@@ -66,7 +66,9 @@ export function dictaminar(o: Orden, x: Ocr, destino: Destino): Dictamen {
   // Ventana: del día de la orden a 1 día después (rec. 4). Una captura anterior puede ser un pago real reciclado.
   if (!x.transactionDate) dudas.push("no se lee la fecha");
   else {
-    const dias = (Date.parse(x.transactionDate) - Date.parse(o.creada_en.slice(0, 10))) / 864e5;
+    // El comprobante trae la fecha local de Venezuela (UTC-4, sin horario de verano); creada_en viene en UTC.
+    const diaOrden = new Date(Date.parse(o.creada_en) - 4 * 3600e3).toISOString().slice(0, 10);
+    const dias = (Date.parse(x.transactionDate) - Date.parse(diaOrden)) / 864e5;
     if (dias < 0) dudas.push(`captura del ${x.transactionDate}, anterior a la orden`);
     else if (dias > 1) dudas.push(`fecha ${x.transactionDate} lejos de la orden`);
   }
@@ -74,10 +76,13 @@ export function dictaminar(o: Orden, x: Ocr, destino: Destino): Dictamen {
   const nuestros = [last10(String(destino.telefono ?? "")), digits(String(destino.cedula ?? "")),
     digits(String(destino.id ?? "")), plain(String(destino.correo ?? ""))].filter((s) => s.length >= 5);
   const leidos = [last10(x.recipientPhone), digits(x.recipientId), plain(x.recipientId)].filter((s) => s.length >= 5);
+  // El nombre del titular solo no prueba el destino: un comprobante falso puede llevarlo. Con nombre y
+  // sin correo/teléfono/ID legibles, la orden espera a Mau (dudoso); nunca aprueba sola.
   const titular = plain(String(destino.titular ?? ""));
   const porNombre = titular && plain(x.recipientName).includes(titular.split(" ")[0]);
-  if (leidos.some((s) => nuestros.includes(s)) || porNombre) { /* destinatario nuestro */ }
+  if (leidos.some((s) => nuestros.includes(s))) { /* destinatario nuestro */ }
   else if (leidos.length) malos.push("el destinatario no es nuestra cuenta");
+  else if (porNombre) dudas.push("destinatario solo por nombre; confirmar la cuenta en el banco");
   else dudas.push("no se lee el destinatario");
 
   // Emisor (issue #6, punto 2): solo duda, nunca malos. Se compara lo que se leyó completo contra lo

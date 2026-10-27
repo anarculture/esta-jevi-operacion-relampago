@@ -12,8 +12,9 @@ cercano y la fiesta del jueves 29.
   y $15 en puerta.
 - Pago móvil convierte con la tasa BCV automática. Las cuentas de destino son BNC y
   Ubii Pagos.
-- Habrá referidos. Quien vende 3 entradas con su código recupera la suya, y por las
-  siguientes recibe un % en consumo.
+- ~~Habrá referidos. Quien vende 3 entradas con su código recupera la suya, y por las
+  siguientes recibe un % en consumo.~~ Decisión del 27-oct: sin alicientes por ahora; los
+  referidos y sus recompensas (historias 8 a 11c) quedan fuera de alcance.
 - El comprobante que vale es el que emite la plataforma con los datos de la compra. La
   captura del comprador es solo evidencia.
 - Preventa boca a boca hasta el lunes 26.
@@ -22,8 +23,9 @@ cercano y la fiesta del jueves 29.
 
 1. **Comprador · comprar.** Como comprador, elijo cantidad y método y veo el monto en USD,
    o en Bs con la tasa del día. Veo los datos de la cuenta de destino de ese método.
-2. **Comprador · reportar pago.** Subo la captura y la referencia, con nombre y teléfono.
-   Recibo un número de orden y el estado «en revisión».
+2. **Comprador · reportar pago.** Subo la captura y la referencia, con nombre, cédula y un
+   WhatsApp por entrada (el primero es el mío). Recibo un número de orden y el estado «en
+   revisión». *Desde el 27-oct: un WhatsApp por entrada (issue #5).*
 3. **Sistema · referencia única.** Una referencia ya usada en el mismo método se
    rechaza al enviarse, para que un comprobante no pague dos veces.
 4. **IA · revisar comprobante.** Un modelo de visión lee la captura y extrae método,
@@ -31,8 +33,9 @@ cercano y la fiesta del jueves 29.
    parámetros de cada método, marca señales de edición y deja un dictamen: `coincide`,
    `dudoso` o `no coincide`, con el motivo.
 5. **Admin · conciliar.** Como Mau, veo la cola de órdenes con el dictamen de la IA y la
-   captura al lado. Apruebo o rechazo cada una tras mirarla en mi app del banco. Nada se
-   aprueba solo.
+   captura al lado. Apruebo o rechazo cada una tras mirarla en mi app del banco. Desde el 27-oct,
+   un dictamen `coincide` aprueba solo (referencia exacta y sin sufijo repetido; interruptor
+   `config.auto_aprobar`); `dudoso` y `no coincide` esperan aquí.
 6. **Sistema · emitir entrada.** Al aprobar, cada entrada recibe un QR único firmado y
    el comprador obtiene un enlace a su comprobante con sus QR.
 
@@ -40,7 +43,20 @@ cercano y la fiesta del jueves 29.
 
 7. **Portero · check-in.** Escaneo el QR con el teléfono. La pantalla dice válida,
    ya usada (con la hora) o inválida, y marca el ingreso. Si no hay internet, existe una
-   lista de respaldo descargada.
+   lista de respaldo descargada. *Hecho (27-oct): `ticketera/portero.html`, clave propia,
+   deshacer en 5 min.*
+7a. **Comprador · una entrada por WhatsApp.** Cada entrada de mi orden lleva el WhatsApp de
+    quien va a usarla; en la página de la orden y en el panel el número se ve enmascarado
+    (solo los 4 últimos dígitos). *Hecho (27-oct, issue #5).*
+7b. **Sistema · aviso al aprobarse.** Al aprobarse la orden, cada entrada recibe en su WhatsApp
+    un mensaje con el enlace a su QR, enviado desde el número de vytas (nunca desde el de
+    Mau), con el texto armado por el servidor. Las entradas anteriores al cambio no reciben
+    aviso. *Hecho (27-oct): función `avisos`, cron `avisos-entradas` en `aios-vm`.*
+7c. **Admin · estado del aviso y reenvío.** Como Mau, veo por entrada si el aviso salió, a qué
+    hora o con qué error, y puedo reenviarlo corrigiendo el número. *Hecho (27-oct):
+    `admin.html`, acción `reenviar_aviso`.*
+*Historias 8 a 11c: fuera de alcance desde el 27-oct (sin vendedores, referidos ni recompensas para esta fiesta).*
+
 8. **Vendedor · su enlace.** Como vendedor, tengo un enlace o código propio, y las
    órdenes que entran por él quedan a mi nombre.
 9. **Vendedor · venta en mano.** Registro una venta que cobré yo (efectivo o a mi
@@ -70,10 +86,10 @@ eventos a la vez y cuentas de comprador con contraseña.
 ## Preguntas abiertas
 
 - ¿Cuántas entradas vende como máximo un solo comprador? ¿Hay aforo tope?
-- Referidos: ¿la entrada recuperada se devuelve en dinero o en consumo? ¿De cuánto es el
+- ~~Referidos: ¿la entrada recuperada se devuelve en dinero o en consumo? ¿De cuánto es el
   %? ¿El crédito de consumo sale de nuestro 50 % del patrocinio o lo pagamos al local?
-  ¿Cuentan las compras en puerta del jueves?
+  ¿Cuentan las compras en puerta del jueves?~~ Cerrada el 27-oct: sin alicientes por ahora.
 - ¿Qué datos de destino se publican: teléfono y cédula del pago móvil en BNC y en Ubii,
   ID de Binance, correo o teléfono de Zelle?
-- ¿El dictamen `coincide` basta para que tú apruebes con un clic, o siempre revisas el
-  banco?
+- ~~¿El dictamen `coincide` basta para que tú apruebes con un clic, o siempre revisas el
+  banco?~~ Resuelta el 27-oct: basta, y aprueba solo (ver historia 5).

@@ -328,6 +328,21 @@ begin
   assert false, 'anon puede leer lecturas';
 exception when insufficient_privilege then null;
 end $$;
+-- Totales de venta (issue #3): solo `pm` con service role.
+do $$
+begin
+  perform resumen_ticketera();
+  assert false, 'anon puede leer los totales de la ticketera';
+exception when insufficient_privilege then null;
+end $$;
+reset role;
+set local role authenticated;
+do $$
+begin
+  perform resumen_ticketera();
+  assert false, 'authenticated puede leer los totales de la ticketera';
+exception when insufficient_privilege then null;
+end $$;
 reset role;
 do $$
 begin

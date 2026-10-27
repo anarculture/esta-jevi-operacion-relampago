@@ -1,12 +1,12 @@
 # BUILD: la plataforma del organizador lee las ventas de la ticketera
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 01
-- Último verde: — · commit — · —
-- Gates: build ⬜ · test ⬜ · smoke ⬜
+- Ticket actual: — (Done global: 01 a 04 `[x]`)
+- Último verde: 04 · producción verificada · 27-oct-2026. Commits: 01 c01711a, 02 99fd477, 03 1045c3d + aee5dc6 (code review), 04 c417304 y el cierre
+- Gates: build ✅ · test ✅ (pm, pm-ticketera, pm-modelo, ticketera.sql, avisos, flujo, ux, pm-navegador, deno) · smoke ✅ · verificación independiente: 12/12 PASS, falibilidad ROJO-OK en 01, 02 y 03
 - Bloqueado: —
-- Rama de trabajo: — (anótala en el Setup)
-- Servicios: — (qué stack de Supabase local usas y en qué puertos)
+- Rama de trabajo: `worktree-agent-a38d1f2148cd4d058` (desde `ticketera` 02c6117, rebasada sobre `origin/vm/evento-pm-v2` 081e1a9; empujada a `vm/evento-pm-v2` aee5dc6)
+- Servicios: stack propio `pm-ticketera` (config.toml local con skip-worktree): API `http://127.0.0.1:58321`, DB 58322, studio 58323, contenedor `supabase_db_pm-ticketera`; `supabase functions serve` en background
 
 Spec: https://github.com/anarculture/sindicato-baba/issues/3 (léela completa antes del ticket 01:
 `gh issue view 3 --repo anarculture/sindicato-baba`). Tickets en `.scratch/pm-ticketera/issues/`.
@@ -71,14 +71,16 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 
 ## Tickets
 
-- [ ] 01 · `leer` trae el bloque `ticketera` · Bloqueado por: — · → .scratch/pm-ticketera/issues/01-leer-trae-ticketera.md
-- [ ] 02 · El modelo puro suma la ticketera · Bloqueado por: — · → .scratch/pm-ticketera/issues/02-modelo-suma-ticketera.md
-- [ ] 03 · Ventas muestra "Ticketera" y "Fuera de la ticketera" · Bloqueado por: 01, 02 · → .scratch/pm-ticketera/issues/03-ventas-muestra-ticketera.md
-- [ ] 04 · Producción · Bloqueado por: 03 · → .scratch/pm-ticketera/issues/04-produccion.md
+- [x] 01 · `leer` trae el bloque `ticketera` · Bloqueado por: — · → .scratch/pm-ticketera/issues/01-leer-trae-ticketera.md · evidencia: `OK pm-ticketera: 6 casos`, `supabase/functions/pm/index.ts:39,42`, `/security-review` sin hallazgos
+- [x] 02 · El modelo puro suma la ticketera · Bloqueado por: — · → .scratch/pm-ticketera/issues/02-modelo-suma-ticketera.md · evidencia: `OK pm-modelo`, `app.js:432,447,513,967`; AC 2 enmendado (el comando literal ya salía 1 en 02c6117 por orden de claves, nota en el ticket)
+- [x] 03 · Ventas muestra "Ticketera" y "Fuera de la ticketera" · Bloqueado por: 01, 02 · → .scratch/pm-ticketera/issues/03-ventas-muestra-ticketera.md · evidencia: `OK pm-navegador: 10 casos` (7 a 10 nuevos), `app.js:967,1277,1294`, `index.html:364,368`
+- [x] 04 · Producción · Bloqueado por: 03 · → .scratch/pm-ticketera/issues/04-produccion.md · evidencia: migración `20261027200000` con `remote`, `leer` 200 con `aprobadas {"ordenes":3,"entradas":5,...}` y clave mala 401, `/pm/` publicado con los textos nuevos, skill de vytas `1`, `git grep` de la clave exit 1, Mau "ok" al doble conteo
 
 ## BLOQUEADO
 
-(vacío)
+(vacío) El 04 estuvo bloqueado por el gate HITL (doble conteo y comandos de producción). Mau respondió "ok",
+el coordinador corrió `db push` y `functions deploy pm`, y el agente hizo el push (081e1a9..aee5dc6). Detalle en
+`.scratch/pm-ticketera/issues/04-produccion.md`.
 
 ## Loop por ticket (lazy-fable)
 

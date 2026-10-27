@@ -5,7 +5,7 @@
 
 alter table ordenes add column pagador jsonb;
 
--- Igual que en 20261027140000_sufijo_referencia.sql, más p_pagador. Se borra la firma de 8 argumentos:
+-- Igual que en 20261027210000_sufijo_referencia.sql, más p_pagador. Se borra la firma de 8 argumentos:
 -- con dos sobrecargas, PostgREST no sabría a cuál llamar con argumentos por nombre.
 drop function crear_orden(text, text, text, int, text, text, text, text[]);
 create function crear_orden(
