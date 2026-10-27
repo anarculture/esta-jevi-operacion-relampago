@@ -37,8 +37,18 @@ Decisiones congeladas:
 
 **Status:** ready-for-agent
 
-- [ ] `ssh aios-vm 'set -a; . ~/.hermes/.env; curl -s -o /dev/null -w "%{http_code}" -X POST https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm -H "Content-Type: application/json" -d "{\"clave\":\"$PM_CLAVE\",\"accion\":\"leer\"}"'` imprime `200`.
-- [ ] El skill existe en `~developer/.hermes/skills/` y `ssh aios-vm 'grep -rl "functions/v1/pm" ~/.hermes/skills'` encuentra exactamente un archivo, que contiene `ticketera.aprobadas.entradas`.
+- [x] `ssh aios-vm 'set -a; . ~/.hermes/.env; curl -s -o /dev/null -w "%{http_code}" -X POST https://ptbzdepejxxlavqfyepw.supabase.co/functions/v1/pm -H "Content-Type: application/json" -d "{\"clave\":\"$PM_CLAVE\",\"accion\":\"leer\"}"'` imprime `200`. · `AC1=200`
+- [x] El skill existe en `~developer/.hermes/skills/` y `ssh aios-vm 'grep -rl "functions/v1/pm" ~/.hermes/skills'` encuentra exactamente un archivo, que contiene `ticketera.aprobadas.entradas`. · `1` archivo: `/home/developer/.hermes/skills/plataforma-sindicato-baba/SKILL.md`, con 1 coincidencia de `ticketera.aprobadas.entradas`
 - [ ] `versiones` en producción muestra una versión con autor `navegador` anterior a la primera con autor `vytas`, y ninguna con autor `claude`.
 - [ ] El `estado` de la versión de `vytas` es igual al de la versión anterior (comparación JSON en Node, sale 0).
 - [ ] `ssh aios-vm 'hermes -z "Según la plataforma del organizador de Sindicato Baba, ¿cuántas entradas pagadas llevamos? Responde solo el número."'` imprime el número que da la regla del skill aplicada a `leer`.
+
+Notas del agente:
+
+- Skill `~developer/.hermes/skills/plataforma-sindicato-baba/SKILL.md` (un solo archivo, formato de
+  los demás: carpeta + `SKILL.md` con frontmatter `name`/`description`). Define una función `pm()` de
+  una línea que lee `PM_CLAVE` de `~/.hermes/.env` en cada llamada: **no hace falta reiniciar
+  `hermes-gateway.service`** (systemd de usuario, arrancado el 22-oct, que no vería una variable
+  nueva del `.env` sin reinicio). Se evita tocar el gateway en vivo a 3 días de la fiesta.
+- `PM_CLAVE` se agregó a `~/.hermes/.env` por `ssh` con stdin (nunca en argumentos ni en pantalla);
+  el archivo sigue en 600.
