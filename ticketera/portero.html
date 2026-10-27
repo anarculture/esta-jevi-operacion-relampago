@@ -124,6 +124,8 @@ addEventListener("DOMContentLoaded", () => {
         const r = await llamar({ accion: "checkin", token });
         guardar(K_COLA, (leer(K_COLA) ?? []).filter((t) => t !== token));
         if (r.resultado === "valida") continue;
+        // El servidor ya la tenía de otro teléfono: deshacer aquí borraría ese ingreso.
+        if (token === ultimaValida) { ultimaValida = null; $("deshacer").hidden = true; }
         const e = (leer(K_LISTA)?.entradas ?? []).find((x) => x.token === token) ?? {};
         choques.push(`orden #${r.numero ?? e.numero} (entrada ${r.posicion ?? e.posicion} de ${r.total ?? e.total}) ${r.resultado === "ya_usada" ? `ya había entrado a las ${hora(r.checked_in_at)}` : "no es válida en el servidor"}`);
       }
@@ -239,7 +241,7 @@ addEventListener("DOMContentLoaded", () => {
     reenviar(); // hay red: sube lo que quedó en cola
   }
 
-  // Una válida sin conexión que aún no subió se deshace en el teléfono; si ya subió, el servidor dirá no.
+  // Una válida sin conexión que aún no subió se deshace en el teléfono; si ya subió, ok:false y va al servidor.
   function deshacerLocal(token) {
     const cola = leer(K_COLA) ?? [];
     if (!cola.includes(token)) return { ok: false };
@@ -276,7 +278,12 @@ addEventListener("DOMContentLoaded", () => {
     if (!token) return;
     $("deshacer").disabled = true;
     try {
-      const r = ultimaLocal ? deshacerLocal(token) : await llamar({ accion: "deshacer", token });
+      // En cola: se deshace en el teléfono. Ya subida (o validada con red): la deshace el servidor.
+      let r = ultimaLocal ? deshacerLocal(token) : { ok: false };
+      if (!r.ok) {
+        r = await llamar({ accion: "deshacer", token });
+        if (r.ok) { const m = leer(K_MARCAS) ?? {}; delete m[token]; guardar(K_MARCAS, m); }
+      }
       aviso(r.ok ? "Ingreso deshecho." : "Ya pasaron 5 minutos: no se puede deshacer.");
       ultimaValida = null; $("deshacer").hidden = true;
       await contar();

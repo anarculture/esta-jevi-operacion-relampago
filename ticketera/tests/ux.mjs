@@ -377,6 +377,7 @@ await caso("portero sin señal: lista descargada, validación local en cola, ree
     if (claveMala) return { __status: 401, error: "clave_invalida" };
     if (b.accion === "lista") return LISTA;
     if (b.accion === "resumen") return { aprobadas: 3, ingresadas: 1 };
+    if (b.accion === "deshacer") return { ok: true };
     if (b.token === B) return { resultado: "ya_usada", token: B, numero: 14, posicion: 1, total: 1, checked_in_at: "2026-10-30T01:00:00Z" };
     return { resultado: "valida", token: b.token, numero: 12, posicion: 1, total: 2, checked_in_at: "2026-10-30T02:00:00Z" };
   } }, { offline: () => sinRedPt, storage: { "ticketera-portero-clave": JSON.stringify(CLAVE_PT) } });
@@ -398,24 +399,41 @@ await caso("portero sin señal: lista descargada, validación local en cola, ree
   a.equal((await ls("ticketera-portero-lista")).entradas.length, 3, "no guardó la lista");
 
   sinRedPt = true;
-  const v = await resultado("a1a1a1a1");
+  const v = await resultado("f0f0f0f0");
   a.equal(v.estado, "valida");
   a.ok(/sin conexión/i.test(v.texto), "válida local sin la etiqueta 'sin conexión'");
-  a.deepEqual(await ls("ticketera-portero-cola"), [A], "no quedó en cola");
+  a.deepEqual(await ls("ticketera-portero-cola"), [B], "no quedó en cola");
   a.ok((await page.textContent("#contador")).startsWith("2 ingresaron de 3"), "contador sin red no sale de la lista local");
   await page.waitForTimeout(3100); // pasa el anti-rebote del mismo código
-  a.equal((await resultado("a1a1a1a1")).estado, "ya_usada", "el mismo código sin red no sale ya usada");
+  a.equal((await resultado("f0f0f0f0")).estado, "ya_usada", "el mismo código sin red no sale ya usada");
   a.equal((await resultado("99999999")).estado, "invalida", "código fuera de la lista no sale inválido");
-  a.equal((await resultado("f0f0f0f0")).estado, "valida");
+  a.equal((await resultado("a1a1a1a1")).estado, "valida");
   a.deepEqual(checkins(), [], "con la red cortada llegó algo al servidor");
 
   sinRedPt = false;
   await page.evaluate(() => dispatchEvent(new Event("online")));
   await page.waitForFunction(() => JSON.parse(localStorage.getItem("ticketera-portero-cola")).length === 0);
-  a.deepEqual(checkins(), [A, B], "el servidor no recibió los tokens encolados");
+  a.deepEqual(checkins(), [B, A], "el servidor no recibió los tokens encolados");
   await page.waitForSelector("#aviso:not([hidden])");
   a.ok((await page.textContent("#aviso")).includes("orden #14"), "sin aviso de la válida local que ya había entrado");
   await foto(page, "17-portero-aviso");
+
+  // La última válida sin red (A) ya subió: Deshacer va al servidor y borra la marca local.
+  a.equal(await page.isVisible("#deshacer"), true, "sin 'Deshacer' para la válida que subió");
+  await page.click("#deshacer");
+  await page.waitForFunction(() => document.getElementById("deshacer").hidden);
+  a.deepEqual(ll.filter((b) => b.accion === "deshacer").map((b) => b.token), [A], "deshacer de una válida ya subida no llamó al servidor");
+  a.equal((await ls("ticketera-portero-marcas"))[A], undefined, "deshacer dejó la marca local");
+  a.equal(await page.textContent("#aviso"), "Ingreso deshecho.");
+
+  // Si al subir el servidor ya la tenía de otro teléfono, Deshacer desaparece (borraría ese ingreso).
+  sinRedPt = true;
+  await page.evaluate(() => { const m = JSON.parse(localStorage.getItem("ticketera-portero-marcas")); delete m["f0f0f0f0-0000-4000-8000-000000000009"]; localStorage.setItem("ticketera-portero-marcas", JSON.stringify(m)); });
+  a.equal((await resultado("f0f0f0f0")).estado, "valida");
+  sinRedPt = false;
+  await page.evaluate(() => dispatchEvent(new Event("online")));
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("ticketera-portero-cola")).length === 0);
+  a.equal(await page.isHidden("#deshacer"), true, "'Deshacer' visible para una válida que el servidor ya tenía");
 
   await page.click("#ver-lista");
   a.deepEqual(await page.$$eval("#filas tr td:first-child", (tds) => tds.map((t) => t.textContent)), ["a1a1a1a1", "a2a2a2a2", "f0f0f0f0"], "lista no ordenada por código");
@@ -429,11 +447,8 @@ await caso("portero sin señal: lista descargada, validación local en cola, ree
 
   // Una clave mala borra la clave guardada, no la lista ni la cola.
   await page.click("#volver");
-  sinRedPt = true;
-  await resultado("a2a2a2a2"); // ya usada en la lista: no encola
-  await resultado("a1a1a1a1"); // ya marcada: no encola
   await page.evaluate((t) => localStorage.setItem("ticketera-portero-cola", JSON.stringify([t])), A);
-  sinRedPt = false; claveMala = true;
+  claveMala = true;
   await page.click("#descargar");
   await page.waitForSelector("#login:not([hidden])");
   a.equal(await ls("ticketera-portero-clave"), null, "la clave mala quedó guardada");
