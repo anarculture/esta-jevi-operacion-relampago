@@ -1,0 +1,30 @@
+{
+  "modelo": "kling4_0 · image-to-video · 1080p · 9:16 · cuadro inicial y final · ~5 cr por 5 s (27-oct-2026)",
+  "clips": {
+    "1b": "b23e30d6-d458-49fd-ae51-62c0a870dee6",
+    "4b": "118818a5-2d28-4e50-8bbd-23e846a46a38",
+    "5a": "433a2d5d-5db3-4b4a-b7a1-4d9b940c2a3a",
+    "6a-partido": "2d1636ed-adab-4369-84cb-12f6d9e8a62e",
+    "6a": "a1fc6c88-a232-4855-833b-f93d40d63c94",
+    "1c": "21eb1582-0f55-47e1-a0e2-9f01dfa74cbb",
+    "5b": "30fdbf99-c6e1-4a90-8893-54a9b04e635e",
+    "3a": "4b4c970a-eb21-4166-bb26-ee16b0b05e3d",
+    "2a": "a50cfd59-4b5c-4c93-95cb-c8476e6871f9",
+    "2b": "053c9bdc-292c-44c7-9492-e81aafef48f0",
+    "3b": "f62a9654-1bef-4b13-b068-70ed4847e582",
+    "4a": "094a179f-b37d-44ad-b56c-237cf20c2e57",
+    "6e": "c64b4c6d-bdde-4083-87ee-2b375b45b14e",
+    "1a": "446ff3f4-24d7-4915-be68-9bf49c49eba8",
+    "6b": "e1b4270f-81ac-4fbf-a103-2391bf48fa47",
+    "6c": "83095903-5a20-4a7a-a809-62f347598969",
+    "6d": "74ae6535-34a2-4cb3-81ad-870243217b5a"
+  },
+  "stills_ronda_c": {
+    "e3a": "8b96f514-d0c2-4430-8cdf-aa3ceeeae858",
+    "s2": "9f3b7338-be62-448c-8885-3706f8783e71",
+    "e3": "8ecc11a8-e7cd-4d11-b6f6-9a4203ebd4c3",
+    "s4": "951a90fd-c5fd-4f3a-a591-685262d154d2",
+    "e1c": "b6dfa988-5794-45cb-a557-03a8e40edb4a",
+    "e5": "c0b957f6-3df4-4c65-9d01-3c901be13b2d"
+  }
+}

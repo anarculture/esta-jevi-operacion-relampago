@@ -1,0 +1,40 @@
+{
+  "modelo": "nano_banana_pro · 2k · 9:16 (27-oct-2026). PNG en elements/stills/v5/",
+  "nota": "e = cuadro final, s = cuadro inicial; los relevos de estilo (s2, s3, s4, s5) redibujan el cuadro final anterior",
+  "ronda_a": {
+    "e1a": "c0b7f231-de95-4769-9c09-4f41dd2a1d08",
+    "e1b": "c9bffaab-cde4-4c47-91e4-fc21656084c8",
+    "s3": "b1522fa6-54fd-41b5-89d0-a6a68b1727d5",
+    "e4": "f4ac1058-ee78-41cc-b408-4e93ded1ee9e",
+    "s6a": "9c384222-3234-46fe-8508-b369f4652ed8",
+    "e6b": "2d5ee1ec-1f00-46fd-9062-0d7e566bb570",
+    "s5-pixel": "5de7c192-22e3-4580-847e-349aa6d1146c",
+    "s5": "46a111c9-7b60-4572-9cde-082b84cbfe89"
+  },
+  "reiluminados": {
+    "6a": "c8e4b092-b0f2-45e9-a637-43d8ceabf9b3",
+    "6c": "ec9f6a79-b145-47e9-bd0f-46d4a7708577",
+    "6d": "acded6fd-9eff-4aae-922f-67bfd5c2627b",
+    "6e": "0c9e63da-1942-4997-9c69-8e3a4516db7f"
+  },
+  "ronda_b": {
+    "e1a": "c10f4fdd-716d-4cbe-bb83-58d110a319e2",
+    "e1b": "8344632f-8afc-4418-9798-d5f7a6fb8829",
+    "s3": "fa6506a4-231b-4c68-8e16-1ff3bed5c0fc",
+    "s1a-ojo-cerrado": "47de9c9c-bbb5-41a9-a369-9d5100b2ce56",
+    "e6e-ojo-cerrado": "bd3f8e01-70c5-4d1c-b06b-7e9d31cb5775",
+    "e6c-raso": "e17daa9a-676d-409a-87bc-f3bec395868b",
+    "e6d-contrapicado": "b48f8c82-a06c-4005-9bc0-89b1f4a12e65",
+    "e5a-tequeño": "1b3bc146-caa7-433c-8a70-0da9838cfbcf"
+  },
+  "descartados": {
+    "e1a-con-maquina": "c0b7f231-de95-4769-9c09-4f41dd2a1d08",
+    "e1b-con-maquina": "c9bffaab-cde4-4c47-91e4-fc21656084c8",
+    "s3-warapo-frijol": "b1522fa6-54fd-41b5-89d0-a6a68b1727d5"
+  },
+  "reusados_v4": {
+    "1a": "fbeb3e2b-7ee3-4f1a-bf7a-dfa8bf7e2973",
+    "2e": "3be584ee-3ede-40d8-91ce-5da8071a6ae6",
+    "4s": "187684ff-1c99-4f2e-9427-ac20dbfe6745"
+  }
+}

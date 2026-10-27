@@ -1,0 +1,358 @@
+<title>Guion del raptor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: hoja de rodaje en tóner — historia, línea de tiempo, stills, hojas de estilo y una tarjeta por clip */
+:root{
+  --toner:#0f0f0f; --carbon:#1a1a1a; --grafito:#262626; --linea:#2f3440;
+  --gris:#8c9fc6; --papel:#f2f2f2; --verde:#2ed847; --amarillo:#ffd60a;
+  --display:"Oswald",Impact,"Arial Narrow",sans-serif;
+  --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:dark;
+}
+body{background:var(--toner);color:var(--papel);font:16px/1.5 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.wrap{max-width:1040px;margin:0 auto;display:grid;gap:48px}
+h1,h2,h3{font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.01em;line-height:1.05;margin:0;text-wrap:balance}
+h1{font-size:clamp(36px,7vw,64px)}
+h2{font-size:26px;margin-bottom:16px}
+h3{font-size:24px}
+p{margin:0}
+.eyebrow{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--gris)}
+.lede{max-width:64ch;opacity:.88;margin-top:12px}
+.num{font-variant-numeric:tabular-nums}
+code,.file{font-family:var(--mono);font-size:13px;color:var(--gris)}
+
+/* historia */
+.spine{max-width:68ch;font-size:17px;line-height:1.6;border-left:3px solid var(--verde);padding:6px 0 6px 16px}
+.spine em{font-style:normal;color:var(--verde);font-weight:600}
+.tools{margin-top:14px;font-size:14px;color:var(--gris);max-width:72ch}
+
+/* pasos */
+.steps{margin:0;padding-left:22px;display:grid;gap:10px;max-width:72ch}
+.steps li::marker{font-family:var(--display);color:var(--verde)}
+
+/* galerías */
+.cast{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.cast figure{margin:0;background:var(--carbon);border:1px solid var(--linea);display:grid;grid-template-rows:auto 1fr}
+.cast img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#fff}
+.cast figcaption{padding:10px 12px;display:grid;gap:2px}
+.cast b{font-family:var(--display);text-transform:uppercase;font-size:17px;font-weight:700}
+.cast span{font-size:14px;opacity:.85}
+.stills{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.stills a{display:grid;gap:8px;text-decoration:none;color:var(--papel)}
+.stills a:focus-visible{outline:2px solid var(--verde);outline-offset:3px}
+.stills img{display:block;width:100%;aspect-ratio:9/16;object-fit:cover;border:1px solid var(--linea);background:var(--carbon)}
+.stills b{font-family:var(--display);text-transform:uppercase;font-size:17px;font-weight:700}
+.stills b span{color:var(--verde);margin-right:6px}
+.stills p{font-size:14px;opacity:.85}
+@media (max-width:460px){.stills{grid-template-columns:1fr 1fr;gap:12px}.stills p{font-size:13px}}
+
+/* línea de tiempo */
+.tl{display:flex;height:40px;border:1px solid var(--linea);overflow:hidden}
+.tl a{display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--toner);font:600 12px var(--body);letter-spacing:.04em;text-transform:uppercase;border-right:1px solid var(--toner);min-width:0;overflow:hidden;white-space:nowrap}
+.tl a:focus-visible{outline:2px solid var(--verde);outline-offset:-2px}
+.s-clay{background:#d9a066}.s-cari{background:#7ee07a}.s-graf{background:#b9b6ae}.s-hose{background:#e8e8e8}.s-pix{background:#7f8cff}.s-manga{background:#ffffff}.s-cta{background:var(--verde)}
+.ticks{display:flex;justify-content:space-between;font-size:12px;color:var(--gris);margin-top:6px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-size:13px;color:var(--papel)}
+.legend i{display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-1px}
+
+/* clips */
+.clips{display:grid;gap:28px}
+.clip{background:var(--carbon);border:1px solid var(--linea);padding:20px;display:grid;gap:16px;scroll-margin-top:16px}
+.clip-top{display:grid;grid-template-columns:150px 1fr;gap:18px;align-items:start}
+.clip-top img{display:block;width:100%;aspect-ratio:9/16;object-fit:cover;border:1px solid var(--linea)}
+.clip-body{display:grid;gap:12px;min-width:0}
+.clip-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px}
+.clip-id{font-family:var(--display);font-size:40px;line-height:1;color:var(--verde)}
+.chip{font:600 12px var(--body);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border:1px solid currentColor;color:var(--gris)}
+.time{font-size:14px;color:var(--gris)}
+.absurd{font-family:var(--display);text-transform:uppercase;font-size:18px;line-height:1.2;color:var(--amarillo)}
+.what{max-width:70ch}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 20px}
+.meta dt{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gris)}
+.meta dd{margin:2px 0 0}
+.attach{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.attach span{font-family:var(--mono);font-size:12.5px;background:var(--grafito);padding:2px 7px}
+.overlay{font-family:var(--display);text-transform:uppercase;font-size:17px;color:var(--papel)}
+.logic{margin:0;padding-left:20px;display:grid;gap:4px;font-size:14.5px}
+.prompt{border:1px solid var(--linea);background:var(--toner)}
+.prompt-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--linea)}
+.prompt-head b{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);font-weight:600}
+.prompt pre{margin:0;padding:12px;white-space:pre-wrap;word-break:break-word;font:13px/1.55 var(--mono);color:var(--papel)}
+button.copy{font:600 12px var(--body);letter-spacing:.06em;text-transform:uppercase;background:var(--verde);color:var(--toner);border:0;padding:7px 12px;min-height:32px;cursor:pointer}
+button.copy:focus-visible{outline:2px solid var(--papel);outline-offset:2px}
+button.copy.ok{background:var(--papel)}
+.note{font-size:14px;border-left:3px solid var(--amarillo);padding:8px 12px;background:var(--grafito);max-width:72ch}
+.pase{font-size:14px;color:var(--gris)}
+.pase b{color:var(--papel);font-weight:600}
+
+/* cierre */
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px}
+ul.plain{margin:0;padding-left:20px;display:grid;gap:8px}
+li{max-width:66ch}
+.cta{font-family:var(--display);text-transform:uppercase;line-height:1.25;font-size:18px;background:var(--grafito);padding:14px 16px;border-left:3px solid var(--verde)}
+.cta em{font-style:normal;color:var(--verde)}
+@media (max-width:560px){.tl a{font-size:0}.clip{padding:16px}.clip-top{grid-template-columns:96px 1fr;gap:12px}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Sindicato · reel 9:16 · ~35 s · cadáver exquisito · versión 3</p>
+    <h1>El raptor se escapa del laboratorio</h1>
+    <p class="lede">Seis estilos y una idea absurda por escena. Cada escena termina en un caos que causa la siguiente. Los 8 clips los generas tú en la web de Higgsfield con tus ilimitados, y yo hago el montaje, los textos, el track y la verificación.</p>
+  </header>
+
+  <section>
+    <h2>Borrador v1</h2>
+    <div class="clip-top" style="grid-template-columns:minmax(0,320px) 1fr;align-items:start">
+      <video src="reel-borrador-v1.mp4" controls playsinline muted preload="metadata" poster="still-v2-1a.jpg" style="display:block;width:100%;aspect-ratio:9/16;background:#000;border:1px solid var(--linea)" aria-label="Reel borrador v1, 35,5 segundos, sin audio"></video>
+      <div class="clip-body">
+        <p class="what">35,5 s · 1080×1920 (aquí en 720p) · <b>sin audio</b>, falta el track. Los 8 clips son de Seedance 2.0 a 720p, generados el 27-oct sin tu aprobación previa de los stills; 180 cr, quedan 320.</p>
+        <ul class="logic">
+          <li>✅ <b>1A</b>: el ojo se abre, entra el vinil y aprieta ENTER.</li>
+          <li>✅ <b>1B</b>: el cuerpo sigue saludando, la corona cae en el raptor y rompe el portón.</li>
+          <li>✅ <b>2</b>: la cola borra, cae el poste, el raptor se electrocuta con esqueleto y warapo se agarra de la cola.</li>
+          <li>⚠️ <b>3</b>: giulio impasible, enchufa el jack y salen volando, pero el vagón no se estira.</li>
+          <li>⚠️ <b>4</b>: salen las notas y el raptor crece, pero no a tamaño kaiju, y la pantalla no se rasga.</li>
+          <li>⚠️ <b>5</b>: lanza una botella dorada en vez del tequeño y amesty sale con el pelo claro; el raptor se encoge y caen por el hueco.</li>
+          <li>⚠️ <b>6A</b>: BABATR aprieta PLAY y el raptor baila, pero los que saltan al ring son genéricos.</li>
+          <li>✅ <b>6B</b>: la miss sale entera, corona a BABATR y el raptor guiña antes del CTA.</li>
+        </ul>
+        <p class="pase">Abajo, en <b>Stills</b>, está el cuadro inicial de cada escena. Rehacer un clip cuesta 22,5 cr.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>La historia</h2>
+    <p class="spine">Érase una vez una miss cuyas fiestas nadie bailaba. <em>Hasta que un día</em> fabricó un raptor para que bailara. <em>Pero</em> el raptor se la comió y escapó. <em>Por eso</em> arrasó la playa; <em>por eso</em> se electrocutó y cayó en el Metro; <em>por eso</em> salió disparado a una azotea; <em>por eso</em> creció como un monstruo y un tequeño lo encogió. <em>Hasta que finalmente</em>, en Chacaíto, BABATR lo domó con raptor house, y la miss tuvo la fiesta que quería.</p>
+    <p class="tools">Herramientas de <code>dpworld-video/docs/guion/frameworks-storytelling.md</code>: story spine (Pixar), «pero / por eso» (Parker y Stone), la brecha entre lo que el personaje espera y lo que pasa (McKee), entrar tarde y salir temprano, y la rima visual: el ENTER de la miss y el ojo del raptor abriéndose al inicio, el PLAY de BABATR y el guiño del raptor al final.</p>
+  </section>
+
+  <section>
+    <h2>Cómo generar cada clip</h2>
+    <ol class="steps">
+      <li>Abre Seedance 2.0 en la web: 9:16, 5 s, sin audio.</li>
+      <li><b>Imagen inicial:</b> el still de la tarjeta. Está en tu historial de Higgsfield y en <code>elements/stills/</code>.</li>
+      <li><b>Referencias:</b> la hoja de estilo de la escena (<code>elements/estilos/</code>), para que el modelo no cambie el estilo.</li>
+      <li>Copia el prompt del clip. Haz primero un borrador a 480p y revisa la lista de <b>Lógica de acción</b>; si se cumple, genera el definitivo a 1080p.</li>
+      <li>Guarda el clip como <code>elements/clips/1a.mp4</code>, <code>1b.mp4</code>… Yo lo reviso con el gate de dp-world (<code>check_clip.sh</code>: duración, fps, ancho, que no esté congelado) y lo monto.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Línea de tiempo</h2>
+    <nav class="tl" aria-label="Clips en orden">
+      <a class="s-cari" href="#c1a" style="flex:4">1A</a><a class="s-cari" href="#c1b" style="flex:4">1B</a><a class="s-graf" href="#c2" style="flex:4">2</a><a class="s-hose" href="#c3" style="flex:4">3</a><a class="s-pix" href="#c4" style="flex:4">4</a><a class="s-manga" href="#c5" style="flex:4">5</a><a class="s-clay" href="#c6a" style="flex:4">6A</a><a class="s-clay" href="#c6b" style="flex:4">6B</a><a class="s-cta" href="#cta" style="flex:3.5">CTA</a>
+    </nav>
+    <div class="ticks num"><span>0 s</span><span>9</span><span>18</span><span>27</span><span>~35 s</span></div>
+    <div class="legend"><span><i class="s-cari"></i>Caricatura para adultos</span><span><i class="s-graf"></i>Grafito a mano</span><span><i class="s-hose"></i>Dibujo animado años 30</span><span><i class="s-pix"></i>Pixel art 16 bits</span><span><i class="s-manga"></i>Manga</span><span><i class="s-clay"></i>Plastilina</span></div>
+  </section>
+
+  <section>
+    <h2>Stills</h2>
+    <p class="lede" style="margin:-4px 0 18px">Un cuadro por clip, en el estilo de su escena. Toca uno para ir a su tarjeta.</p>
+    <div class="stills">
+      <a href="#c1a"><img src="still-v2-1a.jpg" alt="Still 1A en caricatura: el raptor dormido en una incubadora verde dentro de un garage-laboratorio"><b><span>1A</span>La incubadora</b><p>Caricatura para adultos.</p></a>
+      <a href="#c1b"><img src="still-v2-1b.jpg" alt="Still 1B en caricatura: el tanque estalla y el raptor salta hacia miss venezuela"><b><span>1B</span>La fuga</b><p>Caricatura para adultos.</p></a>
+      <a href="#c2"><img src="still-v2-2.jpg" alt="Still 2 en grafito: el raptor arrasa una playa con postes y cables mientras warapo toca el djembe"><b><span>2</span>La playa</b><p>Grafito a mano.</p></a>
+      <a href="#c3"><img src="still-3.jpg" alt="Still 3: giulio como dibujo animado de los años 30 sentado en un vagón del Metro"><b><span>3</span>El Metro</b><p>Dibujo animado de los años 30.</p></a>
+      <a href="#c4"><img src="still-v2-4.jpg" alt="Still 4 en pixel art: lis produce en la azotea con el Ávila detrás y el raptor aterriza"><b><span>4</span>La azotea</b><p>Pixel art de 16 bits.</p></a>
+      <a href="#c5"><img src="still-v3-5.jpg" alt="Still 5 en manga: amesty en pose de batalla con un tequeño frente al raptor gigante en Sabana Grande"><b><span>5</span>Sabana Grande</b><p>Manga japonés.</p></a>
+      <a href="#c6a"><img src="still-v3-6a.jpg" alt="Still 6A en plastilina: ring de lucha en una fiesta, BABATR frente al raptor con corona y un locutor en medio"><b><span>6A</span>El ring</b><p>Plastilina, estilo Celebrity Deathmatch.</p></a>
+      <a href="#c6b"><img src="still-6b.jpg" alt="Still 6B en plastilina: BABATR mezcla, el raptor echado y miss venezuela bailando"><b><span>6B</span>El cierre</b><p>Plastilina. Referencia; el clip arranca del último cuadro de 6A.</p></a>
+    </div>
+  </section>
+
+  <section>
+    <h2>Hojas de estilo</h2>
+    <p class="lede" style="margin:-4px 0 18px">Los personajes de plastilina rehechos en el estilo de cada escena. Van como referencia en Seedance. Están en <code>elements/estilos/</code> y <code>elements/personajes/</code>.</p>
+    <div class="cast">
+      <figure><img src="estilo-1-caricatura.jpg" alt="Miss venezuela y el raptor en estilo caricatura para adultos"><figcaption><b>1 · Caricatura</b><span>Miss venezuela y el raptor.</span><span class="file">estilos/1-caricatura.png</span></figcaption></figure>
+      <figure><img src="estilo-2-grafito.jpg" alt="Warapo y el raptor dibujados a lápiz de grafito"><figcaption><b>2 · Grafito</b><span>Warapo y el raptor.</span><span class="file">estilos/2-grafito.png</span></figcaption></figure>
+      <figure><img src="estilo-3-anos30.jpg" alt="Giulio, el raptor y warapo como dibujos animados de los años 30"><figcaption><b>3 · Años 30</b><span>Giulio, el raptor y warapo.</span><span class="file">estilos/3-anos30.png</span></figcaption></figure>
+      <figure><img src="estilo-4-pixel.jpg" alt="Lis y el raptor en pixel art de 16 bits"><figcaption><b>4 · Pixel art</b><span>Lis y el raptor.</span><span class="file">estilos/4-pixel.png</span></figcaption></figure>
+      <figure><img src="estilo-5-manga.jpg" alt="Amesty y el raptor en manga japonés blanco y negro"><figcaption><b>5 · Manga</b><span>Amesty y el raptor.</span><span class="file">estilos/5-manga.png</span></figcaption></figure>
+      <figure><img src="3-dj-babatr.jpg" alt="Hoja de ángulos de DJ BABATR en plastilina"><figcaption><b>6 · Plastilina</b><span>DJ BABATR. Con el raptor y la miss de <code>personajes/</code>.</span><span class="file">personajes/3-dj-babatr.png</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section class="clips" aria-label="Clips">
+
+    <article class="clip" id="c1a">
+      <div class="clip-top"><img src="still-v2-1a.jpg" alt="Still del clip 1A">
+      <div class="clip-body">
+        <div class="clip-head"><span class="clip-id">1A</span><h3>La incubadora</h3><span class="chip">Caricatura</span><span class="time num">0–4 s</span></div>
+        <p class="absurd">La miss fabrica un raver con ADN de raptor y un vinil de raptor house.</p>
+        <p class="what">El ojo del raptor se abre dentro del tanque. La miss teclea, mete un vinil en la ranura de la máquina de ADN, sonríe y aprieta ENTER.</p>
+      </div></div>
+      <dl class="meta">
+        <div><dt>Imagen inicial · referencias</dt><dd class="attach"><span>stills/v2/1a.png</span><span>estilos/1-caricatura.png</span></dd></div>
+        <div><dt>Texto en pantalla (lo pongo yo)</dt><dd class="overlay">DJ BABATR · JUE 29 OCT → miss venezuela</dd></div>
+      </dl>
+      <div><dt class="eyebrow">Lógica de acción</dt><ul class="logic"><li>Un solo raptor, dentro del tanque todo el clip.</li><li>Un vinil entra en la ranura y no sale.</li><li>Ella aprieta ENTER una sola vez, al final.</li><li>La pantalla muestra código verde ilegible, sin palabras.</li></ul></div>
+      <div class="prompt"><div class="prompt-head"><b>Clip · Seedance 2.0 · 5 s</b><button class="copy" type="button">Copiar</button></div>
+<pre>2D adult animated sci-fi comedy cartoon, exactly the style of the start frame and the character sheet: flat cel colors, thin black outlines, eyes as white circles with tiny dot pupils. Inside the glowing green incubator tank, the sleeping velociraptor's eye snaps open. The camera pans to the beauty queen from the character sheet (red hair, silver tiara, white sash reading MISS VENEZUELA) sitting at the old computer, typing fast; green unreadable code scrolls on the monitor. She slides a vinyl record into a slot of the DNA machine next to her, grins proudly and slams the ENTER key with one finger. ACTION LOGIC: only one velociraptor and it stays inside the tank for the whole clip; exactly one vinyl record goes into the slot and stays there; she presses ENTER exactly once, at the very end; no readable words on the screen. No text, no subtitles.</pre></div>
+      <p class="pase"><b>Por eso:</b> el tanque empieza a hervir y 1B arranca con el vidrio rajado.</p>
+    </article>
+
+    <article class="clip" id="c1b">
+      <div class="clip-top"><img src="still-v2-1b.jpg" alt="Still del clip 1B">
+      <div class="clip-body">
+        <div class="clip-head"><span class="clip-id">1B</span><h3>La fuga</h3><span class="chip">Caricatura</span><span class="time num">4–8 s</span></div>
+        <p class="absurd">Ella abre los brazos esperando un bailarín. El raptor le come la cabeza, y el cuerpo sigue saludando como en el certamen.</p>
+        <p class="what">El tanque estalla. La corona sale volando y cae sobre la cabeza del raptor, que atraviesa el portón del garage como «Miss Raptor».</p>
+      </div></div>
+      <dl class="meta">
+        <div><dt>Imagen inicial · referencias</dt><dd class="attach"><span>último cuadro de 1A</span><span>estilos/1-caricatura.png</span><span>stills/v2/1b.png</span></dd></div>
+        <div><dt>Texto en pantalla</dt><dd class="overlay">—</dd></div>
+      </dl>
+      <div><dt class="eyebrow">Lógica de acción</dt><ul class="logic"><li>La corona sale de la cabeza de ella, cae en la del raptor y se queda ahí.</li><li>El cuerpo sin cabeza sigue sentado y saludando con una mano.</li><li>Nada de sangre.</li><li>El portón se rompe hacia afuera y el raptor sale del cuadro por ahí.</li></ul></div>
+      <div class="prompt"><div class="prompt-head"><b>Clip · Seedance 2.0 · 5 s</b><button class="copy" type="button">Copiar</button></div>
+<pre>2D adult animated sci-fi comedy cartoon, same style as the start frame and the character sheet. The glass tank explodes and green liquid splashes everywhere. The beauty queen opens her arms happily, expecting a dance partner. The velociraptor leaps out and in one quick cartoon GULP swallows her head; her headless body stays seated and keeps doing a polite beauty-pageant wave with one hand. Her silver tiara flips through the air and lands on the raptor's head. The raptor, wearing the tiara, turns and smashes straight through the metal garage door into bright white light. ACTION LOGIC: the tiara leaves her head, lands on the raptor's head and stays there; her headless body keeps sitting and waving; no blood, no gore, pure slapstick; the garage door breaks outward and the raptor exits the frame through it. No text.</pre></div>
+      <p class="note">Si Seedance rechaza el gag, cambia «swallows her head» por «snaps its jaws over her head with a cartoon GULP, her head hidden inside its mouth».</p>
+      <p class="pase"><b>Por eso:</b> la luz blanca del portón se vuelve la hoja de papel del grafito.</p>
+    </article>
+
+    <article class="clip" id="c2">
+      <div class="clip-top"><img src="still-v2-2.jpg" alt="Still del clip 2">
+      <div class="clip-body">
+        <div class="clip-head"><span class="clip-id">2</span><h3>La playa</h3><span class="chip">Grafito</span><span class="time num">8–12 s</span></div>
+        <p class="absurd">La cola del raptor es una goma de borrar: lo que toca desaparece del dibujo.</p>
+        <p class="what">Warapo toca el djembe y el raptor baila. Con la cola borra sombrillas, un bañista, un pedazo de mar y la base de un poste. El poste cae, el raptor muerde el cable y se electrocuta. Warapo se agarra de la cola y la corriente los chupa por el cable.</p>
+      </div></div>
+      <dl class="meta">
+        <div><dt>Imagen inicial · referencias</dt><dd class="attach"><span>stills/v2/2.png</span><span>estilos/2-grafito.png</span></dd></div>
+        <div><dt>Texto en pantalla</dt><dd class="overlay">warapo</dd></div>
+      </dl>
+      <div><dt class="eyebrow">Lógica de acción</dt><ul class="logic"><li>Lo que toca la cola queda como papel en blanco con migas de goma, y no vuelve.</li><li>Cae un solo poste.</li><li>El raptor muerde un solo cable.</li><li>Warapo se agarra de la cola con las dos manos hasta el final.</li><li>Al final los dos desaparecen dentro del cable, que brilla.</li></ul></div>
+      <div class="prompt"><div class="prompt-head"><b>Clip · Seedance 2.0 · 5 s</b><button class="copy" type="button">Copiar</button></div>
+<pre>Hand-drawn graphite pencil animation on off-white sketchbook paper, exactly the style of the start frame and the character sheet, lines boiling slightly from frame to frame like a hand-made pencil stop-motion at 12 fps, monochrome graphite only. The djembe player keeps drumming; the velociraptor dances for two beats, then swings its tail: everything the tail touches is erased like with a rubber eraser - two beach umbrellas, a running beachgoer and a slice of the sea vanish, leaving blank paper and eraser crumbs. The tail erases the base of a utility pole; the pole topples. The raptor bites a falling power cable and gets electrocuted, flashing a cartoon X-ray skeleton. The djembe player grabs the raptor's tail with both hands and both get sucked into the glowing cable in a burst of pencil sparks. ACTION LOGIC: erased things leave blank paper and never come back; only one pole falls; the raptor bites exactly one cable; the drummer holds the tail with both hands until the end; at the end both vanish into the cable. No text.</pre></div>
+      <p class="pase"><b>Por eso:</b> la corriente los lleva por el tendido hasta el cable del techo del Metro.</p>
+    </article>
+
+    <article class="clip" id="c3">
+      <div class="clip-top"><img src="still-3.jpg" alt="Still del clip 3">
+      <div class="clip-body">
+        <div class="clip-head"><span class="clip-id">3</span><h3>El Metro</h3><span class="chip">Años 30</span><span class="time num">12–16 s</span></div>
+        <p class="absurd">Todo el vagón baila al ritmo, menos el DJ.</p>
+        <p class="what">Los tubos, los asientos y el tren mismo rebotan al beat, y giulio está quieto e impasible con sus audífonos. El raptor y warapo caen electrificados desde el cable del techo. Giulio enchufa sus audífonos en la punta de la cola del raptor como un cable auxiliar, la música revienta y el vagón se estira como un resorte y los lanza fuera de la vía.</p>
+      </div></div>
+      <dl class="meta">
+        <div><dt>Imagen inicial · referencias</dt><dd class="attach"><span>stills/3.png</span><span>estilos/3-anos30.png</span></dd></div>
+        <div><dt>Texto en pantalla</dt><dd class="overlay">giulio tafa</dd></div>
+      </dl>
+      <div><dt class="eyebrow">Lógica de acción</dt><ul class="logic"><li>Giulio no se mueve hasta que enchufa el cable.</li><li>El cable queda conectado a la punta de la cola.</li><li>El vagón se estira pero no se rompe.</li><li>Al final salen volando los tres juntos: raptor, warapo y giulio.</li></ul></div>
+      <div class="prompt"><div class="prompt-head"><b>Clip · Seedance 2.0 · 5 s</b><button class="copy" type="button">Copiar</button></div>
+<pre>1930s rubber-hose cartoon animation, black and white, film grain and flicker, exactly the style of the start frame and the character sheet. Everything inside the subway car bounces to the beat - handrails, seats, windows and the car itself - except the DJ with the curly mullet, who sits perfectly still and deadpan with his headphones. Sparks race along the ceiling and the velociraptor bursts in from the overhead power line, crackling with electricity, with the djembe player hanging from its tail. Unbothered, the DJ pulls the cable of his headphones and plugs it into the tip of the raptor's tail like an aux jack. Music blasts, the whole car stretches like a rubber hose and slingshots the three of them out of the car and up into the sky. ACTION LOGIC: the DJ does not move until he plugs the cable; the cable stays plugged into the tail tip; the car stretches but never breaks; at the end all three fly out together. No text.</pre></div>
+      <p class="pase"><b>Por eso:</b> caen sobre una azotea, y al caer el mundo se vuelve videojuego.</p>
+    </article>
+
+    <article class="clip" id="c4">
+      <div class="clip-top"><img src="still-v2-4.jpg" alt="Still del clip 4">
+      <div class="clip-body">
+        <div class="clip-head"><span class="clip-id">4</span><h3>La azotea</h3><span class="chip">Pixel art</span><span class="time num">16–20 s</span></div>
+        <p class="absurd">Los beats de lis son power-ups de videojuego.</p>
+        <p class="what">Lis toca los pads y cada beat suelta una nota que brilla. El raptor se come las notas y con cada una crece, hasta quedar del tamaño del Ávila con los jinetes en la cabeza. El juego no aguanta el tamaño y la pantalla se rasga como papel.</p>
+      </div></div>
+      <dl class="meta">
+        <div><dt>Imagen inicial · referencias</dt><dd class="attach"><span>stills/v2/4.png</span><span>estilos/4-pixel.png</span></dd></div>
+        <div><dt>Texto en pantalla</dt><dd class="overlay">lis the producer</dd></div>
+      </dl>
+      <div><dt class="eyebrow">Lógica de acción</dt><ul class="logic"><li>Cada nota que se come es un escalón de tamaño, con un destello.</li><li>Los jinetes siguen encima todo el clip.</li><li>Lis sigue tocando.</li><li>Termina con la pantalla rasgándose.</li></ul></div>
+      <div class="prompt"><div class="prompt-head"><b>Clip · Seedance 2.0 · 5 s</b><button class="copy" type="button">Copiar</button></div>
+<pre>16-bit pixel art animation like a 1993 Super Nintendo game, exactly the style of the start frame and the character sheet: chunky square pixels, limited palette, choppy sprite animation. The producer taps her pads; on every beat a glowing pixel music note pops into the air. The velociraptor, with its two riders on its back, gobbles the notes one by one; with each note it flashes like a video game power-up and grows one size bigger, until it towers over the El Avila mountain like a giant kaiju with the riders on its head. The game cannot handle it: the picture glitches, pixels scramble and the whole screen rips apart like paper. ACTION LOGIC: each note eaten equals one growth step with a flash; the riders stay on the raptor the whole time; the producer keeps playing; the clip ends with the screen ripping. No text, no user interface, no score.</pre></div>
+      <p class="pase"><b>Por eso:</b> detrás del papel rasgado está la página del manga.</p>
+    </article>
+
+    <article class="clip" id="c5">
+      <div class="clip-top"><img src="still-v3-5.jpg" alt="Still del clip 5">
+      <div class="clip-body">
+        <div class="clip-head"><span class="clip-id">5</span><h3>Sabana Grande</h3><span class="chip">Manga</span><span class="time num">20–24 s</span></div>
+        <p class="absurd">Amesty se prepara para un duelo shōnen contra el raptor gigante, y su golpe especial es lanzarle un tequeño.</p>
+        <p class="what">Aura, líneas de velocidad, ojos que brillan, grito. El tequeño vuela, el raptor lo atrapa con los ojos como corazones y se encoge a su tamaño. Amesty salta encima y todos caen por el espacio en blanco entre dos viñetas.</p>
+      </div></div>
+      <dl class="meta">
+        <div><dt>Imagen inicial · referencias</dt><dd class="attach"><span>stills/v2/5-manga.png</span><span>estilos/5-manga.png</span></dd></div>
+        <div><dt>Texto en pantalla</dt><dd class="overlay">amesty</dd></div>
+      </dl>
+      <div><dt class="eyebrow">Lógica de acción</dt><ul class="logic"><li>Se lanza un solo tequeño y el raptor lo atrapa con la boca.</li><li>El raptor se encoge sin parar hasta su tamaño normal.</li><li>Los jinetes siguen encima.</li><li>Amesty se monta, y caen por el hueco blanco entre dos viñetas.</li></ul></div>
+      <div class="prompt"><div class="prompt-head"><b>Clip · Seedance 2.0 · 5 s</b><button class="copy" type="button">Copiar</button></div>
+<pre>Black-and-white Japanese shonen manga come to life, exactly the style of the start frame and the character sheet: ink lines, screentone, radial speed lines, limited anime-opening style animation with dramatic held poses. The hero in the checked polo powers up - an aura of speed lines bursts around him, his eyes glint - and with a dramatic throw he launches a small golden tequeno (a fried Venezuelan cheese stick) like a special attack. The gigantic velociraptor catches it in its mouth, its eyes turn into hearts and it shrinks steadily back to normal size, the three riders still on its back. The hero jumps on too, and all of them fall through the white gutter between two manga panels into black. ACTION LOGIC: exactly one tequeno is thrown and the raptor catches it in its mouth; the raptor shrinks continuously to normal size; the riders stay on its back; the hero climbs on before they fall through the gutter. No speech balloons, no sound-effect lettering, no text.</pre></div>
+      <p class="pase"><b>Por eso:</b> caen en la fiesta, sobre el ring.</p>
+    </article>
+
+    <article class="clip" id="c6a">
+      <div class="clip-top"><img src="still-v3-6a.jpg" alt="Still del clip 6A">
+      <div class="clip-body">
+        <div class="clip-head"><span class="clip-id">6A</span><h3>El ring</h3><span class="chip">Plastilina</span><span class="time num">24–28 s</span></div>
+        <p class="absurd">La pista de Chacaíto es un ring de lucha: RAPTOR vs. BABATR. BABATR no pelea.</p>
+        <p class="what">El locutor levanta el micrófono y el raptor con corona embiste. BABATR se da vuelta, aprieta PLAY y suena raptor house: las patas del raptor se ponen a bailar solas en plena carrera, hasta que queda bailando, domado. Los cuatro jinetes saltan al ring a celebrar.</p>
+      </div></div>
+      <dl class="meta">
+        <div><dt>Imagen inicial · referencias</dt><dd class="attach"><span>stills/v2/6a-ring.png</span><span>personajes/3-dj-babatr.png</span><span>personajes/2-raptor.png</span></dd></div>
+        <div><dt>Texto en pantalla</dt><dd class="overlay">DJ BABATR · el creador del raptor house</dd></div>
+      </dl>
+      <div><dt class="eyebrow">Lógica de acción</dt><ul class="logic"><li>BABATR toca el deck una sola vez, y desde ese momento el raptor solo baila.</li><li>Nadie le pega a nadie.</li><li>La corona sigue en la cabeza del raptor.</li></ul></div>
+      <div class="prompt"><div class="prompt-head"><b>Clip · Seedance 2.0 · 5 s</b><button class="copy" type="button">Copiar</button></div>
+<pre>Claymation stop-motion, Celebrity Deathmatch wrestling comedy, exactly the look of the start frame and the reference sheets. The tuxedo announcer raises his microphone, the crowd roars, and the velociraptor wearing the crooked silver tiara charges across the ring at the DJ in the black Raiders cap. The DJ does not fight: he calmly turns to the turntables on the ring apron and presses PLAY. Mid-charge, the raptor's legs start dancing on their own; it spins, skids and ends up dancing happily in the middle of the ring, completely tamed. Four riders jump into the ring cheering. ACTION LOGIC: the DJ touches the deck exactly once and from that moment the raptor only dances; nobody hits anybody; the tiara stays on the raptor's head. No text, no banners.</pre></div>
+      <p class="pase"><b>Pase a 6B:</b> corte directo; 6B arranca del último cuadro de 6A.</p>
+    </article>
+
+    <article class="clip" id="c6b">
+      <div class="clip-top"><img src="still-6b.jpg" alt="Still de referencia del clip 6B">
+      <div class="clip-body">
+        <div class="clip-head"><span class="clip-id">6B</span><h3>El cierre</h3><span class="chip">Plastilina</span><span class="time num">28–32 s</span></div>
+        <p class="absurd">El raptor escupe a la miss entera, y ella corona a BABATR.</p>
+        <p class="what">El raptor eructa y sale la miss, intacta, con su banda. Le quita la corona al raptor y se la pone a BABATR. Todos bailan, y el raptor le guiña un ojo a la cámara. El último cuadro queda congelado bajo el CTA.</p>
+      </div></div>
+      <dl class="meta">
+        <div><dt>Imagen inicial · referencias</dt><dd class="attach"><span>último cuadro de 6A</span><span>personajes/1-miss-venezuela.png</span><span>personajes/3-dj-babatr.png</span></dd></div>
+        <div><dt>Texto en pantalla</dt><dd class="overlay">CTA, abajo</dd></div>
+      </dl>
+      <div><dt class="eyebrow">Lógica de acción</dt><ul class="logic"><li>La miss sale completa, con el mismo vestido y la banda MISS VENEZUELA.</li><li>La corona pasa de la cabeza del raptor a la de BABATR.</li><li>El raptor guiña una sola vez, al final, mirando a cámara.</li></ul></div>
+      <div class="prompt"><div class="prompt-head"><b>Clip · Seedance 2.0 · 5 s</b><button class="copy" type="button">Copiar</button></div>
+<pre>Claymation stop-motion, Celebrity Deathmatch comedy, same look as the start frame and the reference sheets. The tamed velociraptor lets out a huge cartoon burp and spits out the beauty queen completely intact, light-blue gown and white sash reading MISS VENEZUELA. She lands on her feet in the ring, takes the silver tiara off the raptor's head and places it on the head of the DJ in the black Raiders cap, who keeps mixing. Everyone in the ring and the crowd dances. Finally the raptor looks straight into the camera and winks once. ACTION LOGIC: the beauty queen comes out whole with the same gown and sash; the tiara moves from the raptor's head to the DJ's head and stays there; the raptor winks exactly once at the end, looking at the camera. No text.</pre></div>
+      <p class="pase"><b>Fin:</b> el guiño queda congelado 3,5 s bajo el CTA.</p>
+    </article>
+  </section>
+
+  <section class="two" id="cta">
+    <div>
+      <h2>Lo que hago yo</h2>
+      <ul class="plain">
+        <li>Revisar cada clip con <code>check_clip.sh</code> de dp-world y su lista de lógica de acción.</li>
+        <li>Cortar al golpe del track y armar los pases: luz blanca, cable, ojo, pantalla rasgada, hueco entre viñetas.</li>
+        <li>Poner los nombres a medida que entra cada personaje, como capas PNG, al estilo de <code>cartelas.py</code>. Para miss venezuela y DJ BABATR, las letras de pedrería de <code>elements/</code>.</li>
+        <li>Recortar el track a la duración del reel con <code>mezcla.py</code> y exportar a 1080×1920.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>CTA final</h2>
+      <p class="cta">Jueves 29 oct · 21:00 · CC Chacaíto<br><em>Preventa $10</em> · Puerta $15<br>Link en bio · postropicalia.com/sindicato-baba<br>Pago móvil · Zelle · Binance · entrada con QR<br>@SINDICATO.CLUB</p>
+      <p class="pase" style="margin-top:10px">Abajo van los logos de Cerveza Zulia, Bandera y Mal Portada.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Pendiente</h2>
+    <ul class="plain">
+      <li><b>Track:</b> qué tema de BABATR suena. El archivo me sirve para cortar al golpe.</li>
+      <li><b>Collab:</b> publicarlo como Collab con @djbabatr (38K seguidores contra 418).</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+document.querySelectorAll('button.copy').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var pre = btn.closest('.prompt').querySelector('pre');
+    var done = function(){ btn.textContent = 'Copiado'; btn.classList.add('ok'); setTimeout(function(){ btn.textContent = 'Copiar'; btn.classList.remove('ok'); }, 1600); };
+    var fallback = function(){ var r = document.createRange(); r.selectNodeContents(pre); var s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = 'Seleccionado'; };
+    try { navigator.clipboard.writeText(pre.textContent).then(done, fallback); } catch (e) { fallback(); }
+  });
+});
+</script>

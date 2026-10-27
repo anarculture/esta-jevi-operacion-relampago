@@ -1,0 +1,44 @@
+{
+  "modelo": "nano_banana_pro · 2k · 9:16 · 2 cr c/u (27-oct-2026)",
+  "ronda1": {
+    "1a": "fbeb3e2b-7ee3-4f1a-bf7a-dfa8bf7e2973",
+    "1b": "bb74d936-3d48-47ef-be08-8765b298c2e5",
+    "2s": "cee17361-30c9-40b1-8d83-6cc01ef3a94d",
+    "3s": "9b34ab77-9188-42f7-b67c-d333135cb448",
+    "4s": "187684ff-1c99-4f2e-9427-ac20dbfe6745",
+    "5s": "cd71111b-6be0-42d9-879e-0469bbab4d97",
+    "6c-sin-babatr": "76e70f0c-0ab9-45e2-9724-35aeef4493cd"
+  },
+  "ronda2": {
+    "1c": "f60216af-6c9d-443f-b1b8-ea91384de628",
+    "1e": "247b9f43-0c06-45aa-ba8f-acaeead142c9",
+    "2e": "b6a84ed5-6b27-4955-b098-c90c27859d53",
+    "3e": "3c86ddc9-3acc-42c3-9599-2b322d251950",
+    "4e": "9bbe7400-751c-42f5-b3e8-00e28d36e3bb",
+    "5e": "98ee3d14-090d-4c28-98a0-63e09449965f",
+    "6c": "74d7c1ba-2182-4879-a6ce-3f1e42acd9f7"
+  },
+  "ronda3": {
+    "6a": "f08d0e79-edbf-4589-8dac-cb7484886ea0",
+    "6b": "6e0c1ea4-ef7b-42a4-9797-0c0626c31083",
+    "6d": "f6d94bfa-8d21-49f6-a8c4-00ac306d7173",
+    "6e-moño": "ddd91686-e2a5-4f4a-b8a5-e3b53d07576c"
+  },
+  "rehechos": {
+    "2e-duplicado": "8a953db7-288c-458c-9b4b-d194992c8573",
+    "2e": "3be584ee-3ede-40d8-91ce-5da8071a6ae6",
+    "6a": "f96d9540-48fe-4209-b41f-446fc1fccb42",
+    "6e": "c82fb999-da75-48f1-99dc-bb8bc3fda14b"
+  },
+  "vigentes": {
+    "1a": "fbeb3e2b-7ee3-4f1a-bf7a-dfa8bf7e2973", "1b": "bb74d936-3d48-47ef-be08-8765b298c2e5",
+    "1c": "f60216af-6c9d-443f-b1b8-ea91384de628", "1e": "247b9f43-0c06-45aa-ba8f-acaeead142c9",
+    "2s": "cee17361-30c9-40b1-8d83-6cc01ef3a94d", "2e": "3be584ee-3ede-40d8-91ce-5da8071a6ae6",
+    "3s": "9b34ab77-9188-42f7-b67c-d333135cb448", "3e": "3c86ddc9-3acc-42c3-9599-2b322d251950",
+    "4s": "187684ff-1c99-4f2e-9427-ac20dbfe6745", "4e": "9bbe7400-751c-42f5-b3e8-00e28d36e3bb",
+    "5s": "cd71111b-6be0-42d9-879e-0469bbab4d97", "5e": "98ee3d14-090d-4c28-98a0-63e09449965f",
+    "6a": "f96d9540-48fe-4209-b41f-446fc1fccb42", "6b": "6e0c1ea4-ef7b-42a4-9797-0c0626c31083",
+    "6c": "74d7c1ba-2182-4879-a6ce-3f1e42acd9f7", "6d": "f6d94bfa-8d21-49f6-a8c4-00ac306d7173",
+    "6e": "c82fb999-da75-48f1-99dc-bb8bc3fda14b"
+  }
+}
