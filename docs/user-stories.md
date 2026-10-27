@@ -64,6 +64,12 @@ cercano y la fiesta del jueves 29.
 7c. **Admin · estado del aviso y reenvío.** Como Mau, veo por entrada si el aviso salió, a qué
     hora o con qué error, y puedo reenviarlo corrigiendo el número. *Hecho (27-oct):
     `admin.html`, acción `reenviar_aviso`.*
+7d. **Comprador · respondo al aviso.** Si algo falla con mi entrada, respondo al mismo mensaje.
+    Un recepcionista sin IA me reenvía mis entradas (el mismo texto del aviso) si el número
+    tiene órdenes aprobadas; los demás casos los atiende miss v. *Hecho (27-oct): acción
+    `consultar` de la función `avisos` (migración `20261027230000`); el aviso termina en
+    «¿Problemas? Responde a este mensaje.»; órdenes de prueba con
+    `supabase/manual/borrar-prueba-recepcion.sql`.*
 *Historias 8 a 11c: fuera de alcance desde el 27-oct (sin vendedores, referidos ni recompensas para esta fiesta).*
 
 8. **Vendedor · su enlace.** Como vendedor, tengo un enlace o código propio, y las

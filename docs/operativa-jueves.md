@@ -1,8 +1,8 @@
 # Operativa del jueves 29-oct-2026 — Sindicato Baba, CC Chacaíto, 21:00
 
 Guía para la noche, en orden de uso. Escrita el 27-oct con lo que está en producción.
-Lo que corre solo: aprobación con dictamen `coincide`, avisos por WhatsApp desde vytas, check-in del
-portero. Lo que toca a Mau: aprobar o rechazar lo `dudoso` y `no coincide`, ventas en mano, imprevistos.
+Lo que corre solo: aprobación con dictamen `coincide`, avisos por WhatsApp desde vytas (quien responde el aviso recibe sus entradas de vuelta; lo demás pasa a miss v),
+check-in del portero. Lo que toca a Mau: aprobar o rechazar lo `dudoso` y `no coincide`, ventas en mano, imprevistos.
 
 ## Direcciones y claves
 
@@ -86,6 +86,6 @@ escriben en producción los corre Mau con `!` en Claude Code (el hook se los nie
 ## Después de la fiesta
 
 - Cierre: `/pm/` → Informe CSV (entradas y cobrado por fuente), y `resumen_ticketera` vía `leer` de la PM.
-- Órdenes de prueba: borrar con los scripts `supabase/manual/borrar-prueba-*.sql`.
+- Órdenes de prueba: borrar con los scripts `supabase/manual/borrar-prueba-*.sql` (portero, cotejo, recepción).
 - Issues abiertos para después: tarifa en puerta, referidos (pospuesto), memo "Sindicato #N", Binance por
   API, exportar check-ins.

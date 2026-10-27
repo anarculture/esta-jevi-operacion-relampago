@@ -54,10 +54,15 @@ jueves 29 de octubre de 2026, 21:00, CC Chacaíto. Dos piezas en el mismo repo:
 - Solo un dictamen `coincide` aprueba sin Mau (interruptor `config.auto_aprobar`, activo por defecto).
   `dudoso` y `no_coincide` esperan en el panel: ahí el dictamen orienta y Mau decide.
 - Los avisos salen del número de vytas, nunca del de Mau. El texto lo arma el servidor y lleva el enlace
-  a la entrada, no una imagen. Las entradas anteriores al cambio quedaron como ya avisadas.
+  a la entrada, no una imagen, y cierra con «¿Problemas? Responde a este mensaje.»: las dudas se resuelven
+  en el mismo chat, no en un enlace al WhatsApp del organizador. Las entradas anteriores al cambio quedaron como ya avisadas.
+- Quien responde al aviso lo atiende vytas con un recepcionista sin IA (reglas fijas): le reenvía sus
+  entradas (el mismo texto del aviso, vía la acción `consultar` de la función `avisos`, solo lectura, con la clave de la PM,
+  que busca por número las órdenes y entradas aprobadas atadas a él). Los demás casos pasan
+  a miss v. Las órdenes de prueba se borran con `supabase/manual/borrar-prueba-recepcion.sql`.
 - El comprobante que vale es el que emite la plataforma (QR firmado por token); la captura del
   comprador es evidencia.
-- Contacto humano: WhatsApp del organizador, visible en compra, orden y rechazo.
+- Contacto humano: WhatsApp del organizador, visible en compra, orden y rechazo; tras el aviso, el mismo chat de vytas.
 - Idioma: español de Venezuela (cédula, pago móvil, referencia, tasa BCV).
 
 ## Brand commitments
