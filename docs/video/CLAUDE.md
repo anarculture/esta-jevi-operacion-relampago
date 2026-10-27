@@ -92,7 +92,9 @@ entrada de DJ sin cámara lenta: destello de 4 cuadros y congelado de 1,0 s con 
 en el script a partir de `DROP` y `TANQUE` para que el drop siga cayendo en el tanque (reel 3,6 s). El script falla si el
 total pasa de 30 s. Copia para el teléfono: `elements/entregas/reel-hibrido-movil.mp4` (< 30 MB, para `SendUserFile`).
 Mau lo aprobó ("va", 19:40) y pidió cerrar con el flyer: `FLYER FINAL BABA.png` (4:5, centrado sobre sí mismo
-desenfocado) 3,0 s al final con la música sonando (`FLYER`, `FLYER_DUR`); total 31,8 s.
+desenfocado) 3,0 s al final con la música sonando (`FLYER`, `FLYER_DUR`); total 31,5 s. Aprobado ("va", 19:55).
+Rama `worktree-video-promo-baba` con `vm/evento-pm-v2` ya mergeado; el fast-forward de `vm/evento-pm-v2` se hace desde
+una terminal fuera de Claude (el guard del worktree bloquea `git -C` y el `!`).
 
 ## Qué es
 
