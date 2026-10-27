@@ -130,6 +130,8 @@ components:
 ---
 
 <!-- MUNDO ELEGIDO el 26-oct-2026 con Mau, antes de implementarse en ticketera/t.css. Los tokens son la decisión, no una extracción. Vuelve a correr $impeccable document cuando el CSS lo aplique, para capturar lo que de verdad quedó. -->
+<!-- 27-oct-2026: se evaluó "vidrio líquido" (iOS 26) para la compra, con mock lado a lado en https://claude.ai/artifact/GB15d2EZCuBqCJDeRNwzGY. Mau se quedó con Fotocopia. No volver a proponerlo para esta fiesta. -->
+
 
 # Design System: Sindicato Baba
 
