@@ -267,6 +267,100 @@ await caso("admin: cola, título con pendientes, filtro, rechazo con motivo, Wha
   await ctx.close();
 });
 
+// ---------- portero ----------
+const CLAVE_PT = "clave-portero-de-prueba";
+const PT = { bbbbbbbb: "bbbbbbbb-0000-4000-8000-000000000001", cccccccc: "cccccccc-0000-4000-8000-000000000002", eeeeeeee: "eeeeeeee-0000-4000-8000-000000000003" };
+const HORA_PT = "2026-10-30T02:14:00Z"; // 22:14 en Caracas
+function puerta(llamadasPt) {
+  return (b) => {
+    llamadasPt.push(b);
+    if (b.clave !== CLAVE_PT) return { __status: 401, error: "clave_invalida" };
+    if (b.accion === "resumen") return { aprobadas: 112, ingresadas: 37 };
+    if (b.accion === "deshacer") return { ok: true };
+    const c = b.codigo ?? b.token?.slice(0, 8);
+    if (c === "bbbbbbbb" || c === "eeeeeeee") return { resultado: "valida", token: PT[c], numero: 12, posicion: 1, total: 2, checked_in_at: HORA_PT };
+    if (c === "cccccccc") return { resultado: "ya_usada", token: PT[c], numero: 12, posicion: 2, total: 2, checked_in_at: HORA_PT };
+    return { resultado: "invalida", motivo: "no_existe" };
+  };
+}
+const espiarVibracion = () => { window.__vib = []; Object.defineProperty(navigator, "vibrate", { value: (p) => (window.__vib.push(p), true) }); };
+async function teclear(page, codigo) {
+  await page.fill("#codigo", codigo);
+  await page.press("#codigo", "Enter");
+}
+
+await caso("portero: sin clave pide clave; clave mala avisa; buena entra con contador", async () => {
+  const ll = [];
+  const ctx = await pagina({ portero: puerta(ll) });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/portero.html`);
+  await page.waitForSelector("#login:not([hidden])");
+  a.equal(await page.isHidden("#panel"), true, "panel visible sin clave");
+  a.equal(ll.length, 0, "llamó a la función sin clave");
+  await foto(page, "11-portero-clave");
+  await page.fill("#clave", "mala");
+  await page.click("#login button");
+  await page.waitForSelector("#error:not([hidden])");
+  a.equal(await page.textContent("#error"), "Clave incorrecta.");
+  await page.fill("#clave", CLAVE_PT);
+  await page.click("#login button");
+  await page.waitForSelector("#panel:not([hidden])");
+  a.equal(await page.textContent("#contador"), "37 ingresaron de 112 aprobadas");
+  a.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("ticketera-portero-clave"))), CLAVE_PT, "no guardó la clave");
+  await ctx.close();
+});
+
+await caso("portero: válida verde con vibración y deshacer, vuelve sola; ya usada con hora; inválida roja", async () => {
+  const ll = [];
+  const ctx = await pagina({ portero: puerta(ll) }, { storage: { "ticketera-portero-clave": JSON.stringify(CLAVE_PT) } });
+  const page = await ctx.newPage();
+  await page.addInitScript(espiarVibracion);
+  await page.goto(`${URLBASE}/portero.html`);
+  await page.waitForSelector("#panel:not([hidden])");
+
+  await teclear(page, "BBBBBBBB");
+  await page.waitForSelector("#resultado:not([hidden])");
+  a.equal(await page.getAttribute("#resultado", "data-estado"), "valida");
+  a.ok((await page.getAttribute("#resultado", "class")).includes("valida"));
+  a.equal(await page.evaluate(() => getComputedStyle(document.getElementById("resultado")).backgroundColor), "rgb(46, 216, 71)", "válida no es verde neón");
+  a.ok((await page.textContent("#resultado")).includes("Entrada 1 de 2"), "válida sin 'Entrada 1 de 2'");
+  a.deepEqual(await page.evaluate(() => window.__vib), [[80]], "no vibró un pulso corto");
+  a.equal(await page.isVisible("#deshacer"), true, "sin 'Deshacer' tras una válida");
+  a.equal(ll.filter((b) => b.accion === "checkin").at(-1).codigo, "bbbbbbbb", "no mandó el código normalizado");
+  await foto(page, "12-portero-valida");
+
+  await teclear(page, "bbbbbbbb"); // mismo código dentro de los 3 s: se ignora
+  await page.waitForSelector("#resultado", { state: "hidden", timeout: 3500 });
+  a.equal(ll.filter((b) => b.accion === "checkin").length, 1, "reenvió el mismo código antes de 3 s");
+
+  await teclear(page, "cccccccc");
+  await page.waitForSelector("#resultado:not([hidden])");
+  a.equal(await page.getAttribute("#resultado", "data-estado"), "ya_usada");
+  a.ok((await page.textContent("#resultado")).includes("22:14"), "ya usada sin la hora del primer ingreso");
+  a.equal(await page.evaluate(() => getComputedStyle(document.getElementById("resultado")).backgroundColor), "rgb(255, 214, 10)", "ya usada no es amarillo marcador");
+  await foto(page, "13-portero-ya-usada");
+  await page.click("#resultado"); // un toque lo cierra antes
+  a.equal(await page.isHidden("#resultado"), true, "el toque no cerró el resultado");
+
+  await teclear(page, "dddddddd");
+  await page.waitForSelector("#resultado:not([hidden])");
+  a.equal(await page.getAttribute("#resultado", "data-estado"), "invalida");
+  a.ok((await page.textContent("#r-titulo")).includes("Inválida"));
+  a.equal(await page.isHidden("#deshacer"), true, "'Deshacer' visible tras una inválida");
+  a.deepEqual((await page.evaluate(() => window.__vib)).at(-1), [400], "inválida no vibró largo");
+  await foto(page, "14-portero-invalida");
+  await page.click("#resultado");
+
+  await teclear(page, "eeeeeeee");
+  await page.waitForSelector("#resultado:not([hidden])");
+  await page.click("#resultado");
+  await page.click("#deshacer");
+  await page.waitForSelector("#aviso:not([hidden])");
+  a.deepEqual(ll.filter((b) => b.accion === "deshacer").map((b) => b.token), [PT.eeeeeeee], "deshacer no mandó el token de la última válida");
+  a.equal(await page.isHidden("#deshacer"), true);
+  await ctx.close();
+});
+
 await browser.close();
 server.kill();
 console.log(fallos ? `\n${fallos} caso(s) fallaron` : `\nOK ux.mjs · capturas en ${OUT}`);

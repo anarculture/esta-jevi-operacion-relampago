@@ -1,11 +1,19 @@
 # BUILD: check-in del portero
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 01
-- Último verde: — · commit — · —
-- Gates: build ⬜ · test ⬜ · smoke ⬜
+- Ticket actual: 02
+- Último verde: 01 · commit (ver git log) · 2026-10-26
+- Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: —
-- Rama de trabajo: — (la anota el setup)
+- Rama de trabajo: `worktree-agent-a04ac3b55edd7ecf4` (worktree `.claude/worktrees/agent-a04ac3b55edd7ecf4`, creado por el harness; `ticketera` mergeada encima)
+- Entorno: el stack local compartido (`sindicato-baba-ticketera`, 54321) lo usa en paralelo el build
+  `pm-compartida` (su `functions serve` y sus `db reset`). Para no pisarnos, este build corre un stack
+  propio con override por entorno, sin tocar `config.toml`:
+  `env SUPABASE_PROJECT_ID=portero SUPABASE_API_PORT=55321 SUPABASE_DB_PORT=55322 SUPABASE_DB_SHADOW_PORT=55320 SUPABASE_DB_POOLER_PORT=55329 SUPABASE_EDGE_RUNTIME_INSPECTOR_PORT=8183 supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,logflare,vector,supavisor`
+  (y el mismo `env` delante de `supabase functions serve --env-file supabase/functions/.env`).
+  Gates equivalentes: contenedor `supabase_db_portero`; `API=http://127.0.0.1:55321 DB_CONTAINER=supabase_db_portero`
+  para `portero.mjs` y `API=…` para `flujo.mjs`; el 8787 lo ocupa un `http.server` del worktree `ticketera`,
+  así que el smoke corre en 8788. En la config local de ese stack se activaron `pago_movil_bnc` y `zelle`.
 
 Spec: https://github.com/anarculture/sindicato-baba/issues/4 (léela completa antes del ticket 01:
 `gh issue view 4 --repo anarculture/sindicato-baba`). Tickets en `.scratch/portero/issues/`.
@@ -51,7 +59,7 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 
 ## Tickets
 
-- [ ] 01 · Check-in por código de respaldo, de punta a punta · Bloqueado por: — · → .scratch/portero/issues/01-checkin-por-codigo.md
+- [x] 01 · Check-in por código de respaldo, de punta a punta · Bloqueado por: — · → .scratch/portero/issues/01-checkin-por-codigo.md · evidencia: `OK ticketera.sql` · `OK portero: orden #10, 4 ingresadas de 8 aprobadas` · `OK ux.mjs` (10 casos) · deno `7 passed` · `OK flujo` · 401 · smoke 200 · /security-review sin hallazgos
 - [ ] 02 · Escaneo con la cámara · Bloqueado por: 01 · → .scratch/portero/issues/02-camara.md
 - [ ] 03 · Sin señal e imprimir · Bloqueado por: 01 · → .scratch/portero/issues/03-sin-senal.md
 - [ ] 04 · Producción y prueba real · Bloqueado por: 02, 03 · → .scratch/portero/issues/04-produccion.md

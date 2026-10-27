@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Puerta · Sindicato Baba</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="t.css">
+<script src="comun.js" defer></script>
+</head>
+<body class="puerta">
+<main>
+  <h1>Puerta</h1>
+  <form id="login" hidden>
+    <label for="clave">Clave del portero</label>
+    <input id="clave" type="password" autocomplete="current-password" required>
+    <button class="full">Entrar</button>
+  </form>
+  <div id="panel" hidden>
+    <p class="contador" id="contador" role="status"></p>
+    <form id="manual" autocomplete="off">
+      <label for="codigo">Código de respaldo</label>
+      <input id="codigo" type="text" autocapitalize="off" spellcheck="false" maxlength="8" placeholder="Los 8 caracteres bajo el QR" required>
+      <button class="full">Validar</button>
+    </form>
+    <p class="aviso" id="aviso" role="status" hidden></p>
+    <div class="fila"><button class="mal" id="deshacer" hidden>Deshacer último ingreso</button><button class="sec" id="salir">Salir</button></div>
+  </div>
+  <div class="error" id="error" role="alert" hidden></div>
+</main>
+<div class="resultado" id="resultado" role="alert" hidden><p class="r-titulo" id="r-titulo"></p><p class="r-detalle" id="r-detalle"></p></div>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  const $ = (id) => document.getElementById(id);
+  const K_CLAVE = "ticketera-portero-clave";
+  let clave = leer(K_CLAVE) ?? "";
+  let ultimo = { x: null, t: 0 }; // anti-rebote: el mismo token o código se ignora 3 s tras su último resultado
+  let cierre, finDeshacer, ultimaValida = null;
+  const TITULO = { valida: "Válida", ya_usada: "Ya usada", invalida: "Inválida" };
+  const VIBRA = { valida: [80], ya_usada: [80, 80, 80], invalida: [400] };
+  const MOTIVO = { no_existe: "No es una entrada de esta fiesta.", no_aprobada: "Esa orden no está aprobada.", codigo_ambiguo: "Código repetido: escanea el QR." };
+  const hora = (iso) => new Date(iso).toLocaleTimeString("es-VE", { timeZone: "America/Caracas", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+  function fallo(msg) { $("error").textContent = msg; $("error").hidden = !msg; }
+  function aviso(msg) { $("aviso").textContent = msg; $("aviso").hidden = !msg; }
+
+  async function llamar(body) {
+    try {
+      return await funcion("portero", { clave, ...body });
+    } catch (e) {
+      if (e.status === 401) {
+        try { localStorage.removeItem(K_CLAVE); } catch {}
+        clave = "";
+        $("panel").hidden = true; $("login").hidden = false;
+        fallo("Clave incorrecta.");
+      }
+      throw e;
+    }
+  }
+
+  async function contar() {
+    const r = await llamar({ accion: "resumen" });
+    $("contador").textContent = `${r.ingresadas} ingresaron de ${r.aprobadas} aprobadas`;
+  }
+
+  async function entrar() {
+    fallo("");
+    try { await contar(); }
+    catch (e) { if (e.status === 401) return; fallo(e.message); }
+    guardar(K_CLAVE, clave);
+    $("login").hidden = true; $("panel").hidden = false;
+  }
+
+  function cerrar() { clearTimeout(cierre); $("resultado").hidden = true; }
+
+  function mostrar(r) {
+    const el = $("resultado");
+    el.className = `resultado ${r.resultado}`;
+    el.dataset.estado = r.resultado;
+    $("r-titulo").textContent = TITULO[r.resultado] ?? "Inválida";
+    $("r-detalle").textContent =
+      r.resultado === "valida" ? `Entrada ${r.posicion} de ${r.total} · orden #${r.numero}`
+      : r.resultado === "ya_usada" ? `A las ${hora(r.checked_in_at)} · entrada ${r.posicion} de ${r.total} · orden #${r.numero}`
+      : MOTIVO[r.motivo] ?? "";
+    el.hidden = false;
+    try { navigator.vibrate?.(VIBRA[r.resultado] ?? VIBRA.invalida); } catch {}
+    clearTimeout(cierre);
+    cierre = setTimeout(cerrar, 2000);
+
+    clearTimeout(finDeshacer);
+    ultimaValida = r.resultado === "valida" ? r.token : null;
+    $("deshacer").hidden = !ultimaValida;
+    if (ultimaValida) finDeshacer = setTimeout(() => { ultimaValida = null; $("deshacer").hidden = true; }, 5 * 60 * 1000);
+  }
+
+  async function validar(entrada) {
+    const x = String(entrada).trim().toLowerCase();
+    if (!x || (x === ultimo.x && Date.now() - ultimo.t < 3000)) return;
+    ultimo = { x, t: Date.now() };
+    fallo(""); aviso("");
+    let r;
+    try {
+      r = await llamar({ accion: "checkin", ...(x.length === 36 ? { token: x } : { codigo: x }) });
+    } catch (e) {
+      if (e.status !== 401) fallo(e.message);
+      return;
+    }
+    ultimo = { x, t: Date.now() };
+    mostrar(r);
+    if (r.resultado === "valida") contar().catch(() => {});
+  }
+
+  $("resultado").addEventListener("click", cerrar);
+  $("manual").addEventListener("submit", (ev) => { ev.preventDefault(); validar($("codigo").value); $("codigo").value = ""; });
+  $("deshacer").addEventListener("click", async () => {
+    const token = ultimaValida;
+    if (!token) return;
+    $("deshacer").disabled = true;
+    try {
+      const r = await llamar({ accion: "deshacer", token });
+      aviso(r.ok ? "Ingreso deshecho." : "Ya pasaron 5 minutos: no se puede deshacer.");
+      ultimaValida = null; $("deshacer").hidden = true;
+      await contar();
+    } catch (e) { if (e.status !== 401) fallo(e.message); }
+    $("deshacer").disabled = false;
+  });
+  $("login").addEventListener("submit", (ev) => { ev.preventDefault(); clave = $("clave").value; entrar(); });
+  $("salir").addEventListener("click", () => { try { localStorage.removeItem(K_CLAVE); } catch {} location.reload(); });
+
+  if (clave) entrar(); else $("login").hidden = false;
+});
+</script>
+</body>
+</html>

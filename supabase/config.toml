@@ -423,3 +423,6 @@ verify_jwt = false
 
 [functions.admin]
 verify_jwt = false
+
+[functions.portero]
+verify_jwt = false
