@@ -1,9 +1,10 @@
 # BUILD: WhatsApp por entrada, aprobación automática y aviso por vytas
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 04 (antes: `git merge ticketera` con el portero y pm-compartida ya en producción)
-- Último verde: 03 · commit (ver git log) · 2026-10-26 (01 41ac3bc · 02 dfd31cf; merges de `ticketera` en 46873d1)
-- Gates: build ✅ (sin build) · test ✅ SQL, ux, deno, flujo, auto-aprobar, avisos · smoke ✅ 8790 "Tu WhatsApp"
+- Ticket actual: 05 (producción). Antes: integrar `origin/vm/evento-pm-v2` (trae `20261027040000_portero_hora_local.sql`, ya aplicada en producción).
+- Último verde: 04 · commit (ver git log) · 2026-10-26 (01 41ac3bc · 02 dfd31cf · 03 7c1606f; merges de `ticketera` en 46873d1 y bf74878)
+- Gates: build ✅ (sin build) · test ✅ SQL (en `supabase_db_avisos`; la compartida la recrea otro build), ux, deno, flujo, auto-aprobar, avisos, dry-run del script · smoke ✅ 8790 "Tu WhatsApp"
+- VM: script `~/.hermes/scripts/avisos-entradas.sh`, `AVISOS_URL` en `~/.hermes/.env`, sección en el skill `plataforma-sindicato-baba`, cron `avisos-entradas` (f2e9920487c7) **en pausa**.
 - Bloqueado: —
 - Rama de trabajo: `worktree-agent-af9623a6e11453d53` (worktree `.claude/worktrees/agent-af9623a6e11453d53`; base: rama del portero ya publicada en `origin/vm/evento-pm-v2` + `git merge ticketera`)
 - Servicios: gate SQL en el stack compartido `sindicato-baba-ticketera` (54322; ahí apliqué con `migration up` la del portero y la mía, sin `db reset`, y sembré la orden `PREMIGRACIONAVISOS` antes de la migración para que el assert de backfill muerda; durante el 03 otro build recreó esa base y la siembra se perdió: en base vacía el assert de backfill es vacuo). El hook de permisos no deja parar el `functions serve` de `pm-compartida` en 54321 ni escribir por HTTP en esa base, así que los gates HTTP corren en un stack propio `avisos` (API 56321, DB 56322; `API=http://127.0.0.1:56321`), igual que el portero con el suyo en 55321. Smoke en el puerto 8790 (el 8787 lo ocupa un `http.server` del worktree `ticketera`).
@@ -59,7 +60,7 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 - [x] 01 · WhatsApp por entrada, de punta a punta · Bloqueado por: — · → .scratch/avisos/issues/01-whatsapp-por-entrada.md
 - [x] 02 · Aprobación automática con `coincide` · Bloqueado por: 01 · → .scratch/avisos/issues/02-auto-aprobar.md
 - [x] 03 · Función `avisos` y panel · Bloqueado por: 01 · → .scratch/avisos/issues/03-funcion-avisos-y-panel.md
-- [ ] 04 · vytas envía · Bloqueado por: 03 · → .scratch/avisos/issues/04-vytas-envia.md
+- [x] 04 · vytas envía · Bloqueado por: 03 · → .scratch/avisos/issues/04-vytas-envia.md
 - [ ] 05 · Producción · Bloqueado por: 02, 04 · → .scratch/avisos/issues/05-produccion.md
 
 ## Loop por ticket (lazy-fable)

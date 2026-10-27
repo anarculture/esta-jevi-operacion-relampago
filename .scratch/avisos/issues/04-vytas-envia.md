@@ -38,11 +38,20 @@ Decisiones congeladas:
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `bash supabase/tests/avisos-entradas.sh --dry-run --url http://127.0.0.1:54321/functions/v1/avisos` (funciones sirviendo, orden de prueba aprobada con 2 WhatsApps) imprime 2 líneas `DRY …@s.whatsapp.net …` y `pendientes` sigue devolviendo 2 después.
-- [ ] `ssh aios-vm 'cmp ~/.hermes/scripts/avisos-entradas.sh -' < supabase/tests/avisos-entradas.sh` sale 0.
-- [ ] `ssh aios-vm 'hermes send -t whatsapp:<CONTACTO_WA>@s.whatsapp.net --json "Prueba de avisos de la ticketera (vytas)"'` sale 0 y Mau confirma que le llegó (gate HITL: pregúntale una vez; sin respuesta en 30 min → BLOQUEADO).
-- [ ] `ssh aios-vm 'hermes cron list'` muestra el job de avisos (en pausa hasta el ticket 05).
-- [ ] `ssh aios-vm 'grep -c "avisos" ~/.hermes/skills/*/SKILL.md'` encuentra al menos 1.
-- [ ] `ssh aios-vm 'grep -c "^PM_CLAVE=" ~/.hermes/.env'` imprime 1 (sin imprimir el valor).
+- [x] `bash supabase/tests/avisos-entradas.sh --dry-run --url http://127.0.0.1:54321/functions/v1/avisos` (funciones sirviendo, orden de prueba aprobada con 2 WhatsApps) imprime 2 líneas `DRY …@s.whatsapp.net …` y `pendientes` sigue devolviendo 2 después.
+- [x] `ssh aios-vm 'cmp ~/.hermes/scripts/avisos-entradas.sh -' < supabase/tests/avisos-entradas.sh` sale 0.
+- [x] `ssh aios-vm 'hermes send -t whatsapp:<CONTACTO_WA>@s.whatsapp.net --json "Prueba de avisos de la ticketera (vytas)"'` sale 0 y Mau confirma que le llegó (gate HITL: pregúntale una vez; sin respuesta en 30 min → BLOQUEADO).
+- [x] `ssh aios-vm 'hermes cron list'` muestra el job de avisos (en pausa hasta el ticket 05).
+- [x] `ssh aios-vm 'grep -c "avisos" ~/.hermes/skills/*/SKILL.md'` encuentra al menos 1.
+- [x] `ssh aios-vm 'grep -c "^PM_CLAVE=" ~/.hermes/.env'` imprime 1 (sin imprimir el valor).
+
+**Evidencia (ticket 04):**
+- Dry-run local (stack `avisos`, orden de prueba #12 con 2 WhatsApps): 2 líneas `DRY 584141110001@s.whatsapp.net Hola, aquí está tu entrada 1 de 2…` y `DRY 584241110002@s.whatsapp.net …2 de 2…`; `pendientes` sigue en 2 después.
+- `ssh aios-vm 'cmp ~/.hermes/scripts/avisos-entradas.sh -' < supabase/tests/avisos-entradas.sh` → exit 0.
+- `hermes send -t whatsapp:584145287337@s.whatsapp.net --json "Prueba de avisos de la ticketera (vytas)"` → `"success": true`, `message_id 3EB0574F3A64C23CB16B70`, exit 0. Gate HITL: llegó a las 23:33 desde el chat de vytas (confirmado por el puente de WhatsApp de la laptop de Mau, vía coordinador).
+- `hermes cron list` → `f2e9920487c7 [paused]` `avisos-entradas`, `every 1m`, `--no-agent`, `Deliver: local` (en pausa hasta el 05). `hermes cron` sí admite scripts (`--script … --no-agent`), así que no hizo falta un timer de systemd.
+- `grep -c avisos ~/.hermes/skills/plataforma-sindicato-baba/SKILL.md` → 3 (sección "Avisos de la ticketera" añadida al skill del issue #2).
+- `grep -c "^PM_CLAVE=" ~/.hermes/.env` → 1 (la de #2; mismo hash que `~/.config/sindicato-baba/pm_clave`). `AVISOS_URL` apunta a producción.
+- El script usa `flock` para que dos sondeos que se pisan no manden dos veces, y `ok` sale del exit code y del campo `success` del JSON de `hermes send`.
