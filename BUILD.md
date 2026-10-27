@@ -2,7 +2,7 @@
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
 - Ticket actual: 03
-- Último verde: 02 · commit 816b004 · 2026-10-26
+- Último verde: 02 · commit fb1ecb8 (tras rebase sobre origin; antes 816b004) · 2026-10-26
 - Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: —  (03: Mau corrió los 3 comandos de Supabase tras dos denegaciones `[Production Deploy]` del harness; verificado con lecturas)
 - Rama de trabajo: `pm-compartida` (worktree en `.claude/worktrees/pm-compartida`, creado a mano con git: la herramienta del harness no se permite desde un subagente con cwd fijo)
