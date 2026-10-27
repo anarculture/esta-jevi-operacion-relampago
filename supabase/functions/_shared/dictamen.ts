@@ -80,18 +80,24 @@ export function dictaminar(o: Orden, x: Ocr, destino: Destino): Dictamen {
   else dudas.push("no se lee el destinatario");
 
   // Emisor (issue #6, punto 2): solo duda, nunca malos. Se compara lo que se leyó completo contra lo
-  // declarado; un teléfono enmascarado (0414***567) o una lectura vacía no se compara.
-  // Si nada de lo comparable coincide, duda.
+  // declarado; una lectura enmascarada (0414***567, V-**345678) o vacía no se compara.
+  // Duda solo si nada de lo comparable coincide: un teléfono distinto con la cédula correcta suele
+  // ser un error al declarar, no otro pagador, y Mau lo ve igual en el panel.
   const p = o.pagador ?? {};
+  const oculto = (s: string) => /[*•…]/.test(s ?? "");
+  const palabras = (s: string) => plain(s).split(/\s+/).filter((w) => w.length >= 3);
   const cotejos: boolean[] = [];
   const tel = [last10(x.senderPhone), last10(p.telefono ?? "")];
-  if (tel[0].length === 10 && tel[1].length === 10) cotejos.push(tel[0] === tel[1]);
-  const ced = [digits(x.senderId), digits(p.cedula ?? "")];
-  if (ced[0].length >= 5 && ced[1].length >= 5) cotejos.push(ced[0] === ced[1]);
+  if (!oculto(x.senderPhone) && tel[0].length === 10 && tel[1].length === 10) cotejos.push(tel[0] === tel[1]);
+  // Cédula contra cédula o RIF (V-09876543-2): sin ceros a la izquierda, el RIF agrega un dígito verificador al final.
+  const ced = [digits(x.senderId), digits(p.cedula ?? "")].map((s) => s.replace(/^0+/, ""));
+  const [corta, larga] = ced[0].length <= ced[1].length ? ced : [ced[1], ced[0]];
+  if (!oculto(x.senderId) && corta.length >= 5) cotejos.push(corta === larga || (larga.length === corta.length + 1 && larga.startsWith(corta)));
   const id = [plain(x.senderId), plain(p.id ?? "")];
-  if (id[0] && id[1]) cotejos.push(id[0] === id[1]);
-  const nombre = plain(p.titular ?? "").split(" ")[0];
-  if (nombre && plain(x.senderName)) cotejos.push(plain(x.senderName).includes(nombre));
+  if (!oculto(x.senderId) && id[0] && id[1]) cotejos.push(id[0] === id[1]);
+  // Titular: palabras completas de 3 o más letras ("Ana" no coincide con "Mariana"; "J" no cuenta).
+  const [declarado, leido] = [palabras(p.titular ?? ""), palabras(x.senderName)];
+  if (!oculto(x.senderName) && declarado.length && leido.length) cotejos.push(declarado.some((w) => leido.includes(w)));
   if (cotejos.length && !cotejos.some(Boolean)) dudas.push("el pagador leído no es el declarado");
 
   if (x.editSignals.trim()) dudas.push(`posible edición: ${x.editSignals.trim()}`);

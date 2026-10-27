@@ -51,3 +51,12 @@ Autocrítica: `p_pagador` es obligatorio. Entre `db push` y la publicación de P
 no lo manda y toda compra falla con `pagador_invalido` (va al ticket 04, ventana acordada con Mau).
 El cotejo del emisor solo compara lecturas completas: un teléfono enmascarado en el comprobante
 no genera duda.
+
+Revisión (security-review sin hallazgos; `pagador` solo sale por `admin`). Corregidos de los revisores
+Sonnet: `p_pagador` con valores no texto (`{"banco": 12}`) se aceptaba, ahora `pagador_invalido`
+(assert nuevo, rojo sin la guarda); la rama Binance gana casos SQL; el cotejo ya no duda con
+lecturas enmascaradas de cédula, nombre o ID, acepta el RIF con dígito verificador y compara el
+titular por palabras completas de 3 o más letras ("Ana" ya no coincide con "Mariana"); el formulario
+cuenta caracteres como el SQL y valida el ID para cualquier método que no sea pago móvil ni Zelle;
+el panel busca también el teléfono del comprador en formato local; caso XSS del pagador en `ux.mjs`
+(rojo sin `esc()`).

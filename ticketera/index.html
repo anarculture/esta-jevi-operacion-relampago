@@ -236,13 +236,13 @@ addEventListener("DOMContentLoaded", async () => {
     chk("referencia", f.referencia.value.replace(/[^A-Za-z0-9]/g, "").replace(/^0+/, "").length >= 6, ERRORES.referencia_invalida);
     chk("captura", Boolean(f.captura.files[0]), "Falta la captura del comprobante.");
     const t = f.metodo?.value ? tipo(f.metodo.value) : null;
-    const largo = (id) => valor(id).length >= 2 && valor(id).length <= 80;
+    const largo = (id) => [...valor(id)].length >= 2 && [...valor(id)].length <= 80; // caracteres, como length() en SQL
     if (t === "pago_movil") {
       chk("pagador-banco", largo("pagador-banco"), "Elige el banco desde el que pagaste.");
       chk("pagador-telefono", /^58\d{10}$/.test(normalizarWhatsapp(valor("pagador-telefono")) ?? ""), "Revisa el teléfono con el que pagaste: 11 dígitos, por ejemplo 04141234567.");
       chk("pagador-cedula", /^[VE]?\d{5,9}$/.test(valor("pagador-cedula").toUpperCase().replace(/[^VE0-9]/g, "")), ERRORES.cedula_invalida);
     } else if (t === "zelle") chk("pagador-titular", largo("pagador-titular"), "Escribe el nombre del titular de la cuenta que envió el Zelle.");
-    else if (t === "binance") chk("pagador-id", largo("pagador-id"), "Escribe tu Binance ID o nickname.");
+    else if (t) chk("pagador-id", largo("pagador-id"), "Escribe tu Binance ID o nickname.");
     chk("nombre", f.nombre.value.trim().length >= 2 && f.nombre.value.trim().length <= 80, ERRORES.nombre_invalido);
     chk("cedula", /^[VE]?\d{5,9}$/.test(f.cedula.value.toUpperCase().replace(/[^VE0-9]/g, "")), ERRORES.cedula_invalida);
     whatsapps().forEach((v, i) => chk(i ? `wa-${i + 1}` : "telefono", Boolean(normalizarWhatsapp(v)), ERRORES.whatsapp_invalido));

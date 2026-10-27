@@ -405,10 +405,14 @@ await caso("admin: cola, título con pendientes, filtro, rechazo con motivo, Wha
 });
 
 await caso("admin: 'desde' con los datos del pagador; el buscador encuentra por cédula y teléfono del pagador", async () => {
-  const ctx = await pagina({ admin: () => COLA }, { storage: { "ticketera-clave": "clave-buena-de-prueba" } });
+  // El pagador lo escribe el comprador: llega al panel escapado, nunca como HTML.
+  const xss = { ...COLA[2], id: "o4", numero: 9, pagador: { titular: '<img id="xss" src=x>' } };
+  const ctx = await pagina({ admin: () => [...COLA, xss] }, { storage: { "ticketera-clave": "clave-buena-de-prueba" } });
   const page = await ctx.newPage();
   await page.goto(`${URLBASE}/admin.html`);
   await page.waitForSelector("#cola .card");
+  a.equal(await page.locator("#xss").count(), 0, "el pagador se inyectó como HTML");
+  a.ok((await page.textContent("#hechas")).includes('desde <img id="xss" src=x>'), "el pagador con < no se muestra como texto");
   a.ok((await page.textContent("#cola .card")).includes("desde 04147654321 · V9876543 · Mercantil"), "sin 'desde' de pago móvil");
   a.ok((await page.textContent("#hechas")).includes("desde Beto Díaz"), "sin 'desde' de Zelle");
   await foto(page, "10d-admin-pagador");

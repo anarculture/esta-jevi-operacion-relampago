@@ -69,11 +69,31 @@ Deno.test("pagador leído igual al declarado: coincide; distinto: dudoso con 'el
   const x = { ...ok, documentType: "zelle" as const, amount: "20.00", recipientPhone: "", recipientId: "mau@mail.com" };
   assertEquals(dictaminar(z, { ...x, senderName: "BETO DIAZ" }, { correo: "mau@mail.com" }).dictamen, "coincide");
   assertEquals(dictaminar(z, { ...x, senderName: "Carla Gómez" }, { correo: "mau@mail.com" }).motivo.includes("el pagador leído"), true);
+  // Palabra completa: "Ana" no está en "Mariana Rojas".
+  const ana = { ...z, pagador: { titular: "Ana Pérez" } };
+  assertEquals(dictaminar(ana, { ...x, senderName: "Mariana Rojas" }, { correo: "mau@mail.com" }).motivo.includes("el pagador leído"), true);
 });
 
 Deno.test("sin lectura del emisor (o enmascarada): sin duda del pagador", () => {
   const d = dictaminar(orden, ok, destino);
   assertEquals(d.dictamen, "coincide");
   assertEquals(dictaminar(orden, { ...ok, senderPhone: "0424***2233" }, destino).dictamen, "coincide");
+  assertEquals(dictaminar(orden, { ...ok, senderId: "V-**345678" }, destino).dictamen, "coincide");
+  const z = { ...orden, metodo: "zelle", monto_bs: null, pagador: { titular: "Beto Díaz" } };
+  const x = { ...ok, documentType: "zelle" as const, amount: "20.00", recipientPhone: "", recipientId: "mau@mail.com" };
+  assertEquals(dictaminar(z, { ...x, senderName: "Be** Di**" }, { correo: "mau@mail.com" }).dictamen, "coincide");
+  const b = { ...orden, metodo: "binance", monto_bs: null, pagador: { id: "123456789" } };
+  const xb = { ...ok, documentType: "binance" as const, amount: "20", recipientPhone: "", recipientId: "mau@mail.com" };
+  assertEquals(dictaminar(b, { ...xb, senderId: "123***89" }, { correo: "mau@mail.com" }).dictamen, "coincide");
+});
+
+Deno.test("pagador: RIF con dígito verificador cuenta como la cédula; un dato bien y otro mal no es duda", () => {
+  assertEquals(dictaminar(orden, { ...ok, senderId: "V-09876543-2" }, destino).dictamen, "coincide");
+  // Regla del cotejo: duda solo si nada de lo comparable coincide (teléfono bien, cédula mal → sin duda).
+  assertEquals(dictaminar(orden, { ...ok, senderPhone: "04147654321", senderId: "V-1.111.111" }, destino).dictamen, "coincide");
+  const b = { ...orden, metodo: "binance", monto_bs: null, pagador: { id: "BetoDJ" } };
+  const xb = { ...ok, documentType: "binance" as const, amount: "20", recipientPhone: "", recipientId: "mau@mail.com" };
+  assertEquals(dictaminar(b, { ...xb, senderId: "betodj" }, { correo: "mau@mail.com" }).dictamen, "coincide");
+  assertEquals(dictaminar(b, { ...xb, senderId: "otro_usuario" }, { correo: "mau@mail.com" }).motivo.includes("el pagador leído"), true);
   assertEquals(dictaminar({ ...orden, pagador: null }, { ...ok, senderPhone: "04241112233" }, destino).dictamen, "coincide");
 });

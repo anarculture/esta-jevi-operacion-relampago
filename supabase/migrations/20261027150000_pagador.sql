@@ -40,6 +40,12 @@ begin
 
   -- Solo las claves del tipo, normalizadas; cualquier otra clave se descarta.
   if jsonb_typeof(p_pagador) is distinct from 'object' then raise exception 'pagador_invalido'; end if;
+  -- Cada clave del tipo es texto JSON: {"banco": 12} o {"id": ["a"]} no pasan.
+  if exists (select 1 from unnest(case when v_pm then array['banco', 'telefono', 'cedula']
+                                       when p_metodo = 'zelle' then array['titular'] else array['id'] end) k
+             where jsonb_typeof(p_pagador -> k) is distinct from 'string') then
+    raise exception 'pagador_invalido' using detail = 'tipos';
+  end if;
   if v_pm then
     if length(trim(coalesce(p_pagador ->> 'banco', ''))) not between 2 and 80 then
       raise exception 'pagador_invalido' using detail = 'banco';

@@ -40,7 +40,7 @@ begin
   -- Datos del pagador (issue #6, punto 2): solo el panel los ve.
   assert ver_orden((r ->> 'token')::uuid)::text not like '%pagador%' and ver_orden((r ->> 'token')::uuid)::text not like '%9876543%'
      and ver_orden((r ->> 'token')::uuid)::text not like '%7654321%', 'ver_orden expone al pagador';
-  foreach err in array array['pm sin cédula', 'pm teléfono extranjero', 'pm sin banco', 'zelle sin titular', 'sin pagador', 'pagador no objeto'] loop
+  foreach err in array array['pm sin cédula', 'pm teléfono extranjero', 'pm sin banco', 'pm banco no texto', 'zelle sin titular', 'sin pagador', 'pagador no objeto'] loop
     begin
       case err
         when 'pm sin cédula' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
@@ -49,6 +49,8 @@ begin
           '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": "Banesco", "telefono": "+1 305 555 0100", "cedula": "9876543"}');
         when 'pm sin banco' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
           '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": " ", "telefono": "04247654321", "cedula": "9876543"}');
+        when 'pm banco no texto' then perform crear_orden('Beto', '87654321', '', 1, 'pago_movil_ubii', 'PAGMAL1',
+          '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"banco": 12345, "telefono": "04247654321", "cedula": "9876543"}');
         when 'zelle sin titular' then perform crear_orden('Beto', '87654321', '', 1, 'zelle', 'PAGMAL1',
           '22222222-2222-2222-2222-222222222222.png', array['04241234567'], '{"cedula": "9876543"}');
         when 'sin pagador' then perform crear_orden('Beto', '87654321', '', 1, 'zelle', 'PAGMAL1',
@@ -133,6 +135,31 @@ begin
 end $$;
 
 reset role;
+
+-- Rama Binance de p_pagador: solo el ID o nickname, como texto.
+update config set metodos = metodos || jsonb_build_object('binance', coalesce(metodos -> 'binance', '{}') || '{"activo": true}');
+set local role anon;
+do $$
+declare r json; err text;
+begin
+  r := crear_orden('Beto', '87654321', '', 1, 'binance', 'BNB712283',
+                   '44444444-4444-4444-4444-444444444444.png', array['04241234567'], '{"id": " BetoDJ ", "cedula": "se descarta"}');
+  assert (r ->> 'numero') is not null, 'Binance con ID no creó la orden';
+  foreach err in array array['{"id": ["BetoDJ"]}', '{"id": "B"}', '{"nickname": "BetoDJ"}'] loop
+    begin
+      perform crear_orden('Beto', '87654321', '', 1, 'binance', 'BNBMAL1',
+                          '44444444-4444-4444-4444-444444444444.png', array['04241234567'], err::jsonb);
+      assert false, 'pagador de Binance inválido aceptado: ' || err;
+    exception when raise_exception then
+      assert sqlerrm = 'pagador_invalido', err || ': error esperado pagador_invalido, vino ' || sqlerrm;
+    end;
+  end loop;
+end $$;
+reset role;
+do $$
+begin
+  assert (select pagador from ordenes where referencia = 'BNB712283') = '{"id": "BetoDJ"}'::jsonb, 'pagador de Binance';
+end $$;
 
 do $$
 declare o ordenes; z ordenes; err text; e json;

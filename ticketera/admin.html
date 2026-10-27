@@ -87,7 +87,7 @@ addEventListener("DOMContentLoaded", () => {
 
   function pintar() {
     const q = norm($("buscar").value);
-    const visibles = q ? ordenes.filter((o) => [o.nombre, o.cedula, o.referencia, o.telefono, o.numero, o.pagador?.cedula, o.pagador?.telefono, telLocal(o.pagador?.telefono)].some((v) => norm(v).includes(q))) : ordenes;
+    const visibles = q ? ordenes.filter((o) => [o.nombre, o.cedula, o.referencia, o.telefono, telLocal(o.telefono), o.numero, o.pagador?.cedula, o.pagador?.telefono, telLocal(o.pagador?.telefono)].some((v) => norm(v).includes(q))) : ordenes;
     const pend = visibles.filter((o) => o.estado === "en_revision").reverse(); // la más vieja primero
     const hechas = visibles.filter((o) => o.estado !== "en_revision");
     const aprobadas = ordenes.filter((o) => o.estado === "aprobada");
