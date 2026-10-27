@@ -12,11 +12,14 @@ export function json(body: unknown, status = 200) {
 }
 
 // Envuelve un handler: responde el preflight CORS y convierte excepciones en 500 con mensaje.
-export function serve(handler: (body: Record<string, unknown>) => Promise<Response>) {
+// maxBytes: cuerpos más largos se rechazan con 413 antes de parsearlos.
+export function serve(handler: (body: Record<string, unknown>) => Promise<Response>, maxBytes = Infinity) {
   Deno.serve(async (req) => {
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     try {
-      return await handler(req.method === "POST" ? await req.json() : {});
+      const text = req.method === "POST" ? await req.text() : "{}";
+      if (text.length > maxBytes) return json({ error: "cuerpo_muy_grande" }, 413);
+      return await handler(JSON.parse(text));
     } catch (e) {
       console.error(e);
       return json({ error: e instanceof Error ? e.message : String(e) }, 500);

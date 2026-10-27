@@ -1,0 +1,28 @@
+name: pages
+on:
+  push:
+    branches: [vm/evento-pm-v2]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      # La ticketera es la raíz del sitio; ticketera/ sigue sirviendo los enlaces de orden ya enviados y la PM queda en pm/.
+      - run: |
+          rsync -a --exclude tests ticketera/ _site/
+          rsync -a --exclude tests ticketera/ _site/ticketera/
+          mkdir _site/pm && cp *.html *.js *.css _site/pm/
+      - uses: actions/upload-pages-artifact@v3
+      - id: deploy
+        uses: actions/deploy-pages@v4

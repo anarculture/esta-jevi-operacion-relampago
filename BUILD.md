@@ -1,11 +1,11 @@
 # BUILD: plataforma del organizador compartida (Mau, Claude Code, vytas)
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 01
-- Último verde: — · commit — · —
-- Gates: build ⬜ · test ⬜ · smoke ⬜
-- Bloqueado: —
-- Rama de trabajo: — (la anota el setup)
+- Ticket actual: 03
+- Último verde: 02 · commit fb1ecb8 (tras rebase sobre origin; antes 816b004) · 2026-10-26
+- Gates: build ✅ · test ✅ · smoke ✅
+- Bloqueado: —  (03: Mau corrió los 3 comandos de Supabase tras dos denegaciones `[Production Deploy]` del harness; verificado con lecturas)
+- Rama de trabajo: `pm-compartida` (worktree en `.claude/worktrees/pm-compartida`, creado a mano con git: la herramienta del harness no se permite desde un subagente con cwd fijo)
 
 Spec: https://github.com/anarculture/sindicato-baba/issues/2 (léela completa antes del ticket 01:
 `gh issue view 2 --repo anarculture/sindicato-baba`). Tickets en `.scratch/pm-compartida/issues/`.
@@ -39,7 +39,11 @@ congeladas (no las reabras):
   y autor; una sola Edge Function `pm` con clave propia `PM_CLAVE`, distinta de `ADMIN_CLAVE`.
 - Contrato `pm`: `leer` (opcional `version`), `guardar` con `base`/`autor`/`estado`, `versiones`.
   401 clave mala, 409 base vieja (devuelve la vigente), 400 estado inválido con `errores`.
-  Autor ∈ `navegador`/`claude`/`vytas`. No hay acción de borrado.
+  Autor ∈ `navegador`/`claude`/`vytas`. No hay acción de borrado. La respuesta de `leer` es un
+  objeto plano extensible: otra spec (repintar-ticketera, bloqueada por 01 y 02) le añadirá un
+  bloque `ticketera` calculado al momento; los clientes ignoran claves que no conocen.
+- `real.sold` y `real.ticketsCollectedCents` son solo ventas fuera de la ticketera. La orden #2
+  está en la ticketera y **no se registra a mano** (decisión de Mau: evita doble conteo).
 - El servidor valida con `validateState` de `app.js` mediante una copia byte a byte en la carpeta
   compartida de funciones; el gate `cmp` la mantiene idéntica.
 - Navegador: sin clave, igual que hoy. Con clave: carga al abrir, sube lo local si el remoto está
@@ -52,10 +56,10 @@ congeladas (no las reabras):
 
 ## Tickets
 
-- [ ] 01 · Edge Function `pm` con su tabla y contrato HTTP · Bloqueado por: — · → .scratch/pm-compartida/issues/01-edge-function-pm.md
-- [ ] 02 · El navegador sincroniza con `pm` · Bloqueado por: 01 · → .scratch/pm-compartida/issues/02-navegador-sincroniza.md
+- [x] 01 · Edge Function `pm` con su tabla y contrato HTTP · Bloqueado por: — · → .scratch/pm-compartida/issues/01-edge-function-pm.md · evidencia: `OK pm: 8 casos del contrato y la carrera de guardados`, `supabase/functions/pm/index.ts:24` (401), smoke `401`
+- [x] 02 · El navegador sincroniza con `pm` · Bloqueado por: 01 · → .scratch/pm-compartida/issues/02-navegador-sincroniza.md · evidencia: `OK pm-navegador: 6 casos`, `index.html:6` (connect-src), `dump_dom=1`
 - [ ] 03 · Producción y acceso de Claude · Bloqueado por: 01, 02 · → .scratch/pm-compartida/issues/03-produccion-y-claude.md
-- [ ] 04 · vytas usa la plataforma y se registra la venta de la orden #2 · Bloqueado por: 03 · → .scratch/pm-compartida/issues/04-vytas-y-venta-orden-2.md
+- [ ] 04 · vytas usa la plataforma · Bloqueado por: 03 · → .scratch/pm-compartida/issues/04-vytas.md
 
 ## Gates
 
@@ -137,8 +141,8 @@ no aplica a ellos: nunca revertir ni re-desplegar producción para verificar.
 Todos `[x]`, build + test verdes, `functions serve` arranca, smoke pasa. Al cerrar:
 
 1. `/f5`.
-2. Fast-forward de la rama local: `git -C /home/acracia/Code/sindicato-baba merge --ff-only <rama de trabajo>`
-   (el push a `origin vm/evento-pm-v2` ya lo hizo el ticket 03).
+2. Pon al día el checkout principal: `git -C /home/acracia/Code/sindicato-baba pull --rebase origin vm/evento-pm-v2`
+   (el push lo hizo el ticket 03; el rebase descarta solo los commits de docs que ya están arriba).
 3. Baja lo que levantaste: detén `functions serve`, `supabase stop` en el worktree.
 4. Reanuda el otro stack: `docker start $(docker ps -aq --filter label=com.supabase.cli.project=esta-jevi-ticketera)`
    y comprueba con `docker ps --filter label=com.supabase.cli.project=esta-jevi-ticketera --format '{{.Names}}' | wc -l` que hay contenedores corriendo.
