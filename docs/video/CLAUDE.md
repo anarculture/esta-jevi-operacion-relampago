@@ -78,7 +78,19 @@ https://claude.ai/artifact/4nHQF2MCthoEVWexi75dwy.
 `elements/entregas/reel-hibrido.mp4` (1080×1920, 56,8 s, sin audio, 0 cr): v5 en 1a, 1b, 3a, 4a, 4b, 5a, 5b (recortes
 del jurado, 1,3×) y v4 en 1c, 2, segunda mitad de 3 y 6a–6d, con las seis entradas de DJ (`INTROS`: clip, segundo de
 congelado y tapa). Saldo 44,05 cr: 13 cr se fueron en GPT Image 2.5 Flare entre 17:48 y 17:58, fuera de esta sesión.
-**Mau lo aprobó ("va") para publicarlo a las 19:00.** Pendiente tras publicar: 6d+6e y 5b (~23 cr), 6b, dancefloor.
+**Mau lo aprobó ("va") para publicarlo a las 19:00.** Después se le sumó sonido. Track: RING THE ALARM (DJ Babatr
+Remix), `/home/acracia/Music/1-01 RING THE ALARM (DJ Babatr Remix).mp3`, desde el 125,05 s: el drop (132,0 s) cae
+en el tanque que revienta, reel 7,0 s. Debajo, el audio de Kling de cada clip (mismos recortes y fundidos) y SFX
+sintéticos de ffmpeg: riser en cada cámara lenta, golpe grave y chasquido en cada congelado de DJ, whoosh en cada
+cambio de estilo. La música se agacha bajo esos SFX. Higgsfield no sirve para SFX: `mirelo_text_to_audio` es solo
+para su generador de juegos. `--solo-audio` rehace solo la mezcla. Pendiente tras publicar: 6d+6e y 5b (~23 cr), 6b, dancefloor.
+
+**27-oct, 19:30: reel de 28,8 s.** Mau pidió ≤ 30 s acelerando las escenas (la música sigue a 1×) y sin los SFX
+sintéticos ("no me gustaron los VFX"). `montaje_hibrido.py`: `VEL = 2.2` para todos los tramos (ya no hay `VELOCIDAD`),
+entrada de DJ sin cámara lenta: destello de 4 cuadros y congelado de 1,0 s con la tapa acelerada 1,6× (`setpts` sobre el
+`.mov`). Mezcla: solo música + audio de Kling, sin riser/golpe/chasquido/whoosh ni sidechain. `MUSICA_INICIO` se calcula
+en el script a partir de `DROP` y `TANQUE` para que el drop siga cayendo en el tanque (reel 3,6 s). El script falla si el
+total pasa de 30 s. Copia para el teléfono: `elements/entregas/reel-hibrido-movil.mp4` (< 30 MB, para `SendUserFile`).
 
 ## Qué es
 
