@@ -1,9 +1,9 @@
 # BUILD: WhatsApp por entrada, aprobación automática y aviso por vytas
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: 02 (antes: `git merge ticketera` por el dictamen nuevo)
-- Último verde: 01 · commit (ver git log) · 2026-10-26
-- Gates: build ✅ (sin build) · test ✅ SQL, ux, deno · smoke ✅ 8790 "Tu WhatsApp"
+- Ticket actual: 03
+- Último verde: 02 · commit (ver git log) · 2026-10-26 (01 en 41ac3bc; `git merge ticketera` hecho en 46873d1)
+- Gates: build ✅ (sin build) · test ✅ SQL, ux, deno, flujo, auto-aprobar · smoke ✅ 8790 "Tu WhatsApp"
 - Bloqueado: —
 - Rama de trabajo: `worktree-agent-af9623a6e11453d53` (worktree `.claude/worktrees/agent-af9623a6e11453d53`; base: rama del portero ya publicada en `origin/vm/evento-pm-v2` + `git merge ticketera`)
 - Servicios: gate SQL en el stack compartido `sindicato-baba-ticketera` (54322; ahí apliqué con `migration up` la del portero y la mía, sin `db reset`, y sembré la orden `PREMIGRACIONAVISOS` antes de la migración para que el assert de backfill muerda). El hook de permisos no deja parar el `functions serve` de `pm-compartida` en 54321 ni escribir por HTTP en esa base, así que los gates HTTP corren en un stack propio `avisos` (API 56321, DB 56322; `API=http://127.0.0.1:56321`), igual que el portero con el suyo en 55321. Smoke en el puerto 8790 (el 8787 lo ocupa un `http.server` del worktree `ticketera`).
@@ -57,7 +57,7 @@ contradicción real entre specs. Decisiones de producto congeladas (no se reabre
 ## Tickets
 
 - [x] 01 · WhatsApp por entrada, de punta a punta · Bloqueado por: — · → .scratch/avisos/issues/01-whatsapp-por-entrada.md
-- [ ] 02 · Aprobación automática con `coincide` · Bloqueado por: 01 · → .scratch/avisos/issues/02-auto-aprobar.md
+- [x] 02 · Aprobación automática con `coincide` · Bloqueado por: 01 · → .scratch/avisos/issues/02-auto-aprobar.md
 - [ ] 03 · Función `avisos` y panel · Bloqueado por: 01 · → .scratch/avisos/issues/03-funcion-avisos-y-panel.md
 - [ ] 04 · vytas envía · Bloqueado por: 03 · → .scratch/avisos/issues/04-vytas-envia.md
 - [ ] 05 · Producción · Bloqueado por: 02, 04 · → .scratch/avisos/issues/05-produccion.md

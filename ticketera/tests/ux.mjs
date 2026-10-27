@@ -322,6 +322,19 @@ await caso("admin: cola, título con pendientes, filtro, rechazo con motivo, Wha
   await ctx.close();
 });
 
+await caso("admin: chip 'Aprobada por IA' solo en las que aprobó la IA", async () => {
+  const cola = [{ ...COLA[1], id: "ia", numero: 21, aprobada_por: "ia" }, { ...COLA[1], id: "mau", numero: 20, nombre: "Dani Mora", aprobada_por: "admin" }];
+  const ctx = await pagina({ admin: () => cola }, { storage: { "ticketera-clave": "clave-buena-de-prueba" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/admin.html`);
+  await page.waitForSelector("#hechas .card");
+  const tarjetas = await page.$$eval("#hechas .card", (cs) => cs.map((c) => c.textContent));
+  a.ok(tarjetas[0].includes("#21") && tarjetas[0].includes("Aprobada por IA"), "la de la IA sin chip");
+  a.ok(tarjetas[1].includes("#20") && !tarjetas[1].includes("por IA"), "la de Mau con chip de IA");
+  await foto(page, "10b-admin-aprobada-por-ia");
+  await ctx.close();
+});
+
 // ---------- portero ----------
 const CLAVE_PT = "clave-portero-de-prueba";
 const PT = { bbbbbbbb: "bbbbbbbb-0000-4000-8000-000000000001", cccccccc: "cccccccc-0000-4000-8000-000000000002", eeeeeeee: "eeeeeeee-0000-4000-8000-000000000003" };

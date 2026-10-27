@@ -113,6 +113,21 @@ begin
   exception when others then err := sqlerrm;
   end;
   assert err = 'orden_ya_resuelta', 'error esperado orden_ya_resuelta, vino ' || err;
+  -- Quién aprobó (issue #5, ticket 02): el panel no pasa el parámetro → 'admin'; rechazo → nadie.
+  assert (select aprobada_por from ordenes where id = o.id) = 'admin', 'aprobación del panel sin aprobada_por = admin';
+  assert (select aprobada_por from ordenes where id = z.id) is null, 'un rechazo quedó con aprobada_por';
+end $$;
+
+-- `revisar` aprueba con service role y marca 'ia'.
+set local role service_role;
+do $$
+begin
+  perform resolver_orden((select id from ordenes where referencia = 'WA3OK'), true, null, 'ia');
+end $$;
+reset role;
+do $$
+begin
+  assert (select aprobada_por from ordenes where referencia = 'WA3OK') = 'ia', 'la aprobación de la IA no quedó marcada';
 end $$;
 
 -- Check-in del portero (issue #4).

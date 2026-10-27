@@ -59,7 +59,7 @@ addEventListener("DOMContentLoaded", () => {
       ${o.captura_url ? `<a href="${esc(o.captura_url)}" target="_blank" rel="noopener"><img class="captura" loading="lazy" src="${esc(o.captura_url)}" alt="Captura de la orden ${o.numero}"></a>` : ""}
       ${o.estado === "en_revision"
         ? `<div class="fila"><button data-id="${o.id}" data-aprobar="1">Aprobar</button><button class="mal" data-id="${o.id}">Rechazar</button></div>`
-        : `<p><span class="estado ${o.estado}">${ESTADO[o.estado]}</span>${o.rechazo_motivo ? ` <span class="muted">${esc(o.rechazo_motivo)}</span>` : ""}
+        : `<p><span class="estado ${o.estado}">${ESTADO[o.estado]}</span>${o.aprobada_por === "ia" ? ` <span class="estado aprobada">Aprobada por IA</span>` : ""}${o.rechazo_motivo ? ` <span class="muted">${esc(o.rechazo_motivo)}</span>` : ""}
            ${o.estado === "aprobada" ? `<a class="btn sec" href="${whatsapp(o)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>` : `<a class="btn sec" href="${whatsappRechazo(o)}" target="_blank" rel="noopener">Avisar por WhatsApp</a>`}</p>`}
     </div>`;
   }
