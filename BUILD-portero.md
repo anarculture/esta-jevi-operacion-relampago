@@ -1,7 +1,16 @@
 # BUILD: check-in del portero
 
 ## Estado  <!-- lo actualiza el loop en el paso 6 -->
-- Ticket actual: — (los 4 en `[x]`; falta la verificación independiente del Done global)
+- Ticket actual: — · Done global (2026-10-26)
+- Verificación independiente: 5 gates y todos los AC de 01–04 PASS; falibilidad ROJO-OK en 01 (página, HTTP, SQL),
+  02 y 03; 04 N/A (producción). Hallazgo: los tests de página no fallaban con el puerto ocupado → arreglado en 69acb3b.
+- Revisión de cierre (/code-review, 383010f..HEAD): un hallazgo de corrección en 03 (Deshacer de una válida sin red
+  ya subida no iba al servidor) → reabierto y arreglado en 4dc23f9, con test que da rojo contra el código anterior.
+  Hallazgos de calidad, sin bloquear: Oswald en minúscula en `.contador`/`.r-detalle` y 64 px literal en `.r-titulo`
+  (DESIGN.md); el anti-rebote también ignora el mismo código tecleado durante 3 s; `codigo_ambiguo` mira todas las
+  entradas con red y solo la lista sin red; la cola sube sin la hora local (queda la de subida); la lista muestra la
+  hora sin la fecha; código duplicado (subconsulta de posición en SQL, arranque de servidor entre tests de página);
+  nombres cortos (`x`, `l`, `m`) en `portero.html`; "vídeo" en vez de "video".
 - Último verde: 04 · publicado en 61eca82 (01 = c123180, 02 = 619f62b, 03 = a16b074, merge de `vm/evento-pm-v2` = 0aaac33) · 2026-10-26
 - Gates: build ✅ · test ✅ · smoke ✅
 - Bloqueado: —
