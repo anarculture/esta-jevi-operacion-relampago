@@ -47,11 +47,14 @@ const l1 = await pedir("/functions/v1/lectura", { path }, { ip: ipA });
 assert.equal(l1.status, 200, `lectura: ${JSON.stringify(l1.d)}`);
 assert.equal(l1.d.ocr.documentType, "pago_movil", `documentType: ${JSON.stringify(l1.d.ocr)}`);
 assert.match(l1.d.ocr.reference, /71239946/, "referencia leída");
-assert.ok("transactionTime" in l1.d.ocr, "sin transactionTime");
-assert.ok(!("recipientPhone" in l1.d.ocr) && !("recipientId" in l1.d.ocr), "la respuesta trae datos de la cuenta de destino");
+assert.equal(l1.d.ocr.transactionTime, "22:41", "la hora impresa (10:41 pm) no quedó en 24 horas");
+for (const k of ["recipientPhone", "recipientId", "recipientName", "editSignals", "confidence"]) {
+  assert.ok(!(k in l1.d.ocr), `la respuesta trae ${k}`);
+}
 assert.ok(!JSON.stringify(l1.d).includes("1234567") && !JSON.stringify(l1.d).includes("12.345.678"), "teléfono o cédula de destino en la respuesta");
 const l2 = await pedir("/functions/v1/lectura", { path }, { ip: ipA });
 assert.equal(l2.d?.creada_en, l1.d.creada_en, "la segunda lectura volvió al OCR");
+assert.deepEqual(l2.d.ocr, l1.d.ocr, "la segunda lectura devolvió otra cosa");
 console.log(`ok  lectura: ref ${l1.d.ocr.reference}, hora ${l1.d.ocr.transactionTime || "—"}; la segunda devuelve la guardada`);
 
 // Límite: la IP B ya hizo 10 lecturas en la última hora; la 11 responde 429 sin tocar el OCR.

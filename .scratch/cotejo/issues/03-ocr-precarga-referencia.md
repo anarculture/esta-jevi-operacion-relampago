@@ -74,3 +74,21 @@ Decisiones de implementación:
 Autocrítica: una lectura que falló deja el path en `pendiente` (409) para siempre; el comprador ve
 "No pudimos leer la captura" y teclea, y `revisar` vuelve a leer al registrar la orden. Las capturas
 que se suben al elegirlas y no terminan en compra quedan huérfanas en el bucket (ya pasaba).
+
+Revisión (security-review sin hallazgos; la IP de `x-forwarded-for` se puede falsificar y el tope total
+acota el gasto). Corregidos de los revisores Sonnet:
+- `lectura` respondía `editSignals`, `confidence` y `recipientName`: servía para probar falsificaciones
+  hasta que salieran limpias. Ahora lista blanca de lo que pinta el formulario (`paraComprador`);
+  el test Deno falla con la lista negra vieja.
+- Una reserva sin OCR quedaba `pendiente` para siempre: `reservar_lectura` libera las de más de 2
+  minutos (el OCR corta a los 90 s) y borra las lecturas de más de un día. IP recortada a 64.
+  `grant` explícitos a `service_role`. Tests SQL de bordes (10/11 por IP, 200/201 total, ventana de
+  una hora, liberación y borrado), cada uno rojo con su regla rota.
+- La IP sale primero de `cf-connecting-ip` y luego del primer valor de `x-forwarded-for`.
+- El OCR fuera del esquema falla (502 / dudoso) en vez de guardarse; cuerpo de `lectura` tope 1 KB;
+  si no se puede guardar la lectura, el comprador la recibe igual.
+- Formulario: la referencia precargada de una captura anterior se borra al elegir otra; `precargada`
+  va en el borrador; una lectura tardía no reescribe el borrador después de enviar; el envío espera la
+  lectura en curso (hasta 20 s) para que `revisar` no pague otro OCR; el error real de la subida se
+  muestra en la captura; la línea y los avisos solo se reescriben si cambian (aria-live); lo leído se
+  recorta a 80 y nunca entra como HTML (caso XSS en `ux.mjs`).

@@ -328,15 +328,19 @@ begin
   assert false, 'anon puede leer lecturas';
 exception when insufficient_privilege then null;
 end $$;
+reset role;
 do $$
 begin
-  perform reservar_lectura('11111111-1111-1111-1111-111111111111.png', '203.0.113.1');
-  assert false, 'anon puede reservar lecturas';
-exception when insufficient_privilege then null;
+  assert not has_function_privilege('anon', 'reservar_lectura(text, text)', 'execute')
+     and not has_function_privilege('authenticated', 'reservar_lectura(text, text)', 'execute'), 'anon o authenticated pueden reservar lecturas';
+  assert has_function_privilege('service_role', 'reservar_lectura(text, text)', 'execute')
+     and has_table_privilege('service_role', 'lecturas', 'insert'), 'la función lectura (service role) no puede reservar';
 end $$;
-reset role;
 
--- reservar_lectura: una lectura por path, 10 por IP y 200 en total por hora.
+-- reservar_lectura, como la llama la función `lectura` (service role): una lectura por path, 10 por IP
+-- y 200 en total por hora. Se parte de una tabla vacía (la transacción se deshace al final).
+delete from lecturas;
+set local role service_role;
 do $$
 begin
   assert reservar_lectura('lec-a.png', 'ip-prueba') ->> 'estado' = 'nueva', 'primera reserva';
@@ -344,13 +348,28 @@ begin
   update lecturas set ocr = '{"reference": "61540227"}' where path = 'lec-a.png';
   assert reservar_lectura('lec-a.png', 'otra-ip') ->> 'estado' = 'guardada', 'path leído no devuelve la guardada';
   assert reservar_lectura('lec-a.png', 'otra-ip') -> 'ocr' ->> 'reference' = '61540227', 'la guardada sin ocr';
-  insert into lecturas (path, ip) select 'lec-ip-' || g, 'ip-prueba' from generate_series(1, 9) g;
-  assert reservar_lectura('lec-b.png', 'ip-prueba') ->> 'estado' = 'limite', 'la lectura 11 de una IP pasó el límite';
-  assert reservar_lectura('lec-b.png', 'ip-otra') ->> 'estado' = 'nueva', 'el límite de una IP frenó a otra';
-  insert into lecturas (path, ip, creada_en) select 'lec-vieja-' || g, 'ip-prueba', now() - interval '61 minutes' from generate_series(1, 5) g;
-  insert into lecturas (path, ip) select 'lec-tot-' || g, 'ip-' || g from generate_series(1, 200) g;
-  assert reservar_lectura('lec-c.png', 'ip-nueva') ->> 'estado' = 'limite', 'el tope total por hora no frena';
+  -- Por IP: la 10 pasa, la 11 no.
+  insert into lecturas (path, ip, ocr) select 'lec-ip-' || g, 'ip-prueba', '{}' from generate_series(1, 8) g;
+  assert reservar_lectura('lec-b.png', 'ip-prueba') ->> 'estado' = 'nueva', 'la lectura 10 de una IP no pasó';
+  assert reservar_lectura('lec-c.png', 'ip-prueba') ->> 'estado' = 'limite', 'la lectura 11 de una IP pasó el límite';
+  assert reservar_lectura('lec-c.png', 'ip-otra') ->> 'estado' = 'nueva', 'el límite de una IP frenó a otra';
+  -- La ventana es de una hora: 10 lecturas de hace 61 minutos no frenan a esa IP.
+  insert into lecturas (path, ip, ocr, creada_en) select 'lec-vieja-' || g, 'ip-vieja', '{}', now() - interval '61 minutes' from generate_series(1, 10) g;
+  assert reservar_lectura('lec-d.png', 'ip-vieja') ->> 'estado' = 'nueva', 'lecturas de hace más de una hora cuentan';
+  -- Una reserva sin OCR de hace 3 minutos se libera: el reintento vuelve a reservar.
+  update lecturas set creada_en = now() - interval '3 minutes' where path = 'lec-d.png';
+  assert reservar_lectura('lec-d.png', 'ip-vieja') ->> 'estado' = 'nueva', 'reserva colgada no se liberó';
+  -- Total: se completa a 199 en la última hora; la 200 pasa y la 201 no.
+  insert into lecturas (path, ip, ocr) select 'lec-tot-' || g, 'ip-' || g, '{}'
+    from generate_series(1, 199 - (select count(*) from lecturas where creada_en > now() - interval '1 hour')) g;
+  assert reservar_lectura('lec-e.png', 'ip-nueva') ->> 'estado' = 'nueva', 'la lectura 200 del total no pasó';
+  assert reservar_lectura('lec-f.png', 'ip-nueva-2') ->> 'estado' = 'limite', 'la lectura 201 del total pasó el tope';
+  -- Lo de más de un día se borra al reservar.
+  insert into lecturas (path, ip, ocr, creada_en) values ('lec-antigua.png', 'ip-x', '{}', now() - interval '25 hours');
+  perform reservar_lectura('lec-a.png', 'otra-ip');
+  assert not exists (select 1 from lecturas where path = 'lec-antigua.png'), 'una lectura de más de un día no se borró';
 end $$;
+reset role;
 
 select 'OK ticketera.sql: ' || count(*) || ' órdenes creadas' from ordenes;
 rollback;

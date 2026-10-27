@@ -10,11 +10,12 @@ create table lecturas (
 );
 alter table lecturas enable row level security;
 revoke all on lecturas from anon, authenticated;
+grant select, insert, update, delete on lecturas to service_role;
 create index lecturas_creada_en_idx on lecturas (creada_en);
 
 -- Reserva la lectura de una captura antes de gastar OCR. Estados:
 --   guardada: el path ya tiene OCR (se devuelve, sin volver al OCR)
---   pendiente: el path ya está reservado y aún sin OCR (en curso o falló)
+--   pendiente: el path ya está reservado y aún sin OCR (en curso); a los 2 minutos se libera
 --   limite: la IP llegó a 10 lecturas en la última hora, o el total a 200
 --   nueva: se reservó el path; la función corre el OCR y guarda el resultado
 -- El candado serializa las reservas: dos pedidos simultáneos no pasan el límite a la vez.
@@ -23,6 +24,12 @@ language plpgsql set search_path = public as $$
 declare l lecturas;
 begin
   perform pg_advisory_xact_lock(hashtext('reservar_lectura'));
+  -- Reservas sin OCR de más de 2 minutos: el OCR falló o la función murió (el OCR corta a los 90 s).
+  -- Se liberan para que el comprador pueda reintentar. Las lecturas de más de un día se borran:
+  -- traen datos del pagador de gente que quizá no compró, y la orden ya guarda su propio ocr.
+  delete from lecturas where (ocr is null and creada_en < now() - interval '2 minutes')
+                          or creada_en < now() - interval '1 day';
+  p_ip := left(p_ip, 64);
   select * into l from lecturas where path = p_path;
   if found then
     return json_build_object('estado', case when l.ocr is null then 'pendiente' else 'guardada' end,
@@ -39,3 +46,4 @@ end;
 $$;
 
 revoke execute on function reservar_lectura(text, text) from public, anon, authenticated;
+grant execute on function reservar_lectura(text, text) to service_role;

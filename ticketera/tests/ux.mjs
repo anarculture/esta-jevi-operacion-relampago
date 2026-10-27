@@ -139,7 +139,7 @@ await caso("compra: cantidad fuera de rango avisa en vez de recortar; zelle en d
   await ctx.close();
 });
 
-await caso("compra: un WhatsApp por entrada, error antes de subir, recarga los conserva, p_whatsapps normalizados", async () => {
+await caso("compra: un WhatsApp por entrada, error antes de registrar, recarga los conserva, p_whatsapps normalizados", async () => {
   let args = null;
   const ctx = await pagina({ tasa: VENTA, crear_orden: (b) => ((args = b), { numero: 14, token: TOKENS[1] }), storage: { Key: "x" }, revisar: {} });
   const page = await ctx.newPage();
@@ -182,7 +182,7 @@ await caso("compra: un WhatsApp por entrada, error antes de subir, recarga los c
   await ctx.close();
 });
 
-await caso("compra: referencia de 5 caracteres marca error sin subir; con 6 envía", async () => {
+await caso("compra: referencia de 5 caracteres marca error sin registrar; con 6 envía", async () => {
   const ctx = await pagina({ tasa: VENTA, crear_orden: () => ({ numero: 15, token: TOKENS[2] }), storage: { Key: "x" }, revisar: {} });
   const page = await ctx.newPage();
   await page.goto(`${URLBASE}/index.html`);
@@ -317,6 +317,44 @@ await caso("lectura: Zelle con comprobante de pago móvil avisa el método y pre
   await foto(page, "03f-compra-lectura-metodo");
   await page.check("input[value=pago_movil_bnc]");
   await page.waitForFunction(() => !document.querySelector("#avisos-lectura").textContent.includes("parece de"));
+  await ctx.close();
+});
+
+await caso("lectura: otra captura cuya lectura falla no hereda la referencia leída de la anterior", async () => {
+  let n = 0;
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" },
+    lectura: () => (++n === 1 ? { ocr: OCR_PM, creada_en: "2026-10-27T21:04:00Z" } : { __status: 502, error: "lectura_fallida" }) });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  a.equal(await page.inputValue("#referencia"), "61540227");
+  const otra = join(tmpdir(), "captura-test-2.png");
+  writeFileSync(otra, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mNk+M9QzwAEjDAGACCDAv8cI7IoAAAAAElFTkSuQmCC", "base64"));
+  await page.setInputFiles("#captura", otra);
+  await leida(page);
+  a.equal(await page.textContent("#leimos"), "No pudimos leer la captura; escribe la referencia");
+  a.equal(await page.inputValue("#referencia"), "", "quedó la referencia leída de la captura anterior");
+  await ctx.close();
+});
+
+await caso("lectura: lo leído con HTML no se inyecta en la página", async () => {
+  const hostil = { ...OCR_PM, documentType: "zelle", reference: '<img id="xss1" src=x>', senderName: '<img id="xss2" src=x>', amount: "1" };
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" }, lectura: { ocr: hostil, creada_en: "2026-10-27T21:04:00Z" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  await page.setInputFiles("#captura", join(tmpdir(), "captura-test.png"));
+  await leida(page);
+  a.equal(await page.locator("#xss1, #xss2").count(), 0, "lo leído se inyectó como HTML");
+  a.ok((await page.textContent("#leimos")).includes('ref <img id="xss1" src=x>'), "la referencia leída no se muestra como texto");
+  a.equal(await page.inputValue("#referencia"), '<img id="xss1" src=x>', "precarga como valor");
+  a.ok((await page.textContent("#avisos-lectura")).includes("parece de Zelle"), "sin aviso de método");
   await ctx.close();
 });
 

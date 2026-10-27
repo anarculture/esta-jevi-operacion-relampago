@@ -45,6 +45,7 @@ export const SCHEMA = {
 export async function leer(imageUrl: string): Promise<Ocr> {
   const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
+    signal: AbortSignal.timeout(90_000), // por debajo de los 2 minutos en que reservar_lectura libera una reserva
     headers: { Authorization: `Bearer ${Deno.env.get("OPENROUTER_API_KEY")}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: modelo(),
@@ -63,7 +64,13 @@ export async function leer(imageUrl: string): Promise<Ocr> {
   });
   if (!r.ok) throw new Error(`openrouter ${r.status}: ${(await r.text()).slice(0, 200)}`);
   const content = (await r.json()).choices?.[0]?.message?.content ?? "";
-  return JSON.parse(content.replace(/^```(json)?|```$/g, ""));
+  const ocr = JSON.parse(content.replace(/^```(json)?|```$/g, ""));
+  // Un proveedor que no respeta el esquema no deja una lectura rota guardada: falla como cualquier error del OCR.
+  if (!ocr || typeof ocr !== "object" || FIELDS.some((f) => typeof ocr[f] !== "string")
+    || !SCHEMA.properties.documentType.enum.includes(ocr.documentType) || !SCHEMA.properties.confidence.enum.includes(ocr.confidence)) {
+    throw new Error(`ocr: respuesta fuera del esquema: ${content.slice(0, 200)}`);
+  }
+  return ocr;
 }
 
 // La captura tal como está en el bucket. Inline en base64 y no URL firmada: así también funciona contra el Supabase local.
@@ -71,8 +78,9 @@ export async function leerBlob(blob: Blob): Promise<Ocr> {
   return leer(`data:${blob.type};base64,${encodeBase64(await blob.arrayBuffer())}`);
 }
 
-// Lo que ve el comprador: sin los datos de la cuenta de destino (son de Mau, no suyos).
-export function sinDestino(ocr: Ocr) {
-  const { recipientPhone: _p, recipientId: _i, ...resto } = ocr;
-  return resto;
+// Lo que ve el comprador: solo lo que pinta el formulario. Nada de la cuenta de destino (es de Mau), ni
+// `editSignals` o `confidence`: con ellos un falsificador probaría capturas hasta que salgan limpias.
+export function paraComprador(ocr: Ocr) {
+  const { documentType, amount, reference, transactionDate, transactionTime, senderName } = ocr;
+  return { documentType, amount, reference, transactionDate, transactionTime: transactionTime ?? "", senderName };
 }

@@ -144,6 +144,8 @@ addEventListener("DOMContentLoaded", async () => {
   }
   let lectura = { estado: "", ocr: null }; // estado: "" | leyendo | ok | error
   let precargada = ""; // la referencia que puso la lectura; si el comprador la cambió, no se pisa
+  let enviada = false; // tras registrar la orden, una lectura tardía ya no toca el formulario ni el borrador
+  let leyendo = null; // promesa de la lectura en curso: el envío la espera para que `revisar` no pague otro OCR
   const DOC = { pago_movil: "pago móvil", zelle: "Zelle", binance: "Binance" };
   const numero = (s) => (s && Number.isFinite(Number(s)) ? Number(s) : null);
   const montoLeido = (o) => (numero(o.amount) === null ? ""
@@ -154,22 +156,25 @@ addEventListener("DOMContentLoaded", async () => {
     const o = lectura.ocr;
     const util = o && o.documentType !== "other" && (o.reference || numero(o.amount) !== null);
     $("leimos").hidden = !lectura.estado;
-    $("leimos").textContent = lectura.estado === "leyendo" ? "Leyendo el comprobante…"
+    const linea = lectura.estado === "leyendo" ? "Leyendo el comprobante…"
       : util ? `Leímos: ${[montoLeido(o), o.reference && `ref ${o.reference}`,
           [fechaCorta(o.transactionDate), o.transactionTime].filter(Boolean).join(" ")].filter(Boolean).join(" · ")}`
       : "No pudimos leer la captura; escribe la referencia";
+    // Solo si cambia: la línea y los avisos se anuncian (aria-live) y pintar corre en cada tecla.
+    if ($("leimos").textContent !== linea) $("leimos").textContent = linea;
     const avisos = [];
     const metodo = f.metodo?.value, cant = cantidad();
     if (util && metodo && lectura.estado === "ok") {
       const pm = tipo(metodo) === "pago_movil";
       const esperado = pm ? Math.round(cant * venta.precio_pm_eur_cents * venta.tasa_eur) / 100 : cant * venta.precio_usd_cents / 100;
       if (o.documentType !== tipo(metodo)) {
-        avisos.push(`El comprobante parece de ${DOC[o.documentType] ?? o.documentType} y elegiste ${venta.metodos[metodo]?.nombre ?? metodo}`);
+        avisos.push(`El comprobante parece de ${Object.hasOwn(DOC, o.documentType) ? DOC[o.documentType] : "otro método"} y elegiste ${venta.metodos[metodo]?.nombre ?? metodo}`);
       } else if (cant && numero(o.amount) !== null && Math.abs(numero(o.amount) - esperado) > (pm ? 1 : 0.01)) {
         avisos.push(`El monto leído (${montoLeido(o)}) no es el de la orden (${pm ? bs(esperado) : usd(cant * venta.precio_usd_cents)})`);
       }
     }
-    $("avisos-lectura").innerHTML = avisos.map((t) => `<p class="aviso" role="status">${esc(t)}</p>`).join("");
+    const html = avisos.map((t) => `<p class="aviso" role="status">${esc(t)}</p>`).join("");
+    if ($("avisos-lectura").innerHTML !== html) $("avisos-lectura").innerHTML = html;
   }
 
   // El formulario sobrevive a que el navegador recargue la pestaña al volver de la app del banco.
@@ -177,6 +182,7 @@ addEventListener("DOMContentLoaded", async () => {
     "pagador-banco", "pagador-telefono", "pagador-cedula", "pagador-titular", "pagador-id"];
   const borrador = leer("ticketera-borrador") ?? {};
   for (const c of CAMPOS) if (borrador[c] && f[c]) f[c].value = borrador[c];
+  precargada = borrador.precargada ?? "";
   // Un WhatsApp por entrada: el 1 es "Tu WhatsApp" (#telefono); los demás se generan según la cantidad.
   const otros = $("otros-wa");
   const whatsapps = () => [f.telefono.value, ...[...otros.querySelectorAll("input")].map((i) => i.value)];
@@ -193,7 +199,7 @@ addEventListener("DOMContentLoaded", async () => {
     }
   }
   camposWa(borrador.whatsapps);
-  f.addEventListener("input", () => guardar("ticketera-borrador", { ...Object.fromEntries(CAMPOS.map((c) => [c, f[c]?.value ?? ""])), whatsapps: whatsapps() }));
+  f.addEventListener("input", () => guardar("ticketera-borrador", { ...Object.fromEntries(CAMPOS.map((c) => [c, f[c]?.value ?? ""])), whatsapps: whatsapps(), precargada }));
 
   function campoError(id, msg) {
     const p = $(`e-${id}`), i = $(id);
@@ -253,20 +259,29 @@ addEventListener("DOMContentLoaded", async () => {
     if (urlPreview) URL.revokeObjectURL(urlPreview);
     $("preview").hidden = !file;
     campoError("captura", "");
+    const precargar = (id, v) => { $(id).value = v; $(id).dispatchEvent(new Event("input", { bubbles: true })); };
+    // La referencia que puso la captura anterior no es la de esta.
+    if (precargada && valor("referencia") === precargada) precargar("referencia", (precargada = ""));
     lectura = { estado: file ? "leyendo" : "", ocr: null };
     pintarLectura();
     if (!file) return;
     urlPreview = URL.createObjectURL(file);
     $("preview").src = urlPreview;
 
-    let ocr = null;
-    try { ocr = (await funcion("lectura", { path: await subir(file) })).ocr; } catch { /* sin lectura: se teclea como antes */ }
-    if ($("captura").files[0] !== file) return; // eligió otra captura mientras tanto
+    let path;
+    try { path = await subir(file); } catch (e) {
+      // La subida falló (tipo, tamaño, red): ese es el error que importa; el envío reintenta la subida.
+      if ($("captura").files[0] === file) { campoError("captura", e.message); lectura = { estado: "", ocr: null }; pintarLectura(); }
+      return;
+    }
+    leyendo = funcion("lectura", { path }).then((r) => r.ocr, () => null); // sin lectura: se teclea como antes
+    const ocr = await leyendo;
+    if (enviada || $("captura").files[0] !== file) return; // ya se envió, o eligió otra captura mientras tanto
     lectura = { estado: ocr ? "ok" : "error", ocr };
     // Precarga sin pisar: solo si el campo está vacío o tiene lo que puso la lectura anterior.
-    const precargar = (id, v) => { $(id).value = v; $(id).dispatchEvent(new Event("input", { bubbles: true })); };
-    if (ocr?.reference && (!valor("referencia") || valor("referencia") === precargada)) precargar("referencia", (precargada = ocr.reference));
-    if (ocr?.senderName && f.metodo?.value && tipo(f.metodo.value) === "zelle" && !valor("nombre")) precargar("nombre", ocr.senderName);
+    // Lo leído lo escribe quien sube la imagen: se recorta, y solo va como valor del campo.
+    if (ocr?.reference && (!valor("referencia") || valor("referencia") === precargada)) precargar("referencia", (precargada = String(ocr.reference).slice(0, 80)));
+    if (ocr?.senderName && f.metodo?.value && tipo(f.metodo.value) === "zelle" && !valor("nombre")) precargar("nombre", String(ocr.senderName).slice(0, 80));
     pintarLectura();
   });
   const valor = (id) => $(id).value.trim();
@@ -315,6 +330,10 @@ addEventListener("DOMContentLoaded", async () => {
       const file = f.captura.files[0];
       if (subida.file !== file) boton.textContent = "Subiendo captura…";
       const path = await subir(file);
+      if (lectura.estado === "leyendo" && leyendo) {
+        boton.textContent = "Leyendo la captura…";
+        await Promise.race([leyendo, new Promise((r) => setTimeout(r, 20000))]); // shortcut: a los 20 s sigue; `revisar` leerá de nuevo
+      }
       boton.textContent = "Registrando…";
       const o = await rpc("crear_orden", {
         p_nombre: f.nombre.value, p_cedula: f.cedula.value, p_telefono: f.telefono.value,
@@ -324,6 +343,7 @@ addEventListener("DOMContentLoaded", async () => {
       });
       funcion("revisar", { token: o.token }).catch(() => {}); // el dictamen no bloquea al comprador
       guardar("ticketera-orden", { token: o.token, numero: o.numero });
+      enviada = true;
       try { localStorage.removeItem("ticketera-borrador"); } catch {}
       location.href = `orden.html?t=${o.token}`;
     } catch (e) {
