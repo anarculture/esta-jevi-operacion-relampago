@@ -50,8 +50,15 @@ for p in llamar({"accion": "pendientes"}):
     except ValueError:
         j = None
     fallo = rc != 0 or (isinstance(j, dict) and (j.get("success") is False or j.get("ok") is False or bool(j.get("error"))))
-    llamar({"accion": "avisada", "id": p["id"], "ok": not fallo,
-            **({"error": (salida or f"exit {rc}")[-200:]} if fallo else {})})
+    # Ya se envió: si marcar falla, se reintenta; si no se pudo, el próximo sondeo lo reenviaría.
+    for intento in range(3):
+        try:
+            llamar({"accion": "avisada", "id": p["id"], "ok": not fallo,
+                    **({"error": (salida or f"exit {rc}")[-200:]} if fallo else {})})
+            break
+        except Exception as e:
+            if intento == 2:
+                print(f"no se pudo marcar el aviso de la orden #{p['numero']} entrada {p['posicion']} ({e}); puede repetirse")
     if fallo:
         print(f"aviso fallido: orden #{p['numero']} entrada {p['posicion']}: {(salida or f'exit {rc}')[-200:]}")
 PY

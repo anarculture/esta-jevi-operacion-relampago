@@ -55,3 +55,4 @@ Decisiones congeladas:
 - `grep -c avisos ~/.hermes/skills/plataforma-sindicato-baba/SKILL.md` → 3 (sección "Avisos de la ticketera" añadida al skill del issue #2).
 - `grep -c "^PM_CLAVE=" ~/.hermes/.env` → 1 (la de #2; mismo hash que `~/.config/sindicato-baba/pm_clave`). `AVISOS_URL` apunta a producción.
 - El script usa `flock` para que dos sondeos que se pisan no manden dos veces, y `ok` sale del exit code y del campo `success` del JSON de `hermes send`.
+- **Del code review (cierre):** si `avisada` fallaba tras un envío exitoso, se caía el ciclo y esa entrada se reenviaba cada minuto. Ahora reintenta 3 veces y, si no puede, sigue con las demás y lo dice por stdout. Copiado otra vez a la VM: `cmp` exit 0. Dry-run local: 8 pendientes, 8 líneas `DRY`, 8 después.
