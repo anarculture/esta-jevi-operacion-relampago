@@ -12,7 +12,7 @@ async function rpc(fn: string, args: Record<string, unknown> = {}) {
   return data;
 }
 
-serve(async ({ clave, accion, token, codigo }) => {
+serve(async ({ clave, accion, token, codigo, hora }) => {
   if (CLAVE.length < 16 || clave !== CLAVE) return json({ error: "clave_invalida" }, 401);
 
   if (accion === "checkin") {
@@ -24,7 +24,9 @@ serve(async ({ clave, accion, token, codigo }) => {
       t = data;
     }
     if (!t) return json({ resultado: "invalida", motivo: "no_existe" });
-    return json(await rpc("checkin_entrada", { p_token: t }));
+    // hora: la del teléfono cuando validó sin señal; el SQL la acota a [ahora - 1 día, ahora].
+    const p_hora = typeof hora === "string" && !Number.isNaN(Date.parse(hora)) ? hora : null;
+    return json(await rpc("checkin_entrada", { p_token: t, p_hora }));
   }
 
   if (accion === "deshacer") {

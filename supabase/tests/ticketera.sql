@@ -92,6 +92,17 @@ begin
   assert (r2 ->> 'checked_in_at')::timestamptz = h, 'ya_usada cambió la hora del primer ingreso';
   assert checkin_entrada(gen_random_uuid()) ->> 'motivo' = 'no_existe', 'token inexistente';
 
+  -- Hora local del check-in sin señal: se respeta dentro de [ahora - 1 día, ahora].
+  r1 := checkin_entrada(t2, now() - interval '10 minutes');
+  assert (r1 ->> 'checked_in_at')::timestamptz = now() - interval '10 minutes', 'hora local no respetada: ' || r1::text;
+  update entradas set checked_in_at = null where token = t2;
+  r1 := checkin_entrada(t2, now() + interval '1 hour');
+  assert (r1 ->> 'checked_in_at')::timestamptz = now(), 'hora futura no acotada: ' || r1::text;
+  update entradas set checked_in_at = null where token = t2;
+  r1 := checkin_entrada(t2, now() - interval '3 days');
+  assert (r1 ->> 'checked_in_at')::timestamptz = now() - interval '1 day', 'hora vieja no acotada: ' || r1::text;
+  update entradas set checked_in_at = null where token = t2;
+
   -- Entrada colgada de una orden en revisión (solo posible a mano): inválida.
   insert into ordenes (nombre, cedula, telefono, cantidad, metodo, referencia, captura, monto_usd_cents)
   values ('Rev', 'V1', '0', 1, 'zelle', 'PORTEROREV1', 'x.jpg', 1000) returning * into o;
