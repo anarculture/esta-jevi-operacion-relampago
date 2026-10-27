@@ -29,7 +29,9 @@ cercano y la fiesta del jueves 29.
    También desde el 27-oct (issues #6 y #7): al elegir la captura se lee sola y precarga la
    referencia (se puede corregir; si la lectura falla, se teclea); la referencia lleva al menos 6
    caracteres; y declaro desde dónde pagué (pago móvil: banco, teléfono y cédula; Zelle: titular;
-   Binance: ID), datos que solo ve el administrador.
+   Binance: ID), datos que solo ve el administrador. Mientras la IA lee la captura, la vista
+   previa late con borde verde. En pago móvil, la casilla «Pagué yo» copia mi cédula y mi
+   teléfono del pago móvil a los datos del comprador.
 3. **Sistema · referencia única.** Una referencia ya usada en el mismo método se
    rechaza al enviarse, para que un comprobante no pague dos veces. *Desde el 27-oct (issue #6):
    la unicidad es por terminación de 6 caracteres, no por la referencia completa.*

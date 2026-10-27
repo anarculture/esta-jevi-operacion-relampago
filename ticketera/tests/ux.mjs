@@ -301,6 +301,30 @@ await caso("lectura: elegir la captura la sube, la lee y precarga la referencia 
   await ctx.close();
 });
 
+await caso("compra: 'Pagué yo' copia cédula y teléfono del pago móvil y los sigue mientras está marcado; en Zelle no aparece", async () => {
+  const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" }, lectura: { ocr: OCR_PM, creada_en: "2026-10-27T21:04:00Z" } });
+  const page = await ctx.newPage();
+  await page.goto(`${URLBASE}/index.html`);
+  await page.waitForSelector("#metodos input");
+  await page.check("input[value=pago_movil_bnc]");
+  await page.click("#ya-pague");
+  a.equal(await page.isVisible("#l-mismo"), true, "sin la casilla 'Pagué yo' en pago móvil");
+  await page.fill("#pagador-telefono", "04129988776");
+  await page.fill("#pagador-cedula", "V9876543");
+  await page.check("#mismo");
+  a.equal(await page.inputValue("#cedula"), "V9876543", "no copió la cédula");
+  a.equal(await page.inputValue("#telefono"), "04129988776", "no copió el teléfono");
+  await page.fill("#pagador-cedula", "V9876544");
+  a.equal(await page.inputValue("#cedula"), "V9876544", "no siguió el cambio de cédula");
+  await page.uncheck("#mismo");
+  await page.fill("#pagador-cedula", "V1111111");
+  a.equal(await page.inputValue("#cedula"), "V9876544", "copió con la casilla apagada");
+  await page.check("input[value=zelle]");
+  a.equal(await page.isVisible("#l-mismo"), false, "la casilla aparece en Zelle");
+  await foto(page, "03f-compra-pague-yo");
+  await ctx.close();
+});
+
 await caso("lectura: Zelle con comprobante de pago móvil avisa el método y precarga el nombre; no pisa la referencia tecleada", async () => {
   const ctx = await pagina({ tasa: VENTA, storage: { Key: "x" }, lectura: { ocr: OCR_PM, creada_en: "2026-10-27T21:04:00Z" } });
   const page = await ctx.newPage();
