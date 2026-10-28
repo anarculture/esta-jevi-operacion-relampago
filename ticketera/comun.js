@@ -80,6 +80,43 @@ const estadoEnvio = (x) => (!x?.whatsapp_mascara ? ""
   : `Para el ···${x.whatsapp_mascara} · pendiente de envío`);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
+// Boleto de una entrada, igual en entrada.html y orden.html (las dos cargan qrcode.min.js). Como el pase de
+// cortesía, con el QR antes de los datos para que salga en la captura; `extra` va bajo el código de respaldo.
+function boleto(e, token, extra = e.whatsapp_mascara ? `<p class="muted">Para el WhatsApp ···${esc(e.whatsapp_mascara)}</p>` : "") {
+  let svg;
+  try { const q = qrcode(0, "M"); q.addData(token); q.make(); svg = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); }
+  catch { svg = `<p class="error">No se pudo dibujar el QR. Muestra el código de respaldo.</p>`; }
+  return `
+    <article class="boleto">
+      <div class="boleto-banner">
+        <img src="banner-fotocopia.jpg" srcset="banner-fotocopia.jpg 1080w, banner-fotocopia@2x.jpg 2160w" sizes="(min-width: 34rem) 34rem, 100vw" alt="DJ BABATR en letras cromadas sobre cables y fachada de Caracas en fotocopia" width="1080" height="480">
+        <span class="cinta">Entrada general</span>
+      </div>
+      <h1>${FIESTA.nombre}</h1>
+      <p class="sub">${FIESTA.dj} · Entrada ${e.posicion} de ${e.total}</p>
+      <div class="corte"></div>
+      <div class="qr">
+        ${svg}
+        <p class="muted">Código de respaldo: ${token.slice(0, 8)}</p>
+        ${extra}
+      </div>
+      <div class="corte"></div>
+      <dl class="boleto-datos">
+        <div><dt>Fecha</dt><dd>${FIESTA.fecha}</dd></div>
+        <div><dt>Hora</dt><dd>${FIESTA.hora}</dd></div>
+        <div><dt>Lugar</dt><dd><a href="${FIESTA.mapa}" target="_blank" rel="noopener">${FIESTA.lugar}</a></dd></div>
+        <div><dt>Orden</dt><dd>#${e.numero}</dd></div>
+      </dl>
+      <div class="corte"></div>
+      <p class="apoyo">Con el apoyo de</p>
+      <div class="patrocinio">
+        <img src="logo-zulia.png" alt="Cerveza Zulia" width="47" height="62">
+        <img src="logo-malportada.png" alt="Malportada" width="62" height="48">
+        <img src="logo-bandera.png" alt="Bandera" width="92" height="24">
+      </div>
+    </article>`;
+}
+
 // Botón "Copiar" con feedback dentro del mismo botón; `data-copiar` lleva el valor plano.
 function copiarDesde(root) {
   root.addEventListener("click", async (ev) => {

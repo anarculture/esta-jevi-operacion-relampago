@@ -21,27 +21,14 @@ addEventListener("DOMContentLoaded", async () => {
   const CACHE = `ticketera-orden-${token}`;
   copiarDesde(m);
 
-  function qr(t) {
-    try {
-      const q = qrcode(0, "M"); q.addData(t); q.make();
-      return q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
-    } catch {
-      return `<p class="error">No se pudo dibujar el QR. Muestra el código de respaldo.</p>`;
-    }
-  }
-
   function entradaUrl(t) { return new URL(`entrada.html?e=${t}`, location.href).href; }
 
   function pintar(o, desdeCache) {
     // Una copia guardada antes del issue #5 trae solo tokens en texto.
-    const qrs = (o.entradas ?? []).map((x) => (typeof x === "string" ? { token: x } : x)).map(({ token: t, ...x }, i) => `
-      <div class="card qr">
-        <p><strong>Entrada ${i + 1} de ${o.cantidad}</strong></p>
-        ${qr(t)}
-        <p class="muted">Código de respaldo: ${t.slice(0, 8)}</p>
+    const qrs = (o.entradas ?? []).map((x) => (typeof x === "string" ? { token: x } : x)).map(({ token: t, ...x }, i) =>
+      boleto({ posicion: i + 1, total: o.cantidad, numero: o.numero }, t, `
         ${estadoEnvio(x) ? `<p class="muted envio">${esc(estadoEnvio(x))}</p>` : ""}
-        ${o.cantidad > 1 ? `<a class="btn sec" href="https://wa.me/?text=${encodeURIComponent(`Tu entrada para ${FIESTA.nombre} (${FIESTA.fecha}): ${entradaUrl(t)}`)}" target="_blank" rel="noopener">Enviar esta entrada a un amigo</a>` : ""}
-      </div>`).join("");
+        ${o.cantidad > 1 ? `<a class="btn sec" href="https://wa.me/?text=${encodeURIComponent(`Tu entrada para ${FIESTA.nombre} (${FIESTA.fecha}): ${entradaUrl(t)}`)}" target="_blank" rel="noopener">Enviar esta entrada a un amigo</a>` : ""}`)).join("");
 
     const waMio = `https://wa.me/${o.telefono_wa}?text=${encodeURIComponent(`Mi orden #${o.numero} de ${FIESTA.nombre}: ${enlace}`)}`;
     m.innerHTML = `
