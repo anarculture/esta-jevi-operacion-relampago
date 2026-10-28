@@ -1,6 +1,6 @@
 // Puerta de la fiesta: check-in por QR (token) o por código de respaldo (8 primeros
 // caracteres del token). Clave propia en PORTERO_CLAVE, distinta de ADMIN_CLAVE: el portero
-// no ve datos de compradores ni aprueba órdenes.
+// no aprueba órdenes; de los datos del comprador solo ve la cédula, para el reingreso.
 import { db, json, serve } from "../_shared/db.ts";
 
 const CLAVE = Deno.env.get("PORTERO_CLAVE") ?? "";

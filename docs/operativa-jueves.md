@@ -23,7 +23,12 @@ escriben en producción los corre Mau con `!` en Claude Code (el hook se los nie
 
 1. Portero: abrir `portero.html` en el teléfono del portero, poner la clave, tocar **Descargar lista**
    con señal. Probar la cámara con el QR de una entrada aprobada de prueba (debe salir **verde**; al
-   segundo intento **amarillo** "ya usada"; tocar **Deshacer** en los 5 minutos la libera).
+   segundo intento **amarillo** "Reingreso" con la hora del primer ingreso; tocar **Deshacer** en los 5
+   minutos la libera). Se permite salir y volver a entrar sin escanear al salir: el amarillo muestra
+   "Pide cédula V-…" y pasa quien enseñe el documento con esa cédula (la del comprador de la orden). En
+   órdenes de varias entradas, los amigos reingresan con el comprador. "Sin cédula registrada" = cortesía o
+   venta manual: decide el portero. Antes de salir de casa, **Descargar lista** otra vez para que la
+   cédula también salga sin señal.
 2. Panel: abrir `admin.html`, confirmar que no queda nada en "Por revisar".
 3. Tasa: la compra en pago móvil se bloquea si la tasa BCV tiene más de 12 horas. Se refresca sola cada
    hora con cada visita a la página; si el jueves de tarde la página dice "No pudimos actualizar la tasa

@@ -641,7 +641,7 @@ function puerta(llamadasPt) {
     if (b.accion === "deshacer") return { ok: true };
     const c = b.codigo ?? b.token?.slice(0, 8);
     if (c === "bbbbbbbb" || c === "eeeeeeee") return { resultado: "valida", token: PT[c], numero: 12, posicion: 1, total: 2, checked_in_at: HORA_PT };
-    if (c === "cccccccc") return { resultado: "ya_usada", token: PT[c], numero: 12, posicion: 2, total: 2, checked_in_at: HORA_PT };
+    if (c === "cccccccc") return { resultado: "ya_usada", token: PT[c], numero: 12, posicion: 2, total: 2, checked_in_at: HORA_PT, cedula: "V21616092" };
     return { resultado: "invalida", motivo: "no_existe" };
   };
 }
@@ -701,6 +701,8 @@ await caso("portero: válida verde con vibración y deshacer, vuelve sola; ya us
   await page.waitForSelector("#resultado:not([hidden])");
   a.equal(await page.getAttribute("#resultado", "data-estado"), "ya_usada");
   a.ok((await page.textContent("#resultado")).includes("22:14"), "ya usada sin la hora del primer ingreso");
+  a.equal(await page.textContent("#r-titulo"), "Reingreso", "una entrada ya usada no sale como reingreso");
+  a.equal(await page.textContent("#r-cedula"), "Pide cédula\nV-21.616.092", "el reingreso no muestra la cédula del comprador");
   a.equal(await page.evaluate(() => getComputedStyle(document.getElementById("resultado")).backgroundColor), "rgb(255, 214, 10)", "ya usada no es amarillo marcador");
   await foto(page, "13-portero-ya-usada");
   await page.click("#resultado"); // un toque lo cierra antes

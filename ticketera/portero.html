@@ -43,7 +43,7 @@
   </section>
   <div class="error" id="error" role="alert" hidden></div>
 </main>
-<div class="resultado" id="resultado" role="alert" hidden><p class="r-titulo" id="r-titulo"></p><p class="r-detalle" id="r-detalle"></p><p class="r-detalle" id="r-red" hidden>sin conexión</p></div>
+<div class="resultado" id="resultado" role="alert" hidden><p class="r-titulo" id="r-titulo"></p><p class="r-cedula" id="r-cedula" hidden></p><p class="r-detalle" id="r-detalle"></p><p class="r-detalle" id="r-red" hidden>sin conexión</p></div>
 <script>
 addEventListener("DOMContentLoaded", () => {
   const $ = (id) => document.getElementById(id);
@@ -54,11 +54,14 @@ addEventListener("DOMContentLoaded", () => {
   let clave = leer(K_CLAVE) ?? "";
   let ultimo = { x: null, t: 0 }; // anti-rebote: el mismo token o código se ignora 3 s tras su último resultado
   let cierre, finDeshacer, ultimaValida = null, ultimaLocal = false;
-  const TITULO = { valida: "Válida", ya_usada: "Ya usada", invalida: "Inválida" };
+  // Se permite reingreso: una entrada ya usada pasa en amarillo; checked_in_at sigue siendo el primer ingreso.
+  const TITULO = { valida: "Válida", ya_usada: "Reingreso", invalida: "Inválida" };
   const VIBRA = { valida: [80], ya_usada: [80, 80, 80], invalida: [400] };
   const MOTIVO = { no_existe: "No es una entrada de esta fiesta.", no_aprobada: "Esa orden no está aprobada.", codigo_ambiguo: "Código repetido: escanea el QR." };
   const hora = (iso) => new Date(iso).toLocaleTimeString("es-VE", { timeZone: "America/Caracas", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const fechaHora = (iso) => `${new Date(iso).toLocaleDateString("es-VE", { timeZone: "America/Caracas", day: "2-digit", month: "2-digit" })} ${hora(iso)}`;
+  // Solo si es reciente: un reingreso a los pocos minutos puede ser un QR pasado por la reja.
+  const hace = (iso) => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m >= 0 && m < 60 ? ` (hace ${m} min)` : ""; };
 
   function fallo(msg) { $("error").textContent = msg; $("error").hidden = !msg; }
   function aviso(msg) { $("aviso").textContent = msg; $("aviso").hidden = !msg; }
@@ -205,12 +208,17 @@ addEventListener("DOMContentLoaded", () => {
     $("r-titulo").textContent = TITULO[r.resultado] ?? "Inválida";
     $("r-detalle").textContent =
       r.resultado === "valida" ? `Entrada ${r.posicion} de ${r.total} · orden #${r.numero}`
-      : r.resultado === "ya_usada" ? `A las ${hora(r.checked_in_at)} · entrada ${r.posicion} de ${r.total} · orden #${r.numero}`
+      : r.resultado === "ya_usada" ? `Entró a las ${hora(r.checked_in_at)}${hace(r.checked_in_at)} · entrada ${r.posicion} de ${r.total} · orden #${r.numero}`
       : MOTIVO[r.motivo] ?? "";
+    // Reingreso: pasa quien enseñe el documento con la cédula del comprador. 'V0' = cortesía o venta manual.
+    const c = /^([VE]?)(\d+)$/.exec(r.cedula ?? "");
+    const ced = c && Number(c[2]) ? `${c[1] || "V"}-${Number(c[2]).toLocaleString("es-VE")}` : null;
+    $("r-cedula").textContent = ced ? `Pide cédula\n${ced}` : "Sin cédula registrada";
+    $("r-cedula").hidden = r.resultado !== "ya_usada";
     el.hidden = false;
     try { navigator.vibrate?.(VIBRA[r.resultado] ?? VIBRA.invalida); } catch {}
     clearTimeout(cierre);
-    cierre = setTimeout(cerrar, 2000);
+    cierre = setTimeout(cerrar, r.resultado === "ya_usada" ? 10000 : 2000); // 10 s para comparar el documento
 
     clearTimeout(finDeshacer);
     ultimaValida = r.resultado === "valida" ? r.token : null;

@@ -113,6 +113,7 @@ input[aria-invalid="true"] { border-color: var(--rojo); }
 .resultado.invalida { background: var(--rojo); color: var(--negro); } /* negro sobre rojo aviso: 7:1; papel daba 2,75:1 */
 .r-titulo { font: var(--display); font-size: 64px; text-transform: uppercase; margin: 0; } /* el display a 34px no se lee a un metro */
 .r-detalle { font: var(--headline); text-transform: uppercase; margin: 0; }
+.r-cedula { font: var(--display); font-size: 40px; margin: 0; white-space: pre-line; } /* se compara con el documento a un brazo de distancia */
 
 /* Lectura de la captura (issue #7): mientras la IA lee, la vista previa late con borde verde y la línea anuncia con puntos. */
 .preview.leyendo { outline: 2px solid var(--verde); outline-offset: 3px; animation: latir 1.1s ease-in-out infinite; }

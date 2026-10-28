@@ -64,9 +64,10 @@ const lista = (await portero({ clave: CLAVE, accion: "lista" })).d;
 assert.ok(lista.generada_en && Array.isArray(lista.entradas), "lista con hora y entradas");
 const mia = lista.entradas.find((e) => e.token === t1);
 assert.ok(mia?.checked_in_at && mia.total === 2 && mia.numero === porCodigo.numero, `lista trae la entrada: ${JSON.stringify(mia)}`);
-assert.deepEqual(Object.keys(mia).sort(), ["checked_in_at", "numero", "posicion", "token", "total"], "campos de la lista");
+assert.deepEqual(Object.keys(mia).sort(), ["cedula", "checked_in_at", "numero", "posicion", "token", "total"], "campos de la lista");
+assert.equal(mia.cedula, "V99999999", "la lista sin la cédula del comprador para el reingreso");
 const texto = JSON.stringify(lista);
-for (const dato of ["nombre", "cedula", "telefono", "Prueba Portero", "V99999999", "04149999999"]) {
+for (const dato of ["nombre", "telefono", "Prueba Portero", "04149999999"]) {
   assert.ok(!texto.includes(dato), `la lista expone ${dato}`);
 }
 

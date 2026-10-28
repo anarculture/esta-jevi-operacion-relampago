@@ -238,6 +238,7 @@ begin
   r2 := checkin_entrada(t1);
   assert r2 ->> 'resultado' = 'ya_usada', 'segundo check-in: ' || r2::text;
   assert (r2 ->> 'checked_in_at')::timestamptz = h, 'ya_usada cambió la hora del primer ingreso';
+  assert r2 ->> 'cedula' = o.cedula, 'reingreso sin la cédula del comprador: ' || r2::text;
   assert checkin_entrada(gen_random_uuid()) ->> 'motivo' = 'no_existe', 'token inexistente';
 
   -- Hora local del check-in sin señal: se respeta dentro de [ahora - 1 día, ahora].
@@ -280,7 +281,9 @@ begin
   l := lista_portero();
   assert (l ->> 'generada_en') is not null and l::text like '%' || t1 || '%' and l::text like '%' || t2 || '%', 'lista sin las entradas aprobadas';
   assert l::text not like '%' || tr || '%' and l::text not like '%abcdef12%', 'lista con entradas no aprobadas';
-  assert l::text not like '%Ana%' and l::text not like '%V12345678%' and l::text not like '%04141234567%' and l::text not like '%ZZ9999%'
+  -- La cédula del comprador sí va (reingreso sin señal); el resto de los datos personales no.
+  assert l::text like '%' || o.cedula || '%', 'lista sin la cédula para el reingreso';
+  assert l::text not like '%Ana%' and l::text not like '%04141234567%' and l::text not like '%ZZ9999%'
      and l::text not like '%9876543%' and l::text not like '%Mercantil%', 'lista expone datos personales';
   assert (resumen_portero() ->> 'aprobadas') = (r0 ->> 'aprobadas')
      and (resumen_portero() ->> 'ingresadas')::int = (r0 ->> 'ingresadas')::int + 1, 'resumen: ' || resumen_portero()::text;
