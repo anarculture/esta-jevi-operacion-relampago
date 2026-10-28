@@ -26,6 +26,54 @@
         ],
         "createdAt": "2026-10-27T01:06:01.309Z",
         "reason": "agente: la escala vive en t.css (display 34 / headline 22 / body 17 = pasos de 1.55× y 1.29×, DESIGN.md); el detector no ve la hoja externa"
+      },
+      {
+        "rule": "wide-tracking",
+        "value": "*",
+        "files": [
+          "entradas-manuales/vip.html"
+        ],
+        "createdAt": "2026-10-27T22:34:11.528Z",
+        "reason": "falso positivo: Silkscreen es una fuente pixel solo de mayúsculas; los textos marcados son etiquetas cortas de una línea, no cuerpo de texto"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "entradas-manuales/vip-coromoto.html"
+        ],
+        "createdAt": "2026-10-28T17:40:32.368Z",
+        "reason": "Claude: el único texto bajo contraste es el título verde con -webkit-text-stroke 3px #161616 y sombra negra (estilo del flyer de referencia); el chequeo no ve el trazo"
+      },
+      {
+        "rule": "wide-tracking",
+        "value": "*",
+        "files": [
+          "entradas-manuales/vip-coromoto.html"
+        ],
+        "createdAt": "2026-10-28T17:41:13.830Z",
+        "reason": "Claude: todo el texto con tracking es etiqueta corta (kicker, dt, 'Acceso', código) en Patrick Hand SC, fuente de versalitas; el detector la lee como cuerpo porque el CSS no lleva text-transform"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "archivo black",
+        "createdAt": "2026-10-28T17:57:18.804Z",
+        "reason": "Claude: Archivo Black imita la tipografía del @SINDICATO.CLUB del flyer final, en el póster que sale de ese flyer"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "black\",sans-serif",
+        "createdAt": "2026-10-28T17:57:18.811Z",
+        "reason": "Claude: Archivo Black imita la tipografía del @SINDICATO.CLUB del flyer final, en el póster que sale de ese flyer (el detector parte el nombre de la fuente)"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "entradas-manuales/anushka.html"
+        ],
+        "createdAt": "2026-10-28T23:10:18.457Z",
+        "reason": "Claude: el detector toma como fondo las paradas del degradado metálico del borde de 2px (border-box) de .ticket; el texto real va sobre #16111b/#26182f, y los títulos con glitter usan background-clip:text (color transparent)"
       }
     ]
   }
